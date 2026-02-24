@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-background: #faf8f3;
+  --color-foreground: #3d3d3d;
+  --color-muted: #f2ede4;
+  --color-muted-foreground: #8b7f75;
+  --color-border: #e8dfd5;
+  --color-input: #f2ede4;
+  --color-ring: #d4a574;
+  --color-primary: #d4a574;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f2ede4;
+  --color-secondary-foreground: #3d3d3d;
+  --color-accent: #e8ddf5;
+  --color-accent-foreground: #d4a574;
+  --color-destructive: #d4574a;
+  --color-destructive-foreground: #ffffff;
+  --color-card: #ffffff;
+  --color-card-foreground: #3d3d3d;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #3d3d3d;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--color-foreground);
+  background: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Heading font - стиль как на логотипе */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Cormorant', serif;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}

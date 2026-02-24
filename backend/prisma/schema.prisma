@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  cart      Cart?
+  orders    Order[]
+}
+
+// ─── Products ─────────────────────────────────────────────────────────────────
+
+model Product {
+  id          Int     @id @default(autoincrement())
+  name        String
+  category    String
+  flavor      String?
+  size        String?
+  weightGrams Int?
+  unit        String  @default("шт")
+  price       Int
+  imageUrl    String?
+  description String?
+  available   Boolean @default(true)
+  maxPerDay   Int     @default(999)
+}
+
+// ─── Cart ─────────────────────────────────────────────────────────────────────
+
+model Cart {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     Json     @default("[]")
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+model Order {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id])
+  items        Json
+  subtotal     Int
+  deliveryCost Int       @default(0)
+  total        Int
+  status       String    @default("new")
+  address      String?
+  deliveryDate DateTime  @db.Date
+  deliveryTime String?
+  isPickup     Boolean   @default(false)
+  paymentId    String?
+  createdAt    DateTime  @default(now())
+  paidAt       DateTime?
+  readyAt      DateTime?
+
+  @@index([userId])
+  @@index([deliveryDate])
+  @@index([status])
+}
+
+// ─── DailyLimit ───────────────────────────────────────────────────────────────
+
+model DailyLimit {
+  deliveryDate DateTime @id @db.Date
+  maxOrders    Int      @default(15)
+  maxTorts     Int      @default(2)
+}
