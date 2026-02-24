@@ -15,7 +15,7 @@ import { OptionalJwtGuard } from './optional-jwt.guard';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_ACCESS_SECRET'),
         signOptions: {
-          expiresIn: config.get<string>('JWT_ACCESS_EXPIRES', '15m'),
+          expiresIn: config.get<string>('JWT_ACCESS_EXPIRES', '15m') as any,
         },
       }),
     }),
