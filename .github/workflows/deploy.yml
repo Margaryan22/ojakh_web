@@ -26,7 +26,7 @@ jobs:
         run: |
           sleep 15
           curl --fail --retry 5 --retry-delay 5 \
-            http://${{ secrets.SERVER_HOST }}:3001/health \
+            https://ojakh.api.whysargis.ru/health \
             || (echo "Health check failed!" && exit 1)
 
       - name: Notify on failure
