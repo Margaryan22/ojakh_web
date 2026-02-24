@@ -1,0 +1,225 @@
+import type { Product, User } from '@/types';
+
+export const MOCK_USER: User = {
+  id: 1,
+  email: 'test@example.com',
+  name: 'Дарья Сергеева',
+  phone: '+7 (920) 123-45-67',
+  role: 'user',
+  createdAt: new Date().toISOString(),
+};
+
+export const MOCK_PRODUCTS: Product[] = [
+  // Хинкали
+  {
+    id: 1,
+    name: 'Хинкали с мясом',
+    category: 'хинкали',
+    flavor: 'говядина',
+    size: 'стандартные',
+    weightGrams: 350,
+    unit: 'шт',
+    price: 45000, // 450 руб
+    description: 'Сочные хинкали с мясом высшего качества, истинная грузинская классика',
+    available: true,
+    maxPerDay: 5,
+  },
+  {
+    id: 2,
+    name: 'Хинкали с грибами',
+    category: 'хинкали',
+    flavor: 'грибы',
+    size: 'стандартные',
+    weightGrams: 320,
+    unit: 'шт',
+    price: 40000, // 400 руб
+    description: 'Вегетарианский вариант с лесными грибами и специями',
+    available: true,
+    maxPerDay: 5,
+  },
+  {
+    id: 3,
+    name: 'Хинкали ассорти',
+    category: 'хинкали',
+    flavor: 'ассорти',
+    size: 'стандартные',
+    weightGrams: 380,
+    unit: 'шт',
+    price: 50000, // 500 руб
+    description: 'Набор хинкали с разными начинками',
+    available: true,
+    maxPerDay: 4,
+  },
+
+  // Пельмени
+  {
+    id: 4,
+    name: 'Пельмени классические',
+    category: 'пельмени',
+    flavor: 'мясо',
+    unit: 'кг',
+    price: 28000, // 280 руб за кг
+    description: 'Традиционные пельмени с мясной начинкой',
+    available: true,
+    maxPerDay: 10,
+  },
+  {
+    id: 5,
+    name: 'Пельмени с курицей',
+    category: 'пельмени',
+    flavor: 'курица',
+    unit: 'кг',
+    price: 25000, // 250 руб за кг
+    description: 'Легкие пельмени с куриной грудкой',
+    available: true,
+    maxPerDay: 10,
+  },
+
+  // Блинчики
+  {
+    id: 6,
+    name: 'Блинчики со сгущённым молоком',
+    category: 'блинчики',
+    flavor: 'со сгущёнкой',
+    size: 'порция из 4 шт',
+    unit: 'шт',
+    price: 22000, // 220 руб
+    description: 'Тонкие блинчики со сладкой молочной начинкой',
+    available: true,
+    maxPerDay: 8,
+  },
+  {
+    id: 7,
+    name: 'Блинчики с творогом',
+    category: 'блинчики',
+    flavor: 'творог',
+    size: 'порция из 4 шт',
+    unit: 'шт',
+    price: 25000, // 250 руб
+    description: 'Блинчики с кремовой творожной начинкой и ягодами',
+    available: true,
+    maxPerDay: 8,
+  },
+
+  // Хлеб
+  {
+    id: 8,
+    name: 'Хлеб на закваске',
+    category: 'хлеб',
+    flavor: 'классический',
+    size: '500g',
+    weightGrams: 500,
+    unit: 'шт',
+    price: 18000, // 180 руб
+    description: 'Ржаной хлеб на натуральной закваске с тонким хрустящим корочкой',
+    available: true,
+    maxPerDay: 15,
+  },
+  {
+    id: 9,
+    name: 'Хлеб с орехами',
+    category: 'хлеб',
+    flavor: 'грецкие орехи',
+    size: '500g',
+    weightGrams: 500,
+    unit: 'шт',
+    price: 22000, // 220 руб
+    description: 'Пшеничный хлеб с добавлением грецких орехов',
+    available: true,
+    maxPerDay: 12,
+  },
+
+  // Десерты
+  {
+    id: 10,
+    name: 'Пирожное Эклер',
+    category: 'десерты',
+    flavor: 'шоколадное',
+    size: '1 шт',
+    weightGrams: 80,
+    unit: 'шт',
+    price: 12000, // 120 руб
+    description: 'Классическое пирожное эклер с кремовой начинкой и шоколадной глазурью',
+    available: true,
+    maxPerDay: 20,
+  },
+  {
+    id: 11,
+    name: 'Пирожное Мини тарт',
+    category: 'десерты',
+    flavor: 'ягоды',
+    size: '1 шт',
+    weightGrams: 70,
+    unit: 'шт',
+    price: 10000, // 100 руб
+    description: 'Мини закуска с кремом и свежими ягодами',
+    available: true,
+    maxPerDay: 20,
+  },
+
+  // Торты
+  {
+    id: 12,
+    name: 'Торт Медовик',
+    category: 'торты',
+    flavor: 'медовые коржи со сгущёнкой',
+    size: '1 торт на 6-8 человек',
+    weightGrams: 800,
+    unit: 'шт',
+    price: 150000, // 1500 руб
+    description: 'Классический торт из медовых коржей с кремом и сгущённым молоком',
+    available: true,
+    maxPerDay: 2,
+  },
+  {
+    id: 13,
+    name: 'Торт Птичка молоко',
+    category: 'торты',
+    flavor: 'воздушное суфле',
+    size: '1 торт на 6-8 человек',
+    weightGrams: 750,
+    unit: 'шт',
+    price: 160000, // 1600 руб
+    description: 'Нежный торт с воздушным суфле и помадкой',
+    available: true,
+    maxPerDay: 2,
+  },
+  {
+    id: 14,
+    name: 'Торт Черный лес',
+    category: 'торты',
+    flavor: 'шоколад и вишня',
+    size: '1 торт на 6-8 человек',
+    weightGrams: 900,
+    unit: 'шт',
+    price: 180000, // 1800 руб
+    description: 'Многослойный шоколадный торт с вишневым мусом',
+    available: true,
+    maxPerDay: 2,
+  },
+];
+
+export const MOCK_CART_ITEMS = [
+  {
+    product_id: 1,
+    name: 'Хинкали с мясом',
+    category: 'хинкали',
+    flavor: 'говядина',
+    size: 'стандартные',
+    quantity: 2,
+    unit: 'шт',
+    price: 45000,
+    subtotal: 90000,
+  },
+  {
+    product_id: 6,
+    name: 'Блинчики со сгущённым молоком',
+    category: 'блинчики',
+    flavor: 'со сгущёнкой',
+    size: 'порция из 4 шт',
+    quantity: 1,
+    unit: 'шт',
+    price: 22000,
+    subtotal: 22000,
+  },
+];
