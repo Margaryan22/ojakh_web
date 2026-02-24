@@ -33,7 +33,7 @@ export class CartService {
     if (!cart) {
       return { userId, items: [] as CartItem[], subtotal: 0 };
     }
-    const items = cart.items as CartItem[];
+    const items = cart.items as unknown as CartItem[];
     return {
       userId,
       items,
@@ -43,7 +43,7 @@ export class CartService {
 
   async addOrUpdateItem(userId: number, dto: AddCartItemDto) {
     const cart = await this.prisma.cart.findUnique({ where: { userId } });
-    let items: CartItem[] = cart ? (cart.items as CartItem[]) : [];
+    let items: CartItem[] = cart ? (cart.items as unknown as CartItem[]) : [];
 
     const key = itemKey(dto);
 
@@ -92,8 +92,8 @@ export class CartService {
 
     return {
       userId,
-      items: updatedCart.items as CartItem[],
-      subtotal: this.calcSubtotal(updatedCart.items as CartItem[]),
+      items: updatedCart.items as unknown as CartItem[],
+      subtotal: this.calcSubtotal(updatedCart.items as unknown as CartItem[]),
     };
   }
 
@@ -109,7 +109,7 @@ export class CartService {
     }
 
     const key = itemKey({ product_id: productId, flavor, size });
-    const items = (cart.items as CartItem[]).filter(
+    const items = (cart.items as unknown as CartItem[]).filter(
       (i) => itemKey(i) !== key,
     );
 
@@ -120,8 +120,8 @@ export class CartService {
 
     return {
       userId,
-      items: updated.items as CartItem[],
-      subtotal: this.calcSubtotal(updated.items as CartItem[]),
+      items: updated.items as unknown as CartItem[],
+      subtotal: this.calcSubtotal(updated.items as unknown as CartItem[]),
     };
   }
 

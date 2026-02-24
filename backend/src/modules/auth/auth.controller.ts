@@ -29,7 +29,7 @@ export class AuthController {
     const { user, accessToken, refreshToken } =
       await this.authService.register(dto);
 
-    res.setCookie('refresh_token', refreshToken, {
+    (res as any).setCookie('refresh_token', refreshToken, {
       httpOnly: true,
       path: '/',
       sameSite: 'lax',
@@ -50,7 +50,7 @@ export class AuthController {
     const { user, accessToken, refreshToken } =
       await this.authService.login(dto);
 
-    res.setCookie('refresh_token', refreshToken, {
+    (res as any).setCookie('refresh_token', refreshToken, {
       httpOnly: true,
       path: '/',
       sameSite: 'lax',
@@ -65,7 +65,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token using httpOnly cookie' })
   async refresh(@Req() req: FastifyRequest) {
-    const refreshToken = (req.cookies as any)?.refresh_token;
+    const refreshToken = (req as any).cookies?.refresh_token;
     return this.authService.refresh(refreshToken ?? '');
   }
 
@@ -73,7 +73,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout and clear refresh token cookie' })
   async logout(@Res({ passthrough: true }) res: FastifyReply) {
-    res.clearCookie('refresh_token', { path: '/' });
+    (res as any).clearCookie('refresh_token', { path: '/' });
     return { ok: true };
   }
 }
