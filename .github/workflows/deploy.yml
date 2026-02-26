@@ -1,16 +1,44 @@
-name: Deploy to Production
+name: CI/CD
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  deploy:
-    name: Deploy via SSH
+  # ── Job 1: Проверка TypeScript ──────────────────────────────────────────────
+  # Запускается на любой push и PR. Ловит ошибки компиляции до деплоя.
+  build-check:
+    name: TypeScript Check
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to server
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install backend dependencies
+        run: cd backend && npm install --legacy-peer-deps
+
+      - name: Generate Prisma client
+        run: cd backend && npx prisma generate
+
+      - name: TypeScript check (backend)
+        run: cd backend && npx tsc --noEmit
+
+  # ── Job 2: Деплой на сервер ────────────────────────────────────────────────
+  # Запускается ТОЛЬКО при push в main И только если build-check прошёл.
+  deploy:
+    name: Deploy to Production
+    needs: build-check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -22,13 +50,14 @@ jobs:
             chmod +x backend/scripts/deploy.sh
             ./backend/scripts/deploy.sh
 
-      - name: Verify backend health
+      - name: Health check
         run: |
-          sleep 15
-          curl --fail --retry 5 --retry-delay 5 \
+          echo "Waiting for services to start..."
+          sleep 20
+          curl --fail --retry 6 --retry-delay 10 \
             https://ojakh.api.whysargis.ru/health \
             || (echo "Health check failed!" && exit 1)
 
       - name: Notify on failure
         if: failure()
-        run: echo "Deployment failed. Check logs on server with: docker compose logs --tail 50"
+        run: echo "Deploy failed! On server run: docker compose logs --tail 100"

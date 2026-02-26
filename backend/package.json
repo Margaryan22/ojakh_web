@@ -42,5 +42,8 @@
     "compilerOptions": {
       "module": "commonjs"
     }
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }
