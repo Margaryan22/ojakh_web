@@ -36,6 +36,8 @@ model Product {
   description String?
   available   Boolean @default(true)
   maxPerDay   Int     @default(999)
+  minQty      Float   @default(1)   // минимальное количество в заказе
+  step        Float   @default(1)   // шаг изменения количества
 }
 
 // ─── Cart ─────────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Cormorant:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -40,4 +40,16 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Cormorant', serif;
   letter-spacing: -0.02em;
   font-weight: 600;
+}
+
+/* Auth pages — мягкий округлый шрифт */
+.auth-form {
+  font-family: 'Nunito', system-ui, sans-serif;
+}
+.auth-form input::placeholder {
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 400;
+}
+.auth-form label {
+  font-family: 'Nunito', system-ui, sans-serif;
 }
