@@ -14,7 +14,6 @@ import {
   Heart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,9 +73,7 @@ export function Header() {
             >
               {link.label}
               {link.href === '/cart' && cartCount > 0 && (
-                <Badge className="ml-1.5 h-5 w-5 rounded-full p-0 text-[10px] flex items-center justify-center">
-                  {cartCount}
-                </Badge>
+                <span className="ml-1.5 inline-block h-2 w-2 rounded-full bg-primary align-middle" />
               )}
             </Link>
           ))}
@@ -141,9 +138,7 @@ export function Header() {
             <Link href="/cart" className="relative">
               <ShoppingCart className="h-5 w-5" />
               {cartCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-[10px] flex items-center justify-center">
-                  {cartCount}
-                </Badge>
+                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary" />
               )}
             </Link>
           </Button>
