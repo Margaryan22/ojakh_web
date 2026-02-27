@@ -98,6 +98,9 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
     const { items } = get();
     const prevItems = [...items];
 
+    const currentItem = items.find((item) => matchItem(item, productId, flavor, size));
+    if (!currentItem) return;
+
     const optimistic = items.map((item) => {
       if (matchItem(item, productId, flavor, size)) {
         return { ...item, quantity, subtotal: item.price * quantity };
@@ -107,11 +110,15 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
     set({ items: optimistic });
 
     try {
-      const { data } = await api.patch('/cart/items', {
+      const { data } = await api.post('/cart/items', {
         product_id: productId,
+        name: currentItem.name,
+        category: currentItem.category,
         flavor,
         size,
         quantity,
+        unit: currentItem.unit,
+        price: currentItem.price,
       });
       set({ items: data.items ?? [] });
     } catch {
