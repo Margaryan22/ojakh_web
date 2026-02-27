@@ -74,7 +74,17 @@ export default function AdminProductsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      let imageUrl: string | undefined;
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        const { data: uploadData } = await api.post('/uploads', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        imageUrl = uploadData.url;
+      }
+
+      const payload: Record<string, unknown> = {
         name: form.name,
         category: form.category,
         flavor: form.flavor || null,
@@ -86,23 +96,12 @@ export default function AdminProductsPage() {
         available: form.available,
         maxPerDay: parseInt(form.maxPerDay) || 999,
       };
+      if (imageUrl) payload.imageUrl = imageUrl;
 
-      let savedProduct: Product;
       if (editingProduct) {
-        const { data } = await api.patch(`/admin/products/${editingProduct.id}`, payload);
-        savedProduct = data;
+        await api.patch(`/products/${editingProduct.id}`, payload);
       } else {
-        const { data } = await api.post('/admin/products', payload);
-        savedProduct = data;
-      }
-
-      // Upload image if selected
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        await api.post(`/admin/products/${savedProduct.id}/image`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        await api.post('/products', payload);
       }
     },
     onSuccess: () => {
@@ -121,7 +120,7 @@ export default function AdminProductsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await api.delete(`/admin/products/${id}`);
+      await api.delete(`/products/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
