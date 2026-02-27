@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +46,8 @@ export default function RegisterPage() {
     email: false,
     phone: false,
   });
+
+  const [showPassword, setShowPassword] = useState(false);
 
   // Пароль: debounce 1.5с перед показом ошибок
   const [showRules, setShowRules] = useState(false);
@@ -243,20 +246,30 @@ export default function RegisterPage() {
           {/* Пароль */}
           <div className="space-y-1.5">
             <Label htmlFor="password" className="text-sm font-semibold">Пароль *</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Придумайте пароль"
-              value={password}
-              onChange={(e) => handlePasswordChange(e.target.value)}
-              onBlur={handlePasswordBlur}
-              autoComplete="new-password"
-              className={`rounded-xl transition-all duration-200 ${
-                showRules && !passwordValid
-                  ? 'border-destructive focus-visible:ring-destructive'
-                  : 'focus-visible:ring-primary/50'
-              }`}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Придумайте пароль"
+                value={password}
+                onChange={(e) => handlePasswordChange(e.target.value)}
+                onBlur={handlePasswordBlur}
+                autoComplete="new-password"
+                className={`rounded-xl transition-all duration-200 pr-10 ${
+                  showRules && !passwordValid
+                    ? 'border-destructive focus-visible:ring-destructive'
+                    : 'focus-visible:ring-primary/50'
+                }`}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             {showRules && (
               <ul className="mt-1.5 space-y-1">
                 {passwordRules.map((rule) => {
