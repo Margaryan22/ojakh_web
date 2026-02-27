@@ -78,9 +78,7 @@ export default function AdminProductsPage() {
       if (imageFile) {
         const formData = new FormData();
         formData.append('file', imageFile);
-        const { data: uploadData } = await api.post('/uploads', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        const { data: uploadData } = await api.post('/uploads', formData);
         imageUrl = uploadData.url;
       }
 

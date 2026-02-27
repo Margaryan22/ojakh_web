@@ -35,6 +35,11 @@ async function bootstrap() {
   // ── Cookies ───────────────────────────────────────────────────────────────
   await app.register(require('@fastify/cookie'));
 
+  // ── Multipart (file uploads) ──────────────────────────────────────────────
+  await app.register(require('@fastify/multipart'), {
+    limits: { fileSize: 5 * 1024 * 1024 },
+  });
+
   // ── Static files (uploads) ────────────────────────────────────────────────
   const absoluteUploadsDir = uploadsDir.startsWith('.')
     ? join(process.cwd(), uploadsDir)
