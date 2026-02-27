@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Minus, Plus, Trash2, ArrowLeft, ArrowRight, MapPin, Truck, Store } from 'lucide-react';
 import { toast } from 'sonner';
@@ -47,6 +47,36 @@ export default function CartPage() {
 
   const availableDates = getAvailableDates();
   const hasTorts = tortCount() > 0;
+
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+
+  const availableDateSet = useMemo(
+    () => new Set(availableDates.map(toDateString)),
+    [availableDates]
+  );
+
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    let startDow = firstDay.getDay() - 1;
+    if (startDow < 0) startDow = 6;
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < startDow; i++) days.push(null);
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      days.push(new Date(year, month, d));
+    }
+    return days;
+  }, [calendarMonth]);
+
+  const calendarMonthName = calendarMonth.toLocaleDateString('ru-RU', {
+    month: 'long',
+    year: 'numeric',
+  });
 
   useEffect(() => {
     if (user) {
@@ -102,9 +132,9 @@ export default function CartPage() {
         is_pickup: isPickup,
         address: isPickup ? undefined : address,
       });
-      toast.success(`Заказ #${data.id} создан`);
+      toast.success(`Заказ #${data.order.id} создан`);
       await clearCart();
-      router.push(`/orders/${data.id}`);
+      router.push(`/orders/${data.order.id}`);
     } catch (error) {
       if (error instanceof AxiosError) {
         toast.error(error.response?.data?.message ?? 'Ошибка создания заказа');
@@ -336,23 +366,61 @@ export default function CartPage() {
               </div>
             )}
 
-            {/* Date selection */}
+            {/* Date selection - Calendar */}
             <div className="space-y-2">
               <Label>Дата доставки</Label>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {availableDates.map((date) => {
+
+              {/* Month navigation */}
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-medium text-sm capitalize">{calendarMonthName}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Day of week headers */}
+              <div className="grid grid-cols-7 text-center">
+                {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(d => (
+                  <div key={d} className="text-xs text-muted-foreground py-1 font-medium">{d}</div>
+                ))}
+              </div>
+
+              {/* Calendar days grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {calendarDays.map((date, idx) => {
+                  if (!date) return <div key={`empty-${idx}`} />;
                   const dateStr = toDateString(date);
+                  const isAvailable = availableDateSet.has(dateStr);
                   const isSelected = selectedDate === dateStr;
                   return (
-                    <Button
+                    <button
                       key={dateStr}
-                      variant={isSelected ? 'default' : 'outline'}
-                      size="sm"
-                      className="text-xs"
+                      disabled={!isAvailable}
                       onClick={() => setSelectedDate(dateStr)}
+                      className={cn(
+                        'h-9 w-full rounded-lg text-sm font-medium transition-colors',
+                        isSelected
+                          ? 'bg-primary text-primary-foreground'
+                          : isAvailable
+                          ? 'hover:bg-accent cursor-pointer'
+                          : 'text-muted-foreground/40 cursor-not-allowed',
+                      )}
                     >
-                      {formatDate(dateStr)}
-                    </Button>
+                      {date.getDate()}
+                    </button>
                   );
                 })}
               </div>

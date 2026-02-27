@@ -17,7 +17,7 @@ export default function OrdersPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
-  const { data: orders = [], isLoading } = useQuery<Order[]>({
+  const { data: ordersData, isLoading } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
       const { data } = await api.get('/orders');
@@ -25,6 +25,7 @@ export default function OrdersPage() {
     },
     enabled: !!user,
   });
+  const orders: Order[] = ordersData?.orders ?? [];
 
   if (!user) {
     return (
