@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import axios from 'axios';
 import api from '@/lib/api';
 import type { User } from '@/types';
 
@@ -68,13 +69,19 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   },
 
   loadUser: async () => {
-    const { accessToken } = get();
-    if (!accessToken) {
-      set({ isInitialized: true });
-      return;
-    }
     set({ isLoading: true });
     try {
+      const { accessToken } = get();
+      if (!accessToken) {
+        // Try to restore session via httpOnly refresh token cookie
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+        const { data: refreshData } = await axios.post(
+          `${apiUrl}/auth/refresh`,
+          {},
+          { withCredentials: true },
+        );
+        set({ accessToken: refreshData.accessToken });
+      }
       const { data } = await api.get('/users/me');
       set({ user: data, isLoading: false, isInitialized: true });
     } catch {

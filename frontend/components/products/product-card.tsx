@@ -25,6 +25,10 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
 
   const emoji = CATEGORY_EMOJI[product.category as ProductCategory] ?? '🍽️';
   const unitLabel = product.unit === 'кг' ? '/ кг' : '/ шт';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
+  const imageUrl = product.imageUrl?.startsWith('/')
+    ? `${apiUrl}${product.imageUrl}`
+    : product.imageUrl;
 
   return (
     <Card className="group relative overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
@@ -54,9 +58,9 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
 
       {/* Image / Emoji */}
       <div className="relative aspect-square bg-gradient-to-br from-muted to-accent flex items-center justify-center overflow-hidden">
-        {product.imageUrl ? (
+        {imageUrl ? (
           <Image
-            src={product.imageUrl}
+            src={imageUrl}
             alt={product.name}
             fill
             className="object-cover transition-transform group-hover:scale-110"
