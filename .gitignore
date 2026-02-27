@@ -4,4 +4,4 @@ node_modules
 dist
 .next
 *.log
-uploads/
+backend/uploads/
