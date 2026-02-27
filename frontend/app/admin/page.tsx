@@ -38,7 +38,7 @@ export default function AdminOrdersPage() {
 
   const markReadyMutation = useMutation({
     mutationFn: async (orderId: number) => {
-      await api.patch(`/admin/orders/${orderId}/status`, { status: 'ready' });
+      await api.patch(`/admin/orders/${orderId}/ready`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
@@ -53,7 +53,7 @@ export default function AdminOrdersPage() {
 
   const cancelMutation = useMutation({
     mutationFn: async (orderId: number) => {
-      await api.patch(`/admin/orders/${orderId}/status`, { status: 'cancelled' });
+      await api.patch(`/admin/orders/${orderId}/cancel`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
@@ -115,9 +115,11 @@ export default function AdminOrdersPage() {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      User #{order.userId} &middot; {formatDate(order.deliveryDate)}
+                      {(order as any).user?.name ?? `#${order.userId}`}
+                      {(order as any).user?.phone ? ` · ${(order as any).user.phone}` : ''}
+                      {' · '}{formatDate(order.deliveryDate)}
                       {order.deliveryTime ? ` ${order.deliveryTime}` : ''}
-                      {' '}&middot; {order.isPickup ? 'Самовывоз' : 'Доставка'}
+                      {' · '}{order.isPickup ? 'Самовывоз' : 'Доставка'}
                     </p>
                   </div>
                   <span className="font-bold">{formatPrice(order.total)}</span>
