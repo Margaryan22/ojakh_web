@@ -31,6 +31,13 @@ export class AdminController {
     return this.adminService.getOrders({ status, date });
   }
 
+  @Patch('orders/:id/start-cooking')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark order as started cooking / preparing (admin only)' })
+  startCooking(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.startCooking(id);
+  }
+
   @Patch('orders/:id/ready')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark order as ready (admin only)' })

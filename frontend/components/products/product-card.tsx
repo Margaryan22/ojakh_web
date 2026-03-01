@@ -38,13 +38,13 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
           e.stopPropagation();
           toggleFavorite(product);
         }}
-        className="absolute top-2 right-2 z-10 rounded-full bg-white/90 p-2 backdrop-blur-sm transition-all hover:bg-primary hover:text-white cursor-pointer shadow-md"
+        className="group/fav absolute top-2 right-2 z-10 rounded-full bg-white/90 p-2 backdrop-blur-sm transition-all hover:bg-rose-100 hover:scale-110 cursor-pointer shadow-md"
         aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
       >
         <Heart
           className={cn(
             'h-5 w-5 transition-colors',
-            isFavorite ? 'fill-primary text-primary' : 'text-muted-foreground'
+            isFavorite ? 'fill-rose-500 text-rose-500' : 'text-muted-foreground group-hover/fav:text-rose-400'
           )}
         />
       </button>
@@ -73,7 +73,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
 
       <CardContent className="p-4 space-y-2">
         <div>
-          <h3 className="font-semibold text-sm leading-tight line-clamp-2 text-foreground">{product.name}</h3>
+          <h3 className="font-bold text-base leading-tight line-clamp-2 text-foreground">{product.name}</h3>
           <div className="flex flex-wrap gap-1 mt-1">
             {product.flavor && (
               <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
