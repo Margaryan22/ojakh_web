@@ -39,8 +39,13 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
   const emoji = CATEGORY_EMOJI[product.category as ProductCategory] ?? '🍽️';
   const totalPrice = product.price * quantity;
 
+  const maxQty = product.maxPerDay ?? 999;
+
   const handleIncrease = () => {
-    setQuantity((prev) => Math.round((prev + step) * 10) / 10);
+    setQuantity((prev) => {
+      const next = Math.round((prev + step) * 10) / 10;
+      return next <= maxQty ? next : prev;
+    });
   };
 
   const handleDecrease = () => {
@@ -140,6 +145,7 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
                 size="icon"
                 className="h-9 w-9"
                 onClick={handleIncrease}
+                disabled={quantity >= maxQty}
               >
                 <Plus className="h-4 w-4" />
               </Button>

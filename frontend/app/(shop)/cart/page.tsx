@@ -2,7 +2,16 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Minus, Plus, Trash2, ArrowLeft, ArrowRight, MapPin, Truck, Store } from 'lucide-react';
+import {
+  Minus,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  ArrowRight,
+  MapPin,
+  Truck,
+  Store,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -14,8 +23,13 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCartStore } from '@/stores/cart.store';
 import { useAuthStore } from '@/stores/auth.store';
-import { formatPrice, formatDate, getAvailableDates, toDateString } from '@/lib/format';
-import { DELIVERY_TIME_SLOTS } from '@/lib/constants';
+import {
+  formatPrice,
+  formatDate,
+  getAvailableDates,
+  toDateString,
+} from '@/lib/format';
+import { DELIVERY_TIME_SLOTS, MAX_ITEM_QTY_PER_ORDER } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import type { DateAvailability, DeliveryTimeSlot } from '@/types';
@@ -42,7 +56,8 @@ export default function CartPage() {
   const [isPickup, setIsPickup] = useState(false);
   const [address, setAddress] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState<DeliveryTimeSlot>('10:00-14:00');
+  const [selectedTime, setSelectedTime] =
+    useState<DeliveryTimeSlot>('10:00-14:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const availableDates = getAvailableDates();
@@ -55,7 +70,7 @@ export default function CartPage() {
 
   const availableDateSet = useMemo(
     () => new Set(availableDates.map(toDateString)),
-    [availableDates]
+    [availableDates],
   );
 
   const calendarDays = useMemo(() => {
@@ -86,9 +101,11 @@ export default function CartPage() {
 
   // Date availability check
   const { data: dateAvailability } = useQuery<DateAvailability>({
-    queryKey: ['dateAvailability', selectedDate],
+    queryKey: ['dateAvailability', selectedDate, hasTorts],
     queryFn: async () => {
-      const { data } = await api.get(`/orders/availability/${selectedDate}`);
+      const { data } = await api.get(
+        `/delivery/check-date?date=${selectedDate}&with_tort=${hasTorts}`,
+      );
       return data;
     },
     enabled: !!selectedDate,
@@ -132,7 +149,7 @@ export default function CartPage() {
         is_pickup: isPickup,
         address: isPickup ? undefined : address,
       });
-      toast.success(`Заказ #${data.order.id} создан`);
+      toast.success(`Заказ создан`);
       await clearCart();
       router.push(`/orders/${data.order.id}`);
     } catch (error) {
@@ -150,8 +167,10 @@ export default function CartPage() {
 
   if (!user) {
     return (
-      <div className="text-center py-12 space-y-4">
-        <p className="text-muted-foreground">Войдите в систему, чтобы просмотреть корзину</p>
+      <div className='text-center py-12 space-y-4'>
+        <p className='text-muted-foreground'>
+          Войдите в систему, чтобы просмотреть корзину
+        </p>
         <Button onClick={() => router.push('/login')}>Войти</Button>
       </div>
     );
@@ -159,44 +178,44 @@ export default function CartPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
+      <div className='space-y-4'>
+        <Skeleton className='h-8 w-48' />
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full" />
+          <Skeleton key={i} className='h-24 w-full' />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className='space-y-6 max-w-3xl mx-auto'>
       {/* Step indicator */}
-      <div className="flex items-center gap-2 text-sm">
+      <div className='flex items-center gap-2 text-sm'>
         <span
           className={cn(
             'font-medium cursor-pointer',
-            step === 'cart' ? 'text-primary' : 'text-muted-foreground'
+            step === 'cart' ? 'text-primary' : 'text-muted-foreground',
           )}
           onClick={() => setStep('cart')}
         >
           Корзина
         </span>
-        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+        <ArrowRight className='h-3 w-3 text-muted-foreground' />
         <span
           className={cn(
             'font-medium',
             step === 'delivery' ? 'text-primary' : 'text-muted-foreground',
-            step !== 'cart' ? 'cursor-pointer' : ''
+            step !== 'cart' ? 'cursor-pointer' : '',
           )}
           onClick={() => step !== 'cart' && setStep('delivery')}
         >
           Доставка
         </span>
-        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+        <ArrowRight className='h-3 w-3 text-muted-foreground' />
         <span
           className={cn(
             'font-medium',
-            step === 'confirm' ? 'text-primary' : 'text-muted-foreground'
+            step === 'confirm' ? 'text-primary' : 'text-muted-foreground',
           )}
         >
           Подтверждение
@@ -206,87 +225,120 @@ export default function CartPage() {
       {/* STEP 1: Cart */}
       {step === 'cart' && (
         <>
-          <h1 className="text-2xl font-bold">Корзина</h1>
+          <h1 className='text-2xl font-bold'>Корзина</h1>
 
           {items.length === 0 ? (
-            <div className="text-center py-12 space-y-4">
-              <p className="text-muted-foreground">Корзина пуста</p>
-              <Button variant="outline" onClick={() => router.push('/catalog')}>
+            <div className='text-center py-12 space-y-4'>
+              <p className='text-muted-foreground'>Корзина пуста</p>
+              <Button variant='outline' onClick={() => router.push('/catalog')}>
                 Перейти в каталог
               </Button>
             </div>
           ) : (
             <>
-              <div className="space-y-3">
+              <div className='space-y-3'>
                 {items.map((item) => {
                   const isTort = isTortItem(item.category);
                   const stepVal = isTort ? 0.5 : 1;
                   const minQty = isTort ? 1 : 1;
 
+                  const maxQty = isTort ? 2 : MAX_ITEM_QTY_PER_ORDER;
+
                   return (
-                    <Card key={`${item.product_id}-${item.flavor}-${item.size}`}>
-                      <CardContent className="p-4 flex items-center gap-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{item.name}</p>
-                          <div className="flex gap-1 mt-0.5">
+                    <Card
+                      key={`${item.product_id}-${item.flavor}-${item.size}`}
+                    >
+                      <CardContent className='p-4 flex items-center gap-4'>
+                        <div className='flex-1 min-w-0'>
+                          <p className='font-medium text-sm truncate'>
+                            {item.name}
+                          </p>
+                          <div className='flex gap-1 mt-0.5'>
                             {item.flavor && (
-                              <Badge variant="secondary" className="text-[10px]">
+                              <Badge
+                                variant='secondary'
+                                className='text-[10px]'
+                              >
                                 {item.flavor}
                               </Badge>
                             )}
                             {item.size && (
-                              <Badge variant="secondary" className="text-[10px]">
+                              <Badge
+                                variant='secondary'
+                                className='text-[10px]'
+                              >
                                 {item.size}
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className='text-xs text-muted-foreground mt-1'>
                             {formatPrice(item.price)} / {item.unit}
                           </p>
                         </div>
 
                         {/* Quantity controls */}
-                        <div className="flex items-center gap-2">
+                        <div className='flex items-center gap-2'>
                           <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
+                            variant='outline'
+                            size='icon'
+                            className='h-8 w-8'
                             onClick={() => {
-                              const newQty = Math.round((item.quantity - stepVal) * 10) / 10;
+                              const newQty =
+                                Math.round((item.quantity - stepVal) * 10) / 10;
                               if (newQty >= minQty) {
-                                updateQuantity(item.product_id, newQty, item.flavor, item.size);
+                                updateQuantity(
+                                  item.product_id,
+                                  newQty,
+                                  item.flavor,
+                                  item.size,
+                                );
                               }
                             }}
                             disabled={item.quantity <= minQty}
                           >
-                            <Minus className="h-3 w-3" />
+                            <Minus className='h-3 w-3' />
                           </Button>
-                          <span className="w-10 text-center text-sm font-medium tabular-nums">
+                          <span className='w-10 text-center text-sm font-medium tabular-nums'>
                             {isTort ? item.quantity.toFixed(1) : item.quantity}
                           </span>
                           <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
+                            variant='outline'
+                            size='icon'
+                            className='h-8 w-8'
                             onClick={() => {
-                              const newQty = Math.round((item.quantity + stepVal) * 10) / 10;
-                              updateQuantity(item.product_id, newQty, item.flavor, item.size);
+                              const newQty =
+                                Math.round((item.quantity + stepVal) * 10) / 10;
+                              updateQuantity(
+                                item.product_id,
+                                newQty,
+                                item.flavor,
+                                item.size,
+                              );
                             }}
+                            disabled={item.quantity >= maxQty}
                           >
-                            <Plus className="h-3 w-3" />
+                            <Plus className='h-3 w-3' />
                           </Button>
                         </div>
 
                         {/* Subtotal & remove */}
-                        <div className="text-right">
-                          <p className="font-semibold text-sm">{formatPrice(item.subtotal)}</p>
+                        <div className='text-right'>
+                          <p className='font-semibold text-sm'>
+                            {formatPrice(item.subtotal)}
+                          </p>
                           <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-1 text-muted-foreground hover:text-destructive"
-                            onClick={() => removeItem(item.product_id, item.flavor, item.size)}
+                            variant='ghost'
+                            size='sm'
+                            className='h-6 px-1 text-muted-foreground hover:text-destructive'
+                            onClick={() =>
+                              removeItem(
+                                item.product_id,
+                                item.flavor,
+                                item.size,
+                              )
+                            }
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className='h-3 w-3' />
                           </Button>
                         </div>
                       </CardContent>
@@ -297,20 +349,20 @@ export default function CartPage() {
 
               <Separator />
 
-              <div className="flex items-center justify-between">
+              <div className='flex items-center justify-between'>
                 <div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className='text-sm text-muted-foreground'>
                     {totalItems()} {totalItems() === 1 ? 'товар' : 'товаров'}
                   </p>
-                  <p className="text-xl font-bold">{formatPrice(totalPrice())}</p>
+                  <p className='text-xl font-bold'>
+                    {formatPrice(totalPrice())}
+                  </p>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => clearCart()}>
+                <div className='flex gap-2'>
+                  <Button variant='outline' onClick={() => clearCart()}>
                     Очистить
                   </Button>
-                  <Button onClick={handleCheckout}>
-                    Оформить
-                  </Button>
+                  <Button onClick={handleCheckout}>Оформить</Button>
                 </div>
               </div>
             </>
@@ -321,85 +373,102 @@ export default function CartPage() {
       {/* STEP 2: Delivery */}
       {step === 'delivery' && (
         <>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setStep('cart')}>
-              <ArrowLeft className="h-4 w-4" />
+          <div className='flex items-center gap-2'>
+            <Button variant='ghost' size='icon' onClick={() => setStep('cart')}>
+              <ArrowLeft className='h-4 w-4' />
             </Button>
-            <h1 className="text-2xl font-bold">Доставка</h1>
+            <h1 className='text-2xl font-bold'>Доставка</h1>
           </div>
 
-          <div className="space-y-6">
+          <div className='space-y-6'>
             {/* Delivery type toggle */}
-            <div className="flex gap-3">
+            <div className='flex gap-3'>
               <Button
                 variant={!isPickup ? 'default' : 'outline'}
-                className="flex-1 gap-2"
+                className='flex-1 gap-2'
                 onClick={() => setIsPickup(false)}
               >
-                <Truck className="h-4 w-4" />
+                <Truck className='h-4 w-4' />
                 Доставка
               </Button>
               <Button
                 variant={isPickup ? 'default' : 'outline'}
-                className="flex-1 gap-2"
+                className='flex-1 gap-2'
                 onClick={() => setIsPickup(true)}
               >
-                <Store className="h-4 w-4" />
+                <Store className='h-4 w-4' />
                 Самовывоз
               </Button>
             </div>
 
             {/* Address */}
             {!isPickup && (
-              <div className="space-y-2">
-                <Label htmlFor="address">Адрес доставки</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className='space-y-2'>
+                <Label htmlFor='address'>Адрес доставки</Label>
+                <div className='relative'>
+                  <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
                   <Input
-                    id="address"
-                    placeholder="Улица, дом, квартира"
+                    id='address'
+                    placeholder='Улица, дом, квартира'
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="pl-10"
+                    className='pl-10'
                   />
                 </div>
               </div>
             )}
 
             {/* Date selection - Calendar */}
-            <div className="space-y-2">
+            <div className='space-y-2'>
               <Label>Дата доставки</Label>
 
               {/* Month navigation */}
-              <div className="flex items-center justify-between">
+              <div className='flex items-center justify-between'>
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                  variant='ghost'
+                  size='icon'
+                  className='h-8 w-8'
+                  onClick={() =>
+                    setCalendarMonth(
+                      (prev) =>
+                        new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
+                    )
+                  }
                 >
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft className='h-4 w-4' />
                 </Button>
-                <span className="font-medium text-sm capitalize">{calendarMonthName}</span>
+                <span className='font-medium text-sm capitalize'>
+                  {calendarMonthName}
+                </span>
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                  variant='ghost'
+                  size='icon'
+                  className='h-8 w-8'
+                  onClick={() =>
+                    setCalendarMonth(
+                      (prev) =>
+                        new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
+                    )
+                  }
                 >
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className='h-4 w-4' />
                 </Button>
               </div>
 
               {/* Day of week headers */}
-              <div className="grid grid-cols-7 text-center">
-                {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(d => (
-                  <div key={d} className="text-xs text-muted-foreground py-1 font-medium">{d}</div>
+              <div className='grid grid-cols-7 text-center'>
+                {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((d) => (
+                  <div
+                    key={d}
+                    className='text-xs text-muted-foreground py-1 font-medium'
+                  >
+                    {d}
+                  </div>
                 ))}
               </div>
 
               {/* Calendar days grid */}
-              <div className="grid grid-cols-7 gap-1">
+              <div className='grid grid-cols-7 gap-1'>
                 {calendarDays.map((date, idx) => {
                   if (!date) return <div key={`empty-${idx}`} />;
                   const dateStr = toDateString(date);
@@ -415,8 +484,8 @@ export default function CartPage() {
                         isSelected
                           ? 'bg-primary text-primary-foreground'
                           : isAvailable
-                          ? 'hover:bg-accent cursor-pointer'
-                          : 'text-muted-foreground/40 cursor-not-allowed',
+                            ? 'hover:bg-accent cursor-pointer'
+                            : 'text-muted-foreground/40 cursor-not-allowed',
                       )}
                     >
                       {date.getDate()}
@@ -427,21 +496,22 @@ export default function CartPage() {
 
               {/* Date availability info */}
               {dateAvailability && selectedDate && (
-                <div className="text-xs space-y-1 mt-2">
+                <div className='text-xs space-y-1 mt-2'>
                   <p
                     className={cn(
                       dateAvailability.available
                         ? 'text-green-600'
-                        : 'text-red-600'
+                        : 'text-red-600',
                     )}
                   >
                     {dateAvailability.available
                       ? 'Дата доступна'
-                      : dateAvailability.reason ?? 'Дата недоступна'}
+                      : (dateAvailability.reason ?? 'Дата недоступна')}
                   </p>
                   {hasTorts && (
-                    <p className="text-muted-foreground">
-                      Тортов на эту дату: {dateAvailability.tortCount} / {dateAvailability.maxTorts}
+                    <p className='text-muted-foreground'>
+                      Тортов на эту дату: {dateAvailability.tortCount} /{' '}
+                      {dateAvailability.maxTorts}
                     </p>
                   )}
                 </div>
@@ -449,16 +519,16 @@ export default function CartPage() {
             </div>
 
             {/* Time slot */}
-            <div className="space-y-2">
+            <div className='space-y-2'>
               <Label>Время доставки</Label>
-              <div className="flex gap-2">
+              <div className='flex gap-2'>
                 {DELIVERY_TIME_SLOTS.map((slot) => (
                   <Button
                     key={slot}
                     variant={selectedTime === slot ? 'default' : 'outline'}
-                    size="sm"
+                    size='sm'
                     onClick={() => setSelectedTime(slot)}
-                    className="flex-1"
+                    className='flex-1'
                   >
                     {slot}
                   </Button>
@@ -466,7 +536,7 @@ export default function CartPage() {
               </div>
             </div>
 
-            <Button className="w-full" onClick={handleConfirmStep}>
+            <Button className='w-full' onClick={handleConfirmStep}>
               Далее
             </Button>
           </div>
@@ -476,34 +546,40 @@ export default function CartPage() {
       {/* STEP 3: Confirmation */}
       {step === 'confirm' && (
         <>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setStep('delivery')}>
-              <ArrowLeft className="h-4 w-4" />
+          <div className='flex items-center gap-2'>
+            <Button
+              variant='ghost'
+              size='icon'
+              onClick={() => setStep('delivery')}
+            >
+              <ArrowLeft className='h-4 w-4' />
             </Button>
-            <h1 className="text-2xl font-bold">Подтверждение</h1>
+            <h1 className='text-2xl font-bold'>Подтверждение</h1>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Состав заказа</CardTitle>
+              <CardTitle className='text-lg'>Состав заказа</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className='space-y-3'>
               {items.map((item) => (
                 <div
                   key={`${item.product_id}-${item.flavor}-${item.size}`}
-                  className="flex justify-between items-center text-sm"
+                  className='flex justify-between items-center text-sm'
                 >
                   <span>
                     {item.name}
                     {item.flavor ? ` (${item.flavor})` : ''}
-                    {item.size ? ` ${item.size}` : ''}
-                    {' '}&times; {item.quantity} {item.unit}
+                    {item.size ? ` ${item.size}` : ''} &times; {item.quantity}{' '}
+                    {item.unit}
                   </span>
-                  <span className="font-medium">{formatPrice(item.subtotal)}</span>
+                  <span className='font-medium'>
+                    {formatPrice(item.subtotal)}
+                  </span>
                 </div>
               ))}
               <Separator />
-              <div className="flex justify-between font-bold">
+              <div className='flex justify-between font-bold'>
                 <span>Итого:</span>
                 <span>{formatPrice(totalPrice())}</span>
               </div>
@@ -512,30 +588,33 @@ export default function CartPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Доставка</CardTitle>
+              <CardTitle className='text-lg'>Доставка</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+            <CardContent className='space-y-2 text-sm'>
               <p>
-                <span className="text-muted-foreground">Тип:</span>{' '}
+                <span className='text-muted-foreground'>Тип:</span>{' '}
                 {isPickup ? 'Самовывоз' : 'Доставка'}
               </p>
               {!isPickup && (
                 <p>
-                  <span className="text-muted-foreground">Адрес:</span> {address}
+                  <span className='text-muted-foreground'>Адрес:</span>{' '}
+                  {address}
                 </p>
               )}
               <p>
-                <span className="text-muted-foreground">Дата:</span> {formatDate(selectedDate)}
+                <span className='text-muted-foreground'>Дата:</span>{' '}
+                {formatDate(selectedDate)}
               </p>
               <p>
-                <span className="text-muted-foreground">Время:</span> {selectedTime}
+                <span className='text-muted-foreground'>Время:</span>{' '}
+                {selectedTime}
               </p>
             </CardContent>
           </Card>
 
           <Button
-            className="w-full"
-            size="lg"
+            className='w-full'
+            size='lg'
             onClick={handleSubmitOrder}
             disabled={isSubmitting}
           >

@@ -55,3 +55,4 @@ export const DELIVERY_TIME_SLOTS: DeliveryTimeSlot[] = [
 
 export const MAX_TORTS_PER_ORDER = 2;
 export const MAX_TORTS_PER_DAY = 2;
+export const MAX_ITEM_QTY_PER_ORDER = 50;
