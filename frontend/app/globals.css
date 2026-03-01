@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Cormorant:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comic+Relief:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -28,28 +28,14 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Comic Relief', system-ui, sans-serif;
   color: var(--color-foreground);
   background: var(--color-background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Heading font - стиль как на логотипе */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Cormorant', serif;
-  letter-spacing: -0.02em;
-  font-weight: 600;
-}
-
-/* Auth pages — мягкий округлый шрифт */
-.auth-form {
-  font-family: 'Nunito', system-ui, sans-serif;
-}
-.auth-form input::placeholder {
-  font-family: 'Nunito', system-ui, sans-serif;
-  font-weight: 400;
-}
-.auth-form label {
-  font-family: 'Nunito', system-ui, sans-serif;
+  font-family: 'Comic Relief', system-ui, sans-serif;
+  font-weight: 700;
 }

@@ -10,15 +10,16 @@ datasource db {
 // ─── Users ───────────────────────────────────────────────────────────────────
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String
-  phone     String?
-  role      String   @default("user")
-  createdAt DateTime @default(now())
-  cart      Cart?
-  orders    Order[]
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  password      String
+  name          String
+  phone         String?
+  role          String         @default("user")
+  createdAt     DateTime       @default(now())
+  cart          Cart?
+  orders        Order[]
+  notifications Notification[]
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -73,6 +74,21 @@ model Order {
   @@index([userId])
   @@index([deliveryDate])
   @@index([status])
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId   Int
+  status    String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // ─── DailyLimit ───────────────────────────────────────────────────────────────
