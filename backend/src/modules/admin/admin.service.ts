@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const ACTIVE_STATUSES = ['new', 'paid', 'preparing', 'ready'];
 const TORT_CATEGORY = 'торты';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async getOrders(filters: { status?: string; date?: string }) {
     const where: any = {};
@@ -36,38 +40,38 @@ export class AdminService {
 
   async startCooking(orderId: number) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
-    if (!order) {
-      throw new NotFoundException(`Order #${orderId} not found`);
-    }
+    if (!order) throw new NotFoundException(`Order #${orderId} not found`);
 
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: { status: 'preparing' },
     });
+    await this.notifications.createForOrder(order.userId, orderId, 'preparing');
+    return updated;
   }
 
   async markReady(orderId: number) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
-    if (!order) {
-      throw new NotFoundException(`Order #${orderId} not found`);
-    }
+    if (!order) throw new NotFoundException(`Order #${orderId} not found`);
 
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: { status: 'ready', readyAt: new Date() },
     });
+    await this.notifications.createForOrder(order.userId, orderId, 'ready');
+    return updated;
   }
 
   async cancelOrder(orderId: number) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
-    if (!order) {
-      throw new NotFoundException(`Order #${orderId} not found`);
-    }
+    if (!order) throw new NotFoundException(`Order #${orderId} not found`);
 
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: { status: 'cancelled' },
     });
+    await this.notifications.createForOrder(order.userId, orderId, 'cancelled');
+    return updated;
   }
 
   async getCalendar(days: number) {

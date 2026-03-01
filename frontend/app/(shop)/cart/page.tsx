@@ -496,24 +496,30 @@ export default function CartPage() {
                   const isAvailable = isInRange && !isBooked;
                   const isSelected = selectedDate === dateStr;
                   return (
-                    <button
-                      key={dateStr}
-                      disabled={!isAvailable}
-                      onClick={() => setSelectedDate(dateStr)}
-                      title={isBooked ? 'На эту дату нет свободных слотов' : undefined}
-                      className={cn(
-                        'h-9 w-full rounded-lg text-sm font-medium transition-colors',
-                        isSelected
-                          ? 'bg-primary text-primary-foreground'
-                          : isBooked
-                            ? 'text-red-400 line-through cursor-not-allowed'
-                            : isInRange
-                              ? 'hover:bg-accent cursor-pointer'
-                              : 'text-muted-foreground/40 cursor-not-allowed',
+                    <div key={dateStr} className={cn('relative', isBooked && 'group/day')}>
+                      <button
+                        disabled={!isAvailable}
+                        onClick={() => setSelectedDate(dateStr)}
+                        className={cn(
+                          'h-9 w-full rounded-lg text-sm font-medium transition-colors',
+                          isSelected
+                            ? 'bg-primary text-primary-foreground'
+                            : isBooked
+                              ? 'text-muted-foreground/40 cursor-not-allowed'
+                              : isInRange
+                                ? 'hover:bg-accent cursor-pointer'
+                                : 'text-muted-foreground/40 cursor-not-allowed',
+                        )}
+                      >
+                        {date.getDate()}
+                      </button>
+                      {isBooked && (
+                        <div className='pointer-events-none absolute bottom-full left-1/2 mb-1.5 hidden -translate-x-1/2 group-hover/day:block z-20 w-44 rounded-lg bg-foreground px-2.5 py-2 text-center text-xs text-background shadow-lg'>
+                          Заказов очень много на этот день, выбери другой
+                          <span className='absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-foreground' />
+                        </div>
                       )}
-                    >
-                      {date.getDate()}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
