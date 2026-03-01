@@ -66,6 +66,24 @@ export class OrdersService {
       );
     }
 
+    // 4b. Validate per-item quantities against product maxPerDay
+    const productIds = [...new Set(cart.items.map((i) => i.product_id))];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, maxPerDay: true, name: true, unit: true },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    for (const item of cart.items) {
+      const product = productMap.get(item.product_id);
+      if (!product) continue;
+      if (item.quantity > product.maxPerDay) {
+        throw new BadRequestException(
+          `Максимум ${product.maxPerDay} ${item.unit} для "${item.name}" в одном заказе`,
+        );
+      }
+    }
+
     // 5. Check date availability
     const hasTort = tortItems.length > 0;
     const availability = await this.deliveryService.checkDate(
