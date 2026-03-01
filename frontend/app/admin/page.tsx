@@ -51,6 +51,21 @@ export default function AdminOrdersPage() {
     },
   });
 
+  const startCookingMutation = useMutation({
+    mutationFn: async (orderId: number) => {
+      await api.patch(`/admin/orders/${orderId}/start-cooking`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      toast.success('Заказ начала готовить');
+    },
+    onError: (error) => {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Ошибка');
+      }
+    },
+  });
+
   const cancelMutation = useMutation({
     mutationFn: async (orderId: number) => {
       await api.patch(`/admin/orders/${orderId}/cancel`);
@@ -142,8 +157,18 @@ export default function AdminOrdersPage() {
                   </p>
                 )}
 
-                <div className="flex gap-2">
-                  {(order.status === 'paid' || order.status === 'preparing') && (
+                <div className="flex gap-2 flex-wrap">
+                  {order.status === 'paid' && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => startCookingMutation.mutate(order.id)}
+                      disabled={startCookingMutation.isPending}
+                    >
+                      Начала готовить
+                    </Button>
+                  )}
+                  {order.status === 'preparing' && (
                     <Button
                       size="sm"
                       onClick={() => markReadyMutation.mutate(order.id)}

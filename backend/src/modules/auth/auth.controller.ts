@@ -32,7 +32,7 @@ export class AuthController {
     (res as any).setCookie('refresh_token', refreshToken, {
       httpOnly: true,
       path: '/',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: REFRESH_COOKIE_MAX_AGE_MS,
       secure: process.env.NODE_ENV === 'production',
     });
@@ -53,7 +53,7 @@ export class AuthController {
     (res as any).setCookie('refresh_token', refreshToken, {
       httpOnly: true,
       path: '/',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: REFRESH_COOKIE_MAX_AGE_MS,
       secure: process.env.NODE_ENV === 'production',
     });

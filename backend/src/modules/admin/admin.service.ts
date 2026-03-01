@@ -34,6 +34,18 @@ export class AdminService {
     });
   }
 
+  async startCooking(orderId: number) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) {
+      throw new NotFoundException(`Order #${orderId} not found`);
+    }
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'preparing' },
+    });
+  }
+
   async markReady(orderId: number) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) {
@@ -93,13 +105,21 @@ export class AdminService {
     }
 
     // Fill all days in range
-    const result: Array<{ date: string; orderCount: number; tortCount: number }> = [];
+    const MAX_ORDERS = 15;
+    const MAX_TORTS = 2;
+    const result: Array<{ date: string; orderCount: number; tortCount: number; maxOrders: number; maxTorts: number; available: boolean }> = [];
     const cursor = new Date(today);
 
     while (cursor <= endDate) {
       const key = cursor.toISOString().split('T')[0];
       const entry = calendarMap.get(key) ?? { orderCount: 0, tortCount: 0 };
-      result.push({ date: key, ...entry });
+      result.push({
+        date: key,
+        ...entry,
+        maxOrders: MAX_ORDERS,
+        maxTorts: MAX_TORTS,
+        available: entry.orderCount < MAX_ORDERS && entry.tortCount < MAX_TORTS,
+      });
       cursor.setDate(cursor.getDate() + 1);
     }
 

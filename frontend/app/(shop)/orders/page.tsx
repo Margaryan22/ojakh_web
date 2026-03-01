@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { ClipboardList } from 'lucide-react';
 import api from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +18,7 @@ import type { Order, OrderStatus } from '@/types';
 export default function OrdersPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const prevStatusesRef = useRef<Record<number, string>>({});
 
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['orders'],
@@ -24,8 +27,25 @@ export default function OrdersPage() {
       return data;
     },
     enabled: !!user,
+    refetchInterval: 30000,
   });
   const orders: Order[] = ordersData?.orders ?? [];
+
+  useEffect(() => {
+    if (orders.length === 0) return;
+
+    const prev = prevStatusesRef.current;
+    const isFirstLoad = Object.keys(prev).length === 0;
+
+    orders.forEach((order) => {
+      const prevStatus = prev[order.id];
+      if (!isFirstLoad && prevStatus && prevStatus !== order.status) {
+        const label = STATUS_LABELS[order.status as OrderStatus] ?? order.status;
+        toast.info(`Заказ #${order.id}: статус изменён на "${label}"`);
+      }
+      prev[order.id] = order.status;
+    });
+  }, [orders]);
 
   if (!user) {
     return (
