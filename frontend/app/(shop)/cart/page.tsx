@@ -99,7 +99,26 @@ export default function CartPage() {
     }
   }, [user, fetchCart]);
 
-  // Date availability check
+  // Bulk calendar availability (fetched when delivery step opens)
+  const { data: calendarData } = useQuery<
+    Array<DateAvailability & { date: string }>
+  >({
+    queryKey: ['deliveryCalendar', hasTorts],
+    queryFn: async () => {
+      const { data } = await api.get(
+        `/delivery/calendar?with_tort=${hasTorts}`,
+      );
+      return data;
+    },
+    enabled: step === 'delivery',
+  });
+
+  const bookedDateSet = useMemo(() => {
+    if (!calendarData) return new Set<string>();
+    return new Set(calendarData.filter((d) => !d.available).map((d) => d.date));
+  }, [calendarData]);
+
+  // Single-date availability check (after user selects a date)
   const { data: dateAvailability } = useQuery<DateAvailability>({
     queryKey: ['dateAvailability', selectedDate, hasTorts],
     queryFn: async () => {
@@ -472,20 +491,25 @@ export default function CartPage() {
                 {calendarDays.map((date, idx) => {
                   if (!date) return <div key={`empty-${idx}`} />;
                   const dateStr = toDateString(date);
-                  const isAvailable = availableDateSet.has(dateStr);
+                  const isInRange = availableDateSet.has(dateStr);
+                  const isBooked = bookedDateSet.has(dateStr);
+                  const isAvailable = isInRange && !isBooked;
                   const isSelected = selectedDate === dateStr;
                   return (
                     <button
                       key={dateStr}
                       disabled={!isAvailable}
                       onClick={() => setSelectedDate(dateStr)}
+                      title={isBooked ? 'На эту дату нет свободных слотов' : undefined}
                       className={cn(
                         'h-9 w-full rounded-lg text-sm font-medium transition-colors',
                         isSelected
                           ? 'bg-primary text-primary-foreground'
-                          : isAvailable
-                            ? 'hover:bg-accent cursor-pointer'
-                            : 'text-muted-foreground/40 cursor-not-allowed',
+                          : isBooked
+                            ? 'text-red-400 line-through cursor-not-allowed'
+                            : isInRange
+                              ? 'hover:bg-accent cursor-pointer'
+                              : 'text-muted-foreground/40 cursor-not-allowed',
                       )}
                     >
                       {date.getDate()}

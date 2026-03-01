@@ -28,7 +28,7 @@ export class OrdersService {
     // 1. Get cart
     const cart = await this.cartService.getCart(userId);
     if (!cart.items.length) {
-      throw new BadRequestException('Cart is empty');
+      throw new BadRequestException('Корзина пуста');
     }
 
     // 2. Validate delivery date window
@@ -44,25 +44,25 @@ export class OrdersService {
 
     if (deliveryDate < minDate) {
       throw new BadRequestException(
-        `Delivery date must be at least ${MIN_DAYS_AHEAD} days from today`,
+        `Дата доставки должна быть не ранее чем через ${MIN_DAYS_AHEAD} дня от сегодня`,
       );
     }
     if (deliveryDate > maxDate) {
       throw new BadRequestException(
-        `Delivery date must be within ${MAX_DAYS_AHEAD} days from today`,
+        `Дата доставки не может быть позже чем через ${MAX_DAYS_AHEAD} дней от сегодня`,
       );
     }
 
     // 3. Validate address requirement
     if (!dto.is_pickup && !dto.address?.trim()) {
-      throw new BadRequestException('Address is required for delivery orders');
+      throw new BadRequestException('Для доставки необходимо указать адрес');
     }
 
     // 4. Check tort count in cart
     const tortItems = cart.items.filter((i) => i.category === TORT_CATEGORY);
     if (tortItems.length > MAX_TORTS_PER_ORDER) {
       throw new BadRequestException(
-        `Maximum ${MAX_TORTS_PER_ORDER} cake variants per order`,
+        `В одном заказе не более ${MAX_TORTS_PER_ORDER} вариантов торта`,
       );
     }
 
@@ -93,7 +93,7 @@ export class OrdersService {
 
     if (!availability.available) {
       throw new BadRequestException(
-        availability.reason || 'Selected date is not available',
+        availability.reason || 'Выбранная дата недоступна для заказа',
       );
     }
 

@@ -65,7 +65,7 @@ export class CartService {
           ).length;
           if (currentTortCount >= MAX_TORTS_PER_CART) {
             throw new BadRequestException(
-              `You can only add up to ${MAX_TORTS_PER_CART} cake variants per order`,
+              `В одном заказе может быть не более ${MAX_TORTS_PER_CART} вариантов торта`,
             );
           }
         }
