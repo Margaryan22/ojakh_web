@@ -25,11 +25,19 @@ export class DeliveryController {
     @Query('with_tort') withTort?: string,
   ) {
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      throw new BadRequestException('date must be in YYYY-MM-DD format');
+      throw new BadRequestException('Дата должна быть в формате ГГГГ-ММ-ДД');
     }
 
     const hasTort = withTort === 'true' || withTort === '1';
     return this.deliveryService.checkDate(date, hasTort);
+  }
+
+  @Get('calendar')
+  @ApiOperation({ summary: 'Get availability for all upcoming delivery dates' })
+  @ApiQuery({ name: 'with_tort', required: false, type: Boolean })
+  getCalendar(@Query('with_tort') withTort?: string) {
+    const hasTort = withTort === 'true' || withTort === '1';
+    return this.deliveryService.getCalendar(hasTort);
   }
 
   @Get('cost')

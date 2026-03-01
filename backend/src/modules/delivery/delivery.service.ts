@@ -61,7 +61,7 @@ export class DeliveryService {
         maxTorts,
         orderCount,
         maxOrders,
-        reason: 'No available order slots for this date',
+        reason: 'На эту дату все слоты для заказов уже заняты',
       };
     }
 
@@ -72,7 +72,7 @@ export class DeliveryService {
         maxTorts,
         orderCount,
         maxOrders,
-        reason: 'No available cake slots for this date',
+        reason: 'На эту дату все слоты для тортов уже заняты',
       };
     }
 
@@ -83,6 +83,23 @@ export class DeliveryService {
       orderCount,
       maxOrders,
     };
+  }
+
+  async getCalendar(withTort: boolean): Promise<Array<DateAvailability & { date: string }>> {
+    const today = new Date();
+    const dates: string[] = [];
+    for (let i = 2; i <= 15; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      dates.push(d.toISOString().split('T')[0]);
+    }
+    const results = await Promise.all(
+      dates.map(async (dateStr) => {
+        const availability = await this.checkDate(dateStr, withTort);
+        return { date: dateStr, ...availability };
+      }),
+    );
+    return results;
   }
 
   async getDeliveryCost(): Promise<{ cost: number }> {
