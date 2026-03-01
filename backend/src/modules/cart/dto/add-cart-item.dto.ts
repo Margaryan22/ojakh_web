@@ -1,5 +1,6 @@
 import {
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -34,7 +35,7 @@ export class AddCartItemDto {
   size?: string;
 
   @ApiProperty({ example: 5, description: 'Quantity (0 to remove)' })
-  @IsInt()
+  @IsNumber()
   @Min(0)
   quantity: number;
 
