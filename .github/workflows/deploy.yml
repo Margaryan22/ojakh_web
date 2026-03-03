@@ -55,4 +55,4 @@ jobs:
 
       - name: Notify on failure
         if: failure()
-        run: echo "Deploy failed! On server run: docker compose logs --tail 100"
+        run: echo "Deploy failed! On server run docker compose logs --tail 100"
