@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ClipboardList, Package, CalendarDays, ArrowLeft } from 'lucide-react';
+import { ClipboardList, Package, CalendarDays, BarChart2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth.store';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ const adminLinks = [
   { href: '/admin', label: 'Заказы', icon: ClipboardList },
   { href: '/admin/products', label: 'Товары', icon: Package },
   { href: '/admin/calendar', label: 'Календарь', icon: CalendarDays },
+  { href: '/admin/analytics', label: 'Аналитика', icon: BarChart2 },
 ];
 
 export default function AdminLayout({

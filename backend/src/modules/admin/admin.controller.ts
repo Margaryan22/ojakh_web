@@ -52,6 +52,13 @@ export class AdminController {
     return this.adminService.cancelOrder(id);
   }
 
+  @Get('analytics')
+  @ApiOperation({ summary: 'Get sales analytics (admin only)' })
+  @ApiQuery({ name: 'period', required: false, enum: ['week', 'month', 'all'], example: 'month' })
+  getAnalytics(@Query('period') period?: 'week' | 'month' | 'all') {
+    return this.adminService.getAnalytics(period ?? 'month');
+  }
+
   @Get('calendar')
   @ApiOperation({ summary: 'Get order/cake load calendar (admin only)' })
   @ApiQuery({ name: 'days', required: false, type: Number, example: 14 })
