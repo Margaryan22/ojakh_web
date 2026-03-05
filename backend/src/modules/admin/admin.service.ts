@@ -74,6 +74,66 @@ export class AdminService {
     return updated;
   }
 
+  async getAnalytics(period: 'week' | 'month' | 'all') {
+    const where: any = {};
+    if (period !== 'all') {
+      const from = new Date();
+      from.setDate(from.getDate() - (period === 'week' ? 7 : 30));
+      from.setHours(0, 0, 0, 0);
+      where.createdAt = { gte: from };
+    }
+
+    const orders = await this.prisma.order.findMany({ where });
+
+    const REVENUE_STATUSES = new Set(['paid', 'preparing', 'ready', 'completed']);
+
+    let totalRevenue = 0;
+    let completedCount = 0;
+    let cancelledCount = 0;
+    const byStatus: Record<string, number> = {};
+    const productMap = new Map<string, { qty: number; revenue: number }>();
+
+    for (const order of orders) {
+      byStatus[order.status] = (byStatus[order.status] ?? 0) + 1;
+      if (order.status === 'completed') completedCount++;
+      if (order.status === 'cancelled') cancelledCount++;
+      if (REVENUE_STATUSES.has(order.status)) {
+        totalRevenue += order.total;
+      }
+
+      const items = order.items as Array<{ name: string; qty: number; price: number }>;
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          const name = item.name ?? 'Неизвестно';
+          const qty = Number(item.qty) || 0;
+          const revenue = qty * (Number(item.price) || 0);
+          const entry = productMap.get(name) ?? { qty: 0, revenue: 0 };
+          entry.qty += qty;
+          entry.revenue += revenue;
+          productMap.set(name, entry);
+        }
+      }
+    }
+
+    const topProducts = Array.from(productMap.entries())
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 5);
+
+    const paidOrders = orders.filter((o) => REVENUE_STATUSES.has(o.status));
+    const avgCheck = paidOrders.length > 0 ? Math.round(totalRevenue / paidOrders.length) : 0;
+
+    return {
+      totalRevenue,
+      orderCount: orders.length,
+      completedCount,
+      cancelledCount,
+      avgCheck,
+      byStatus,
+      topProducts,
+    };
+  }
+
   async getCalendar(days: number) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
