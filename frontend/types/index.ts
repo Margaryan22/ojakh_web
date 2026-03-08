@@ -22,6 +22,7 @@ export interface Product {
   price: number; // kopecks
   imageUrl?: string;
   description?: string;
+  ingredients?: string;
   available: boolean;
   maxPerDay: number;
 }

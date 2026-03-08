@@ -33,6 +33,15 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<{ user: any; accessToken: string; refreshToken: string }> {
     const hashed = await bcrypt.hash(dto.password, 10);
 
+    if (dto.phone) {
+      const existingPhone = await this.prisma.user.findFirst({
+        where: { phone: dto.phone.trim() },
+      });
+      if (existingPhone) {
+        throw new ConflictException('Phone already registered');
+      }
+    }
+
     let user: any;
     try {
       user = await this.prisma.user.create({

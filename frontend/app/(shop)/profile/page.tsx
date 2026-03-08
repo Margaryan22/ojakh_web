@@ -10,6 +10,13 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/auth.store';
 import { AxiosError } from 'axios';
+import {
+  formatPhone,
+  extractPhoneDigits,
+  validateName,
+  validatePhone,
+  PHONE_DIGITS_COUNT,
+} from '@/lib/validation';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -18,23 +25,42 @@ export default function ProfilePage() {
   const updateProfile = useAuthStore((s) => s.updateProfile);
 
   const [name, setName] = useState(user?.name ?? '');
-  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [phone, setPhone] = useState(user?.phone ? formatPhone(extractPhoneDigits(user.phone)) : '');
   const [isSaving, setIsSaving] = useState(false);
+
+  const [touched, setTouched] = useState({ name: false, phone: false });
+  const touch = (field: keyof typeof touched) =>
+    setTouched((prev) => ({ ...prev, [field]: true }));
 
   if (!user) {
     router.push('/login');
     return null;
   }
 
+  const nameError = validateName(name, touched.name);
+  const phoneError = validatePhone(phone, touched.phone);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const withoutPrefix = raw.startsWith('+7') ? raw.slice(2) : raw;
+    const digits = withoutPrefix.replace(/\D/g, '').slice(0, PHONE_DIGITS_COUNT);
+    setPhone(digits ? formatPhone(digits) : '');
+  };
+
+  const isFormValid = !validateName(name, true) && !validatePhone(phone, true);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error('Имя не может быть пустым');
-      return;
-    }
+    setTouched({ name: true, phone: true });
+    if (!isFormValid) return;
+
     setIsSaving(true);
     try {
-      await updateProfile({ name: name.trim(), phone: phone.trim() || undefined });
+      const phoneDigits = extractPhoneDigits(phone);
+      await updateProfile({
+        name: name.trim(),
+        phone: phoneDigits ? `+7${phoneDigits}` : undefined,
+      });
       toast.success('Профиль обновлён');
     } catch (error) {
       if (error instanceof AxiosError) {
@@ -62,29 +88,49 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave} className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Email</Label>
               <Input value={user.email} disabled />
             </div>
-            <div className="space-y-2">
+
+            <div className="space-y-1.5">
               <Label htmlFor="name">Имя</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                required
+                onBlur={() => touch('name')}
+                maxLength={30}
+                placeholder="Ваше имя"
+                className={nameError ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {nameError && (
+                <p className="text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+                  {nameError}
+                </p>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Телефон</Label>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">
+                Телефон <span className="text-muted-foreground font-normal text-xs">(необязательно)</span>
+              </Label>
               <Input
                 id="phone"
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+7 (999) 123-45-67"
+                onChange={handlePhoneChange}
+                onBlur={() => touch('phone')}
+                placeholder="+7 (000) (000) 00 00"
+                className={phoneError ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {phoneError && (
+                <p className="text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+                  {phoneError}
+                </p>
+              )}
             </div>
+
             <Button type="submit" disabled={isSaving}>
               {isSaving ? 'Сохранение...' : 'Сохранить'}
             </Button>

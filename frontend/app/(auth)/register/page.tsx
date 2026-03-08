@@ -11,8 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/auth.store';
 import { AxiosError } from 'axios';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import {
+  formatPhone,
+  extractPhoneDigits,
+  validateName,
+  validateEmail,
+  validatePhone,
+  PHONE_DIGITS_COUNT,
+} from '@/lib/validation';
 
 const PASSWORD_RULES = [
   { id: 'length', label: 'Минимум 8 символов',                test: (p: string) => p.length >= 8 },
@@ -20,16 +26,6 @@ const PASSWORD_RULES = [
   { id: 'lower',  label: 'Хотя бы одна строчная буква (a-z)', test: (p: string) => /[a-z]/.test(p) },
   { id: 'digit',  label: 'Хотя бы одна цифра (0-9)',           test: (p: string) => /[0-9]/.test(p) },
 ];
-
-// Принимает только 10 пользовательских цифр (без кода страны)
-function formatPhone(digits: string): string {
-  const d = digits.replace(/\D/g, '').slice(0, 10);
-  if (d.length === 0) return '';
-  if (d.length <= 3) return `+7 (${d}`;
-  if (d.length <= 6) return `+7 (${d.slice(0, 3)}) (${d.slice(3)}`;
-  if (d.length <= 8) return `+7 (${d.slice(0, 3)}) (${d.slice(3, 6)}) ${d.slice(6)}`;
-  return `+7 (${d.slice(0, 3)}) (${d.slice(3, 6)}) ${d.slice(6, 8)} ${d.slice(8)}`;
-}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -58,29 +54,16 @@ export default function RegisterPage() {
   const touch = (field: keyof typeof touched) =>
     setTouched((prev) => ({ ...prev, [field]: true }));
 
-  // ─── Email ───────────────────────────────────────────────
-  const emailError = touched.email && !email
-    ? 'Email обязателен'
-    : touched.email && email && !EMAIL_REGEX.test(email)
-    ? 'Введите корректный email'
-    : null;
-
-  // ─── Имя ────────────────────────────────────────────────
-  const nameError = touched.name && !name ? 'Имя обязательно' : null;
-
-  // ─── Телефон ─────────────────────────────────────────────
-  // Убираем +7 и ведущую 7 из строки, берём только пользовательские цифры
-  const phoneDigits = phone.replace(/\D/g, '').slice(1); // slice(1) — убираем '7' из +7
-  const phoneError = touched.phone && phone && phoneDigits.length !== 10
-    ? 'Введите номер полностью'
-    : null;
+  // ─── Errors ──────────────────────────────────────────────
+  const nameError = validateName(name, touched.name);
+  const emailError = validateEmail(email, touched.email);
+  const phoneError = validatePhone(phone, touched.phone);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    // Снимаем +7 чтобы '7' не попала в пользовательские цифры
     const withoutPrefix = raw.startsWith('+7') ? raw.slice(2) : raw;
-    const digits = withoutPrefix.replace(/\D/g, '').slice(0, 10);
-    setPhone(formatPhone(digits));
+    const digits = withoutPrefix.replace(/\D/g, '').slice(0, PHONE_DIGITS_COUNT);
+    setPhone(digits ? formatPhone(digits) : '');
   };
 
   // ─── Пароль ──────────────────────────────────────────────
@@ -102,7 +85,6 @@ export default function RegisterPage() {
     }
 
     if (showRules) {
-      // Уже показываем — определяем только что выполненные правила
       const nowPassed = PASSWORD_RULES.filter((r) => r.test(newVal)).map((r) => r.id);
       const newlyPassed = nowPassed.filter((id) => !prevPassedRef.current.includes(id));
 
@@ -114,7 +96,6 @@ export default function RegisterPage() {
       }
       prevPassedRef.current = nowPassed;
     } else {
-      // Ещё не показываем — запускаем таймер 1.5с
       timerRef.current = setTimeout(() => {
         prevPassedRef.current = PASSWORD_RULES.filter((r) => r.test(newVal)).map((r) => r.id);
         setShowRules(true);
@@ -123,7 +104,6 @@ export default function RegisterPage() {
   };
 
   const handlePasswordBlur = () => {
-    // При потере фокуса — показываем сразу (не ждём таймер)
     if (timerRef.current) clearTimeout(timerRef.current);
     if (password && !showRules) {
       prevPassedRef.current = PASSWORD_RULES.filter((r) => r.test(password)).map((r) => r.id);
@@ -132,11 +112,13 @@ export default function RegisterPage() {
   };
 
   // ─── Форма ───────────────────────────────────────────────
+  const phoneDigits = extractPhoneDigits(phone);
+
   const isFormValid =
-    !!name &&
-    EMAIL_REGEX.test(email) &&
+    !validateName(name, true) &&
+    !validateEmail(email, true) &&
     passwordValid &&
-    (phone === '' || phoneDigits.length === 10);
+    !validatePhone(phone, true);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -158,7 +140,14 @@ export default function RegisterPage() {
       router.push('/catalog');
     } catch (error) {
       if (error instanceof AxiosError) {
-        toast.error(error.response?.data?.message ?? 'Ошибка регистрации');
+        const msg = error.response?.data?.message;
+        if (msg === 'Email already registered') {
+          toast.error('Пользователь с таким email уже зарегистрирован');
+        } else if (msg === 'Phone already registered') {
+          toast.error('Пользователь с таким номером телефона уже зарегистрирован');
+        } else {
+          toast.error(msg ?? 'Ошибка регистрации');
+        }
       } else {
         toast.error('Ошибка регистрации');
       }
@@ -185,6 +174,7 @@ export default function RegisterPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={() => touch('name')}
+              maxLength={30}
               autoComplete="name"
               className={`rounded-xl transition-all duration-200 ${
                 nameError ? 'border-destructive focus-visible:ring-destructive' : 'focus-visible:ring-primary/50'

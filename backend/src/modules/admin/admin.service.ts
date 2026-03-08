@@ -101,11 +101,11 @@ export class AdminService {
         totalRevenue += order.total;
       }
 
-      const items = order.items as Array<{ name: string; qty: number; price: number }>;
+      const items = order.items as Array<{ name: string; quantity: number; price: number }>;
       if (Array.isArray(items)) {
         for (const item of items) {
           const name = item.name ?? 'Неизвестно';
-          const qty = Number(item.qty) || 0;
+          const qty = Number(item.quantity) || 0;
           const revenue = qty * (Number(item.price) || 0);
           const entry = productMap.get(name) ?? { qty: 0, revenue: 0 };
           entry.qty += qty;

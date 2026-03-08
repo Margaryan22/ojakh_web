@@ -35,6 +35,7 @@ model Product {
   price       Int
   imageUrl    String?
   description String?
+  ingredients String?
   available   Boolean @default(true)
   maxPerDay   Int     @default(999)
   minQty      Float   @default(1)   // минимальное количество в заказе

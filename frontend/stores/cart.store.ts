@@ -134,7 +134,7 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
 
     try {
       const { data } = await api.delete('/cart/items', {
-        data: { product_id: productId, flavor, size },
+        params: { product_id: productId, flavor, size },
       });
       set({ items: data.items ?? [] });
     } catch {

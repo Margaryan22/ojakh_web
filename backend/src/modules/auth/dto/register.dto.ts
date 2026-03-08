@@ -2,6 +2,8 @@ import {
   IsEmail,
   IsOptional,
   IsString,
+  Matches,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -14,6 +16,10 @@ export class RegisterDto {
   @ApiProperty({ example: 'Иван Иванов' })
   @IsString()
   @MinLength(2)
+  @MaxLength(30)
+  @Matches(/^[А-Яа-яёЁA-Za-z\s'\-]+$/, {
+    message: 'Имя не должно содержать цифры или спецсимволы',
+  })
   name: string;
 
   @ApiProperty({ example: 'password123', minLength: 6 })
@@ -24,5 +30,6 @@ export class RegisterDto {
   @ApiPropertyOptional({ example: '+79001234567' })
   @IsOptional()
   @IsString()
+  @Matches(/^\+7\d{10}$/, { message: 'Неверный формат номера телефона' })
   phone?: string;
 }

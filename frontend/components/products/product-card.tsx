@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { Heart, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,24 +57,28 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
         </Badge>
       )}
 
-      {/* Image / Emoji */}
-      <div className="relative aspect-square bg-gradient-to-br from-muted to-accent flex items-center justify-center overflow-hidden">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={product.name}
-            fill
-            className="object-cover transition-transform group-hover:scale-110"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          />
-        ) : (
-          <span className="text-6xl">{emoji}</span>
-        )}
-      </div>
+      {/* Image / Emoji — links to product detail page */}
+      <Link href={`/catalog/${product.id}`} className="block">
+        <div className="relative aspect-square bg-gradient-to-br from-muted to-accent flex items-center justify-center overflow-hidden">
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt={product.name}
+              fill
+              className="object-cover transition-transform group-hover:scale-110"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            />
+          ) : (
+            <span className="text-6xl">{emoji}</span>
+          )}
+        </div>
+      </Link>
 
       <CardContent className="p-4 space-y-2">
         <div>
-          <h3 className="font-bold text-base leading-tight line-clamp-2 text-foreground">{product.name}</h3>
+          <Link href={`/catalog/${product.id}`}>
+            <h3 className="font-bold text-base leading-tight line-clamp-2 text-foreground hover:text-primary transition-colors">{product.name}</h3>
+          </Link>
           <div className="flex flex-wrap gap-1 mt-1">
             {product.flavor && (
               <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
