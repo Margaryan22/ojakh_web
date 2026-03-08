@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/auth.store';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AxiosError } from 'axios';
 import {
   formatPhone,
@@ -21,6 +22,7 @@ import {
 export default function ProfilePage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
   const logout = useAuthStore((s) => s.logout);
   const updateProfile = useAuthStore((s) => s.updateProfile);
 
@@ -31,6 +33,15 @@ export default function ProfilePage() {
   const [touched, setTouched] = useState({ name: false, phone: false });
   const touch = (field: keyof typeof touched) =>
     setTouched((prev) => ({ ...prev, [field]: true }));
+
+  if (!isInitialized) {
+    return (
+      <div className="max-w-lg mx-auto space-y-6">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
 
   if (!user) {
     router.push('/login');

@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { CATEGORY_EMOJI } from '@/lib/constants';
 import { useFavoritesStore } from '@/stores/favorites.store';
 import { useCartStore } from '@/stores/cart.store';
 import type { Product, ProductCategory } from '@/types';
-import { cn } from '@/lib/utils';
+
 
 interface ProductCardProps {
   product: Product;
@@ -39,14 +39,15 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
           e.stopPropagation();
           toggleFavorite(product);
         }}
-        className="group/fav absolute top-2 right-2 z-10 rounded-full bg-white/90 p-2 backdrop-blur-sm transition-all hover:bg-rose-100 hover:scale-110 cursor-pointer shadow-md"
+        className="absolute top-2 right-2 z-10 rounded-full overflow-hidden w-10 h-10 shadow-md transition-transform hover:scale-110 cursor-pointer"
         aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
       >
-        <Heart
-          className={cn(
-            'h-5 w-5 transition-colors',
-            isFavorite ? 'fill-rose-500 text-rose-500' : 'text-muted-foreground group-hover/fav:text-rose-400'
-          )}
+        <Image
+          src={isFavorite ? '/ornament-fav-on.jpg' : '/ornament-fav-off.jpg'}
+          alt=""
+          width={40}
+          height={40}
+          className="object-cover w-full h-full"
         />
       </button>
 

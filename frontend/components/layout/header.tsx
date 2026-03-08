@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   Menu,
   X,
@@ -11,7 +12,6 @@ import {
   LogOut,
   ClipboardList,
   ShieldCheck,
-  Heart,
   Bell,
   CheckCheck,
 } from 'lucide-react';
@@ -137,12 +137,23 @@ export function Header() {
     <header className='sticky top-0 z-40 w-full bg-background shadow-sm border-b border-border'>
       <div className='max-w-7xl mx-auto px-4 flex h-16 items-center justify-between'>
         {/* Logo */}
-        <Link
-          href='/catalog'
-          className='flex items-center gap-2 font-bold text-2xl text-primary hover:opacity-80 transition-opacity'
-        >
-          <span className='text-3xl'>🏔️</span>
-          <span style={{ fontFamily: "'Comic Relief', system-ui, sans-serif", fontWeight: '700' }}>Ojakh</span>
+        <Link href='/catalog' className='flex items-center group'>
+          <div className='relative h-11 w-44'>
+            <Image
+              src='/logo-dark.jpg'
+              alt='Оджах'
+              fill
+              className='object-contain transition-opacity group-hover:opacity-0'
+              priority
+            />
+            <Image
+              src='/logo-light.jpg'
+              alt='Оджах'
+              fill
+              className='object-contain opacity-0 transition-opacity group-hover:opacity-100'
+              priority
+            />
+          </div>
         </Link>
 
         {/* Desktop nav */}
@@ -200,7 +211,7 @@ export function Header() {
                   Профиль
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/favorites')} className='cursor-pointer'>
-                  <Heart className='mr-2 h-4 w-4' />
+                  <Image src='/ornament-fav-off.jpg' alt='' width={16} height={16} className='mr-2 rounded-full' />
                   Избранное
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/orders')} className='cursor-pointer'>
@@ -318,7 +329,7 @@ export function Header() {
                   onClick={() => setMobileOpen(false)}
                   className='flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent'
                 >
-                  <Heart className='h-4 w-4' />
+                  <Image src='/ornament-fav-off.jpg' alt='' width={16} height={16} className='rounded-full' />
                   Избранное
                 </Link>
                 {user.role === 'admin' && (
