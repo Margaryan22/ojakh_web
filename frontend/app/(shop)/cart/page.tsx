@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Minus,
@@ -55,10 +55,13 @@ export default function CartPage() {
   const [step, setStep] = useState<Step>('cart');
   const [isPickup, setIsPickup] = useState(false);
   const [address, setAddress] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [addressValidated, setAddressValidated] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] =
     useState<DeliveryTimeSlot>('10:00-14:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const availableDates = getAvailableDates();
   const hasTorts = tortCount() > 0;
@@ -98,6 +101,46 @@ export default function CartPage() {
       fetchCart();
     }
   }, [user, fetchCart]);
+
+  // DaData address suggestions with debounce
+  useEffect(() => {
+    if (isPickup || address.length < 5) {
+      setAddressSuggestions([]);
+      return;
+    }
+    if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+    addressDebounceRef.current = setTimeout(async () => {
+      try {
+        const apiKey = process.env.NEXT_PUBLIC_DADATA_API_KEY;
+        if (!apiKey) return;
+        const res = await fetch(
+          'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Token ${apiKey}`,
+            },
+            body: JSON.stringify({
+              query: address,
+              count: 5,
+              locations: [{ city: 'Нижний Новгород' }],
+            }),
+          },
+        );
+        const data = await res.json();
+        const values: string[] = (data.suggestions ?? []).map(
+          (s: { value: string }) => s.value,
+        );
+        setAddressSuggestions(values);
+      } catch {
+        // ignore suggestion errors
+      }
+    }, 400);
+    return () => {
+      if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+    };
+  }, [address, isPickup]);
 
   // Bulk calendar availability (fetched when delivery step opens)
   const { data: calendarData } = useQuery<
@@ -150,6 +193,10 @@ export default function CartPage() {
     }
     if (!isPickup && !address.trim()) {
       toast.error('Введите адрес доставки');
+      return;
+    }
+    if (!isPickup && address.trim() && !addressValidated) {
+      toast.error('Пожалуйста, выберите адрес из предложенного списка');
       return;
     }
     if (dateAvailability && !dateAvailability.available) {
@@ -304,7 +351,13 @@ export default function CartPage() {
                             onClick={() => {
                               const newQty =
                                 Math.round((item.quantity - stepVal) * 10) / 10;
-                              if (newQty >= minQty) {
+                              if (newQty < minQty) {
+                                removeItem(
+                                  item.product_id,
+                                  item.flavor,
+                                  item.size,
+                                );
+                              } else {
                                 updateQuantity(
                                   item.product_id,
                                   newQty,
@@ -313,7 +366,6 @@ export default function CartPage() {
                                 );
                               }
                             }}
-                            disabled={item.quantity <= minQty}
                           >
                             <Minus className='h-3 w-3' />
                           </Button>
@@ -430,10 +482,35 @@ export default function CartPage() {
                     id='address'
                     placeholder='Улица, дом, квартира'
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                      setAddressValidated(false);
+                    }}
                     className='pl-10'
+                    autoComplete='off'
                   />
+                  {addressSuggestions.length > 0 && (
+                    <ul className='absolute z-30 top-full left-0 right-0 bg-background border border-border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto'>
+                      {addressSuggestions.map((s, i) => (
+                        <li
+                          key={i}
+                          className='px-3 py-2 text-sm cursor-pointer hover:bg-accent'
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setAddress(s);
+                            setAddressSuggestions([]);
+                            setAddressValidated(true);
+                          }}
+                        >
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
+                <p className='text-xs text-muted-foreground'>
+                  Доставка осуществляется только по Нижнему Новгороду
+                </p>
               </div>
             )}
 

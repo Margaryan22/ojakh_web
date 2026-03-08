@@ -99,3 +99,15 @@ model DailyLimit {
   maxOrders    Int      @default(15)
   maxTorts     Int      @default(2)
 }
+
+// ─── OtpSession ───────────────────────────────────────────────────────────────
+
+model OtpSession {
+  id        Int      @id @default(autoincrement())
+  phone     String   @unique
+  code      String
+  chatId    String?
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

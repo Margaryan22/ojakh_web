@@ -22,6 +22,7 @@ export default function OrderDetailPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [isPaying, setIsPaying] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const orderId = params.id as string;
 
@@ -33,6 +34,24 @@ export default function OrderDetailPage() {
     },
     enabled: !!user && !!orderId,
   });
+
+  const handleCancel = async () => {
+    if (!confirm('Вы уверены, что хотите отменить заказ?')) return;
+    setIsCancelling(true);
+    try {
+      await api.patch(`/orders/${orderId}/cancel`);
+      toast.success('Заказ отменён');
+      refetch();
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Ошибка отмены заказа');
+      } else {
+        toast.error('Ошибка отмены заказа');
+      }
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   const handlePay = async () => {
     if (!order?.paymentId) {
@@ -175,6 +194,19 @@ export default function OrderDetailPage() {
           disabled={isPaying}
         >
           {isPaying ? 'Оплата...' : `Оплатить ${formatPrice(order.subtotal)}`}
+        </Button>
+      )}
+
+      {/* Cancel button for new (unpaid) orders */}
+      {order.status === 'new' && (
+        <Button
+          variant="destructive"
+          className="w-full"
+          size="lg"
+          onClick={handleCancel}
+          disabled={isCancelling}
+        >
+          {isCancelling ? 'Отмена...' : 'Отменить заказ'}
         </Button>
       )}
     </div>

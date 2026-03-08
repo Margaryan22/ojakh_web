@@ -4,11 +4,13 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { PaymentsService } from '../payments/payments.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import axios from 'axios';
 
 const TORT_CATEGORY = 'торты';
 const MAX_TORTS_PER_ORDER = 2;
@@ -22,6 +24,7 @@ export class OrdersService {
     private readonly cartService: CartService,
     private readonly deliveryService: DeliveryService,
     private readonly paymentsService: PaymentsService,
+    private readonly config: ConfigService,
   ) {}
 
   async createOrder(userId: number, dto: CreateOrderDto) {
@@ -56,6 +59,11 @@ export class OrdersService {
     // 3. Validate address requirement
     if (!dto.is_pickup && !dto.address?.trim()) {
       throw new BadRequestException('Для доставки необходимо указать адрес');
+    }
+
+    // 3b. Validate address is in Nizhny Novgorod via DaData
+    if (!dto.is_pickup && dto.address?.trim()) {
+      await this.validateNnAddress(dto.address.trim());
     }
 
     // 4. Check tort count in cart
@@ -159,5 +167,67 @@ export class OrdersService {
     }
 
     return order;
+  }
+
+  async cancelOrder(userId: number, orderId: number) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+
+    if (!order) {
+      throw new NotFoundException(`Order #${orderId} not found`);
+    }
+
+    if (order.userId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    if (order.status !== 'new') {
+      throw new BadRequestException(
+        'Отменить можно только новые неоплаченные заказы',
+      );
+    }
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'cancelled' },
+    });
+  }
+
+  private async validateNnAddress(address: string): Promise<void> {
+    const apiKey = this.config.get<string>('DADATA_API_KEY');
+    if (!apiKey) return; // skip validation if key not configured
+
+    try {
+      const response = await axios.post(
+        'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
+        {
+          query: address,
+          count: 1,
+          locations: [{ city: 'Нижний Новгород' }],
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Token ${apiKey}`,
+          },
+        },
+      );
+
+      const suggestions: any[] = response.data?.suggestions ?? [];
+      if (suggestions.length === 0) {
+        throw new BadRequestException(
+          'Адрес не найден в Нижнем Новгороде. Проверьте корректность адреса.',
+        );
+      }
+
+      const city: string | undefined = suggestions[0]?.data?.city;
+      if (city !== 'Нижний Новгород') {
+        throw new BadRequestException(
+          'Доставка осуществляется только по Нижнему Новгороду.',
+        );
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      // Network/API errors — fail-open to not block order creation
+    }
   }
 }
