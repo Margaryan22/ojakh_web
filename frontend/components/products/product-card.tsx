@@ -43,7 +43,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
         aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
       >
         <Image
-          src={isFavorite ? '/ornament-fav-on.jpg' : '/ornament-fav-off.jpg'}
+          src={isFavorite ? '/ornament-fav-off.jpg' : '/ornament-fav-on.jpg'}
           alt=""
           width={40}
           height={40}
