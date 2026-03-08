@@ -1,8 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "*",
-      "Bash(git add backend/src/modules/cart/cart.service.ts backend/src/modules/delivery/delivery.controller.ts backend/src/modules/delivery/delivery.service.ts backend/src/modules/orders/orders.service.ts frontend/app/\\\\\\(shop\\\\\\)/cart/page.tsx)"
+      "Bash(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Read(*)",
+      "Glob(*)",
+      "Grep(*)"
     ],
     "deny": []
   }
