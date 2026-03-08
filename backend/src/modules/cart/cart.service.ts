@@ -54,9 +54,9 @@ export class CartService {
       const existingIndex = items.findIndex((i) => itemKey(i) === key);
 
       if (existingIndex >= 0) {
-        // Update quantity
-        items[existingIndex].quantity = dto.quantity;
-        items[existingIndex].subtotal = dto.price * dto.quantity;
+        // Sum quantity
+        items[existingIndex].quantity += dto.quantity;
+        items[existingIndex].subtotal = items[existingIndex].price * items[existingIndex].quantity;
       } else {
         // Add new item — check tort limit
         if (dto.category === TORT_CATEGORY) {

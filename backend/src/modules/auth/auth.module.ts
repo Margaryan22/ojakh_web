@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { JwtGuard } from './jwt.guard';
 import { AdminGuard } from './admin.guard';
 import { OptionalJwtGuard } from './optional-jwt.guard';
+import { TelegramModule } from '../telegram/telegram.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { OptionalJwtGuard } from './optional-jwt.guard';
         },
       }),
     }),
+    TelegramModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtGuard, AdminGuard, OptionalJwtGuard],

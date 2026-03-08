@@ -13,7 +13,7 @@ interface AuthState {
 interface AuthActions {
   setAccessToken: (token: string) => void;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; name: string; password: string; phone?: string }) => Promise<void>;
+  register: (data: { email: string; name: string; password: string; phone: string }) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;

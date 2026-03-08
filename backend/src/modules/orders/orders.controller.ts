@@ -2,8 +2,11 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -47,5 +50,12 @@ export class OrdersController {
   @ApiOperation({ summary: 'Get a single order by id' })
   getOrder(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return this.ordersService.getOrder(req.user.id, id);
+  }
+
+  @Patch(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel a new (unpaid) order' })
+  cancelOrder(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return this.ordersService.cancelOrder(req.user.id, id);
   }
 }

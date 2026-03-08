@@ -12,6 +12,9 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { RequestOtpDto } from './dto/request-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ValidateEmailDto } from './dto/validate-email.dto';
 
 const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
 
@@ -20,8 +23,29 @@ const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Post('request-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Step 1a: Request OTP via Telegram for phone verification' })
+  requestOtp(@Body() dto: RequestOtpDto) {
+    return this.authService.requestOtp(dto.phone);
+  }
+
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Step 1b: Verify the OTP code received in Telegram' })
+  verifyOtp(@Body() dto: VerifyOtpDto) {
+    return this.authService.verifyOtp(dto.phone, dto.code);
+  }
+
+  @Post('validate-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Step 2: Validate email deliverability via Abstract API' })
+  validateEmail(@Body() dto: ValidateEmailDto) {
+    return this.authService.validateEmailDeliverability(dto.email);
+  }
+
   @Post('register')
-  @ApiOperation({ summary: 'Register a new user' })
+  @ApiOperation({ summary: 'Register a new user (phone must be verified first)' })
   async register(
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: FastifyReply,
