@@ -40,6 +40,7 @@ interface ProductFormData {
   unit: string;
   price: string;
   description: string;
+  ingredients: string;
   available: boolean;
   maxPerDay: string;
 }
@@ -53,6 +54,7 @@ const emptyForm: ProductFormData = {
   unit: 'шт',
   price: '',
   description: '',
+  ingredients: '',
   available: true,
   maxPerDay: '999',
 };
@@ -91,6 +93,7 @@ export default function AdminProductsPage() {
         unit: form.unit,
         price: Math.round(parseFloat(form.price) * 100),
         description: form.description || null,
+        ingredients: form.ingredients || null,
         available: form.available,
         maxPerDay: parseInt(form.maxPerDay) || 999,
       };
@@ -149,6 +152,7 @@ export default function AdminProductsPage() {
       unit: product.unit,
       price: (product.price / 100).toString(),
       description: product.description ?? '',
+      ingredients: product.ingredients ?? '',
       available: product.available,
       maxPerDay: product.maxPerDay.toString(),
     });
@@ -319,7 +323,23 @@ export default function AdminProductsPage() {
               </div>
               <div className="col-span-2 space-y-1.5">
                 <Label>Описание</Label>
-                <Input value={form.description} onChange={(e) => updateField('description', e.target.value)} />
+                <textarea
+                  rows={2}
+                  value={form.description}
+                  onChange={(e) => updateField('description', e.target.value)}
+                  placeholder="Краткое описание товара"
+                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>Состав / Ингредиенты</Label>
+                <textarea
+                  rows={3}
+                  value={form.ingredients}
+                  onChange={(e) => updateField('ingredients', e.target.value)}
+                  placeholder="Например: говядина, свинина, тесто, лук, специи"
+                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                />
               </div>
               <div className="col-span-2 flex items-center gap-2">
                 <input

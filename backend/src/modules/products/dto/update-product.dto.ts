@@ -58,6 +58,11 @@ export class UpdateProductDto {
   @IsString()
   description?: string;
 
+  @ApiPropertyOptional({ example: 'Говядина, свинина, тесто, лук, специи' })
+  @IsOptional()
+  @IsString()
+  ingredients?: string;
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()

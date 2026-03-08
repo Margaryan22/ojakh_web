@@ -13,8 +13,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { formatPrice } from '@/lib/format';
-import { CATEGORY_EMOJI } from '@/lib/constants';
+import { CATEGORY_EMOJI, MAX_ITEM_QTY_PER_ORDER, MAX_TORTS_PER_ORDER } from '@/lib/constants';
 import { useCartStore } from '@/stores/cart.store';
 import { useAuthStore } from '@/stores/auth.store';
 import type { Product, ProductCategory } from '@/types';
@@ -27,6 +28,7 @@ interface AddToCartDialogProps {
 
 export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialogProps) {
   const [quantity, setQuantity] = useState(1);
+  const [inputValue, setInputValue] = useState('1');
   const [isAdding, setIsAdding] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
   const user = useAuthStore((s) => s.user);
@@ -35,24 +37,53 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
 
   const isTort = product.category === 'торты';
   const step = isTort ? 0.5 : 1;
-  const minQty = isTort ? 1 : 1;
+  const minQty = 1;
   const emoji = CATEGORY_EMOJI[product.category as ProductCategory] ?? '🍽️';
   const totalPrice = product.price * quantity;
 
-  const maxQty = product.maxPerDay ?? 999;
+  const maxQty = isTort
+    ? Math.min(product.maxPerDay ?? MAX_TORTS_PER_ORDER, MAX_TORTS_PER_ORDER)
+    : Math.min(product.maxPerDay ?? MAX_ITEM_QTY_PER_ORDER, MAX_ITEM_QTY_PER_ORDER);
+
+  const clamp = (val: number) => Math.min(maxQty, Math.max(minQty, val));
+
+  const applyQuantity = (val: number) => {
+    const clamped = clamp(Math.round(val * 10) / 10);
+    setQuantity(clamped);
+    setInputValue(isTort ? clamped.toFixed(1) : String(clamped));
+  };
 
   const handleIncrease = () => {
-    setQuantity((prev) => {
-      const next = Math.round((prev + step) * 10) / 10;
-      return next <= maxQty ? next : prev;
-    });
+    applyQuantity(quantity + step);
   };
 
   const handleDecrease = () => {
-    setQuantity((prev) => {
-      const next = Math.round((prev - step) * 10) / 10;
-      return next >= minQty ? next : prev;
-    });
+    applyQuantity(quantity - step);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Allow typing: only digits and optionally one dot for torts
+    if (isTort) {
+      if (!/^\d*\.?\d?$/.test(raw)) return;
+    } else {
+      if (!/^\d*$/.test(raw)) return;
+    }
+    setInputValue(raw);
+
+    const parsed = parseFloat(raw);
+    if (!isNaN(parsed) && parsed >= minQty) {
+      setQuantity(Math.round(clamp(parsed) * 10) / 10);
+    }
+  };
+
+  const handleInputBlur = () => {
+    const parsed = parseFloat(inputValue);
+    if (isNaN(parsed) || parsed < minQty) {
+      applyQuantity(minQty);
+    } else {
+      applyQuantity(parsed);
+    }
   };
 
   const handleAdd = async () => {
@@ -75,7 +106,7 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
       });
       toast.success(`${product.name} добавлен в корзину`);
       onOpenChange(false);
-      setQuantity(isTort ? 1 : 1);
+      applyQuantity(minQty);
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
@@ -89,7 +120,7 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setQuantity(isTort ? 1 : 1);
+      applyQuantity(minQty);
     }
     onOpenChange(newOpen);
   };
@@ -125,31 +156,41 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
           </div>
 
           {/* Quantity stepper */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Количество ({product.unit}):</span>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={handleDecrease}
-                disabled={quantity <= minQty}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="w-12 text-center font-semibold text-lg tabular-nums">
-                {isTort ? quantity.toFixed(1) : quantity}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                onClick={handleIncrease}
-                disabled={quantity >= maxQty}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Количество ({product.unit}):</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={handleDecrease}
+                  disabled={quantity <= minQty}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <Input
+                  type="text"
+                  inputMode={isTort ? 'decimal' : 'numeric'}
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  className="w-16 text-center font-semibold text-lg tabular-nums px-1"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={handleIncrease}
+                  disabled={quantity >= maxQty}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground text-right">
+              Максимум: {maxQty} {product.unit}
+            </p>
           </div>
 
           {/* Total */}
