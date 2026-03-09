@@ -9,9 +9,9 @@ import { cn } from '@/lib/utils';
 
 interface DayCalendar {
   date: string;
-  orderCount: number;
+  unitCount: number;
   tortCount: number;
-  maxOrders: number;
+  maxUnits: number;
   maxTorts: number;
   available: boolean;
 }
@@ -44,15 +44,14 @@ export default function AdminCalendarPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {capacities.map((day) => {
-          const orderPercent = day.orderCount / day.maxOrders;
-          const tortPercent = day.tortCount / day.maxTorts;
-          const maxPercent = Math.max(orderPercent, tortPercent);
+          const unitsAtLimit = day.unitCount >= day.maxUnits;
+          const tortsAtLimit = day.tortCount >= day.maxTorts;
 
           let colorClass = 'border-green-200 bg-green-50';
-          if (maxPercent >= 1) {
-            colorClass = 'border-red-200 bg-red-50';
-          } else if (maxPercent >= 0.5) {
-            colorClass = 'border-yellow-200 bg-yellow-50';
+          if (unitsAtLimit && tortsAtLimit) {
+            colorClass = 'border-red-300 bg-red-50';
+          } else if (unitsAtLimit || tortsAtLimit) {
+            colorClass = 'border-yellow-300 bg-yellow-50';
           }
 
           return (
@@ -61,9 +60,9 @@ export default function AdminCalendarPage() {
                 <p className="font-semibold text-sm">{formatDate(day.date)}</p>
                 <div className="text-xs space-y-0.5">
                   <p>
-                    Заказы:{' '}
+                    Единиц:{' '}
                     <span className="font-medium">
-                      {day.orderCount} / {day.maxOrders}
+                      {day.unitCount} / {day.maxUnits}
                     </span>
                   </p>
                   <p>
@@ -88,11 +87,11 @@ export default function AdminCalendarPage() {
           Доступно
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-yellow-100 border border-yellow-200" />
-          Ограничено
+          <span className="w-3 h-3 rounded bg-yellow-100 border border-yellow-300" />
+          Один лимит заполнен
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-red-100 border border-red-200" />
+          <span className="w-3 h-3 rounded bg-red-100 border border-red-300" />
           Заполнено
         </div>
       </div>

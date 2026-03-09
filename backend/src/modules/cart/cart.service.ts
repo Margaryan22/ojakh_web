@@ -13,8 +13,9 @@ export interface CartItem {
   size?: string;
   quantity: number;
   unit: string;
-  price: number;    // kopecks per unit
-  subtotal: number; // kopecks total
+  price: number;       // kopecks per unit
+  subtotal: number;    // kopecks total
+  maxPerCart?: number; // max quantity per cart
 }
 
 const TORT_CATEGORY = 'торты';
@@ -80,6 +81,7 @@ export class CartService {
           unit: dto.unit,
           price: dto.price,
           subtotal: dto.price * dto.quantity,
+          maxPerCart: dto.maxPerCart,
         });
       }
     }

@@ -105,7 +105,7 @@ export default function OrderDetailPage() {
         <Button variant="ghost" size="icon" onClick={() => router.push('/orders')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-2xl font-bold">Заказ #{order.id}</h1>
+        <h1 className="text-2xl font-bold">Заказ #{order.orderNumber ?? order.id}</h1>
         <Badge className={STATUS_COLORS[order.status as OrderStatus]}>
           {STATUS_LABELS[order.status as OrderStatus]}
         </Badge>

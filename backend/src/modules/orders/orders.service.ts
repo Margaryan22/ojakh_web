@@ -117,8 +117,11 @@ export class OrdersService {
       ),
     );
 
+    const orderNumber = await this.generateOrderNumber();
+
     const order = await this.prisma.order.create({
       data: {
+        orderNumber,
         userId,
         items: cart.items as any,
         subtotal,
@@ -190,6 +193,15 @@ export class OrdersService {
       where: { id: orderId },
       data: { status: 'cancelled' },
     });
+  }
+
+  private async generateOrderNumber(): Promise<string> {
+    for (let i = 0; i < 20; i++) {
+      const num = Math.floor(1000 + Math.random() * 9000).toString();
+      const exists = await this.prisma.order.findUnique({ where: { orderNumber: num } });
+      if (!exists) return num;
+    }
+    throw new Error('Не удалось сгенерировать уникальный номер заказа');
   }
 
   private async validateNnAddress(address: string): Promise<void> {

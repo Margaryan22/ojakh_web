@@ -56,7 +56,7 @@ const emptyForm: ProductFormData = {
   description: '',
   ingredients: '',
   available: true,
-  maxPerDay: '999',
+  maxPerDay: '50',
 };
 
 export default function AdminProductsPage() {
@@ -95,7 +95,7 @@ export default function AdminProductsPage() {
         description: form.description || null,
         ingredients: form.ingredients || null,
         available: form.available,
-        maxPerDay: parseInt(form.maxPerDay) || 999,
+        maxPerDay: parseInt(form.maxPerDay) || 50,
       };
       if (imageUrl) payload.imageUrl = imageUrl;
 
@@ -306,10 +306,11 @@ export default function AdminProductsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Макс. в день</Label>
+                <Label>Макс. кол-во на заказ (шт/кг)</Label>
                 <Input
                   type="number"
                   value={form.maxPerDay}
+                  placeholder="например, 10"
                   onChange={(e) => updateField('maxPerDay', e.target.value)}
                 />
               </div>

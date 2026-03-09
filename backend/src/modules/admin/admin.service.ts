@@ -150,39 +150,49 @@ export class AdminService {
     });
 
     // Group by date
-    const calendarMap = new Map<string, { orderCount: number; tortCount: number }>();
+    const calendarMap = new Map<string, { unitCount: number; tortCount: number }>();
 
     for (const order of orders) {
       const dateKey = order.deliveryDate.toISOString().split('T')[0];
       if (!calendarMap.has(dateKey)) {
-        calendarMap.set(dateKey, { orderCount: 0, tortCount: 0 });
+        calendarMap.set(dateKey, { unitCount: 0, tortCount: 0 });
       }
       const entry = calendarMap.get(dateKey)!;
-      entry.orderCount += 1;
 
-      const items = order.items as Array<{ category: string }>;
+      const items = order.items as Array<{ category: string; quantity: number }>;
       for (const item of items) {
+        entry.unitCount += Number(item.quantity) || 0;
         if (item.category === TORT_CATEGORY) {
           entry.tortCount += 1;
         }
       }
     }
 
-    // Fill all days in range
-    const MAX_ORDERS = 15;
-    const MAX_TORTS = 2;
-    const result: Array<{ date: string; orderCount: number; tortCount: number; maxOrders: number; maxTorts: number; available: boolean }> = [];
+    // Fetch daily limits for the range
+    const dailyLimits = await this.prisma.dailyLimit.findMany({
+      where: { deliveryDate: { gte: today, lte: endDate } },
+    });
+    const limitsMap = new Map(
+      dailyLimits.map((l) => [l.deliveryDate.toISOString().split('T')[0], l]),
+    );
+
+    const DEFAULT_MAX_UNITS = 100;
+    const DEFAULT_MAX_TORTS = 2;
+    const result: Array<{ date: string; unitCount: number; tortCount: number; maxUnits: number; maxTorts: number; available: boolean }> = [];
     const cursor = new Date(today);
 
     while (cursor <= endDate) {
       const key = cursor.toISOString().split('T')[0];
-      const entry = calendarMap.get(key) ?? { orderCount: 0, tortCount: 0 };
+      const entry = calendarMap.get(key) ?? { unitCount: 0, tortCount: 0 };
+      const limit = limitsMap.get(key);
+      const maxUnits = limit?.maxUnits ?? DEFAULT_MAX_UNITS;
+      const maxTorts = limit?.maxTorts ?? DEFAULT_MAX_TORTS;
       result.push({
         date: key,
         ...entry,
-        maxOrders: MAX_ORDERS,
-        maxTorts: MAX_TORTS,
-        available: entry.orderCount < MAX_ORDERS && entry.tortCount < MAX_TORTS,
+        maxUnits,
+        maxTorts,
+        available: entry.unitCount < maxUnits && entry.tortCount < maxTorts,
       });
       cursor.setDate(cursor.getDate() + 1);
     }

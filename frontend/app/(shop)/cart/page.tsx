@@ -308,7 +308,7 @@ export default function CartPage() {
                   const stepVal = isTort ? 0.5 : 1;
                   const minQty = isTort ? 1 : 1;
 
-                  const maxQty = isTort ? 2 : MAX_ITEM_QTY_PER_ORDER;
+                  const maxQty = item.maxPerCart ?? (isTort ? 2 : MAX_ITEM_QTY_PER_ORDER);
 
                   return (
                     <Card

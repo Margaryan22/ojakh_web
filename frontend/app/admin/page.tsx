@@ -124,7 +124,7 @@ export default function AdminOrdersPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold">#{order.id}</span>
+                      <span className="font-semibold">#{order.orderNumber ?? order.id}</span>
                       <Badge className={STATUS_COLORS[order.status as OrderStatus]}>
                         {STATUS_LABELS[order.status as OrderStatus]}
                       </Badge>

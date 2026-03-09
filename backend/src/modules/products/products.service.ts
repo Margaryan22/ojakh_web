@@ -46,10 +46,6 @@ export class ProductsService {
 
   async remove(id: number) {
     await this.findOne(id);
-    // Soft delete — set available to false
-    return this.prisma.product.update({
-      where: { id },
-      data: { available: false },
-    });
+    return this.prisma.product.delete({ where: { id } });
   }
 }
