@@ -97,6 +97,35 @@ export class CartService {
     };
   }
 
+  async setItemQuantity(userId: number, dto: AddCartItemDto) {
+    const cart = await this.prisma.cart.findUnique({ where: { userId } });
+    let items: CartItem[] = cart ? (cart.items as unknown as CartItem[]) : [];
+
+    const key = itemKey(dto);
+
+    if (dto.quantity === 0) {
+      items = items.filter((i) => itemKey(i) !== key);
+    } else {
+      const existingIndex = items.findIndex((i) => itemKey(i) === key);
+      if (existingIndex >= 0) {
+        items[existingIndex].quantity = dto.quantity;
+        items[existingIndex].subtotal = items[existingIndex].price * dto.quantity;
+      }
+    }
+
+    const updatedCart = await this.prisma.cart.upsert({
+      where: { userId },
+      create: { userId, items: items as any },
+      update: { items: items as any },
+    });
+
+    return {
+      userId,
+      items: updatedCart.items as unknown as CartItem[],
+      subtotal: this.calcSubtotal(updatedCart.items as unknown as CartItem[]),
+    };
+  }
+
   async removeItem(
     userId: number,
     productId: number,

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Patch,
   ParseIntPipe,
   Post,
   Query,
@@ -31,6 +32,12 @@ export class CartController {
   @ApiOperation({ summary: 'Add or update cart item' })
   addOrUpdateItem(@Req() req: any, @Body() dto: AddCartItemDto) {
     return this.cartService.addOrUpdateItem(req.user.id, dto);
+  }
+
+  @Patch('items')
+  @ApiOperation({ summary: 'Set exact quantity for cart item' })
+  setItemQuantity(@Req() req: any, @Body() dto: AddCartItemDto) {
+    return this.cartService.setItemQuantity(req.user.id, dto);
   }
 
   @Delete('items')
