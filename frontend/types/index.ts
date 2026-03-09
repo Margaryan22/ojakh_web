@@ -35,8 +35,9 @@ export interface CartItem {
   size?: string;
   quantity: number;
   unit: string;
-  price: number;    // kopecks per unit
-  subtotal: number; // kopecks total
+  price: number;       // kopecks per unit
+  subtotal: number;    // kopecks total
+  maxPerCart?: number; // max quantity per user cart
 }
 
 export interface Cart {
@@ -45,6 +46,7 @@ export interface Cart {
 
 export interface Order {
   id: number;
+  orderNumber?: string;
   userId: number;
   items: CartItem[];
   subtotal: number;
@@ -65,7 +67,7 @@ export interface DateAvailability {
   available: boolean;
   tortCount: number;
   maxTorts: number;
-  orderCount: number;
-  maxOrders: number;
+  unitCount: number;
+  maxUnits: number;
   reason?: string;
 }

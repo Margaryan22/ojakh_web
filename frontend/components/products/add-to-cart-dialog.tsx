@@ -27,10 +27,9 @@ interface AddToCartDialogProps {
 }
 
 export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialogProps) {
-  const [quantity, setQuantity] = useState(1);
-  const [inputValue, setInputValue] = useState('1');
   const [isAdding, setIsAdding] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
+  const getItemByKey = useCartStore((s) => s.getItemByKey);
   const user = useAuthStore((s) => s.user);
 
   if (!product) return null;
@@ -39,11 +38,24 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
   const step = isTort ? 0.5 : 1;
   const minQty = 1;
   const emoji = CATEGORY_EMOJI[product.category as ProductCategory] ?? '🍽️';
-  const totalPrice = product.price * quantity;
 
-  const maxQty = isTort
+  // How many already in cart for this exact sku
+  const existingItem = getItemByKey(product.id, product.flavor, product.size);
+  const existingQty = existingItem?.quantity ?? 0;
+
+  const productMax = isTort
     ? Math.min(product.maxPerDay ?? MAX_TORTS_PER_ORDER, MAX_TORTS_PER_ORDER)
     : Math.min(product.maxPerDay ?? MAX_ITEM_QTY_PER_ORDER, MAX_ITEM_QTY_PER_ORDER);
+
+  const available = Math.max(0, productMax - existingQty);
+  const maxQty = available;
+  const isAtLimit = maxQty <= 0;
+
+  const initialQty = Math.min(isTort ? 1.0 : 1, maxQty > 0 ? maxQty : step);
+  const [quantity, setQuantity] = useState(initialQty);
+  const [inputValue, setInputValue] = useState(isTort ? initialQty.toFixed(1) : String(initialQty));
+
+  const totalPrice = product.price * quantity;
 
   const clamp = (val: number) => Math.min(maxQty, Math.max(minQty, val));
 
@@ -53,17 +65,11 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
     setInputValue(isTort ? clamped.toFixed(1) : String(clamped));
   };
 
-  const handleIncrease = () => {
-    applyQuantity(quantity + step);
-  };
-
-  const handleDecrease = () => {
-    applyQuantity(quantity - step);
-  };
+  const handleIncrease = () => applyQuantity(quantity + step);
+  const handleDecrease = () => applyQuantity(quantity - step);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    // Allow typing: only digits and optionally one dot for torts
     if (isTort) {
       if (!/^\d*\.?\d?$/.test(raw)) return;
     } else {
@@ -92,6 +98,8 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
       onOpenChange(false);
       return;
     }
+    if (isAtLimit) return;
+
     setIsAdding(true);
     try {
       await addItem({
@@ -103,6 +111,7 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
         quantity,
         unit: product.unit,
         price: product.price,
+        maxPerCart: productMax,
       });
       toast.success(`${product.name} добавлен в корзину`);
       onOpenChange(false);
@@ -155,58 +164,77 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
             </Badge>
           </div>
 
-          {/* Quantity stepper */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Количество ({product.unit}):</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9 shrink-0"
-                  onClick={handleDecrease}
-                  disabled={quantity <= minQty}
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <Input
-                  type="text"
-                  inputMode={isTort ? 'decimal' : 'numeric'}
-                  value={inputValue}
-                  onChange={handleInputChange}
-                  onBlur={handleInputBlur}
-                  className="w-16 text-center font-semibold text-lg tabular-nums px-1"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9 shrink-0"
-                  onClick={handleIncrease}
-                  disabled={quantity >= maxQty}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+          {/* At-limit message */}
+          {isAtLimit ? (
+            <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground text-center">
+              Максимальное количество добавлено ({productMax}&nbsp;{product.unit})
             </div>
-            <p className="text-xs text-muted-foreground text-right">
-              Максимум: {maxQty} {product.unit}
-            </p>
-          </div>
+          ) : (
+            <>
+              {existingQty > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Уже в корзине: {existingQty}&nbsp;{product.unit}. Можно добавить ещё: {available}&nbsp;{product.unit}
+                </p>
+              )}
 
-          {/* Total */}
-          <div className="flex items-center justify-between border-t pt-3">
-            <span className="text-sm text-muted-foreground">Итого:</span>
-            <span className="text-lg font-bold">{formatPrice(totalPrice)}</span>
-          </div>
+              {/* Quantity stepper */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Количество ({product.unit}):</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={handleDecrease}
+                      disabled={quantity <= minQty}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <Input
+                      type="text"
+                      inputMode={isTort ? 'decimal' : 'numeric'}
+                      value={inputValue}
+                      onChange={handleInputChange}
+                      onBlur={handleInputBlur}
+                      className="w-16 text-center font-semibold text-lg tabular-nums px-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={handleIncrease}
+                      disabled={quantity >= maxQty}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-right">
+                  Максимум: {productMax}&nbsp;{product.unit}
+                </p>
+              </div>
+
+              {/* Total */}
+              <div className="flex items-center justify-between border-t pt-3">
+                <span className="text-sm text-muted-foreground">Итого:</span>
+                <span className="text-lg font-bold">{formatPrice(totalPrice)}</span>
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>
           <Button
             className="w-full"
             onClick={handleAdd}
-            disabled={isAdding || !product.available}
+            disabled={isAdding || !product.available || isAtLimit}
           >
-            {isAdding ? 'Добавление...' : 'Добавить в корзину'}
+            {isAtLimit
+              ? 'Максимальное количество добавлено'
+              : isAdding
+              ? 'Добавление...'
+              : 'Добавить в корзину'}
           </Button>
         </DialogFooter>
       </DialogContent>

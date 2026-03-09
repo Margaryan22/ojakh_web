@@ -41,7 +41,8 @@ export default function OrdersPage() {
       const prevStatus = prev[order.id];
       if (!isFirstLoad && prevStatus && prevStatus !== order.status) {
         const label = STATUS_LABELS[order.status as OrderStatus] ?? order.status;
-        toast.info(`Заказ #${order.id}: статус изменён на "${label}"`);
+        const num = order.orderNumber ?? order.id;
+        toast.info(`Заказ #${num}: статус изменён на "${label}"`);
       }
       prev[order.id] = order.status;
     });
@@ -91,7 +92,7 @@ export default function OrdersPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold">Заказ #{order.id}</span>
+                      <span className="font-semibold">Заказ #{order.orderNumber ?? order.id}</span>
                       <Badge className={STATUS_COLORS[order.status as OrderStatus]}>
                         {STATUS_LABELS[order.status as OrderStatus]}
                       </Badge>

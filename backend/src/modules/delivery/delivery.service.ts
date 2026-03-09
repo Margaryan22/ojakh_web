@@ -8,8 +8,8 @@ export interface DateAvailability {
   available: boolean;
   tortCount: number;
   maxTorts: number;
-  orderCount: number;
-  maxOrders: number;
+  unitCount: number;
+  maxUnits: number;
   reason?: string;
 }
 
@@ -29,10 +29,10 @@ export class DeliveryService {
       where: { deliveryDate: dateOnly },
     });
 
-    const maxOrders = limit?.maxOrders ?? 15;
+    const maxUnits = limit?.maxUnits ?? 100;
     const maxTorts = limit?.maxTorts ?? 2;
 
-    // Count active orders for this date
+    // Get active orders for this date
     const activeOrders = await this.prisma.order.findMany({
       where: {
         deliveryDate: dateOnly,
@@ -41,26 +41,26 @@ export class DeliveryService {
       select: { items: true },
     });
 
-    const orderCount = activeOrders.length;
-
-    // Count tort positions across all active orders
+    // Sum total item units and count tort positions
+    let unitCount = 0;
     let tortCount = 0;
     for (const order of activeOrders) {
       const items = order.items as Array<{ category: string; quantity: number }>;
       for (const item of items) {
+        unitCount += Number(item.quantity) || 0;
         if (item.category === TORT_CATEGORY) {
           tortCount += 1; // count distinct positions, not quantity
         }
       }
     }
 
-    if (orderCount >= maxOrders) {
+    if (unitCount >= maxUnits) {
       return {
         available: false,
         tortCount,
         maxTorts,
-        orderCount,
-        maxOrders,
+        unitCount,
+        maxUnits,
         reason: 'На эту дату все слоты для заказов уже заняты',
       };
     }
@@ -70,8 +70,8 @@ export class DeliveryService {
         available: false,
         tortCount,
         maxTorts,
-        orderCount,
-        maxOrders,
+        unitCount,
+        maxUnits,
         reason: 'На эту дату все слоты для тортов уже заняты',
       };
     }
@@ -80,8 +80,8 @@ export class DeliveryService {
       available: true,
       tortCount,
       maxTorts,
-      orderCount,
-      maxOrders,
+      unitCount,
+      maxUnits,
     };
   }
 

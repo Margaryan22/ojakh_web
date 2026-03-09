@@ -18,6 +18,7 @@ interface CartActions {
   totalPrice: () => number;
   tortCount: () => number;
   getItemQuantity: (productId: number) => number;
+  getItemByKey: (productId: number, flavor?: string, size?: string) => CartItem | undefined;
 }
 
 function matchItem(item: CartItem, productId: number, flavor?: string, size?: string): boolean {
@@ -85,6 +86,7 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
         quantity: newItem.quantity,
         unit: newItem.unit,
         price: newItem.price,
+        maxPerCart: newItem.maxPerCart,
       });
       set({ items: data.items ?? [] });
     } catch (error) {
@@ -167,5 +169,9 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
   getItemQuantity: (productId) => {
     const item = get().items.find((i) => i.product_id === productId);
     return item?.quantity ?? 0;
+  },
+
+  getItemByKey: (productId, flavor?, size?) => {
+    return get().items.find((i) => matchItem(i, productId, flavor, size));
   },
 }));

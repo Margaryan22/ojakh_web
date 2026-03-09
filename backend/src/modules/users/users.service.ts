@@ -46,4 +46,19 @@ export class UsersService {
 
     return user;
   }
+
+  async updatePhone(id: number, phone: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { phone },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+  }
 }

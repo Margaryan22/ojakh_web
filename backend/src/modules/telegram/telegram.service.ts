@@ -53,6 +53,12 @@ export class TelegramService {
       data: { chatId },
     });
 
+    // Persist chatId on User if they already exist with this phone
+    await this.prisma.user.updateMany({
+      where: { phone },
+      data: { telegramChatId: chatId },
+    });
+
     await this.sendMessage(
       chatId,
       `Ваш код подтверждения: *${session.code}*\n\nКод действителен ${OTP_TTL_MINUTES} минут.`,
@@ -100,6 +106,16 @@ export class TelegramService {
   /** Delete OTP session after successful registration */
   async deleteOtpSession(phone: string): Promise<void> {
     await this.prisma.otpSession.deleteMany({ where: { phone } });
+  }
+
+  /** Send a message to a user by their database userId */
+  async sendToUser(userId: number, text: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { telegramChatId: true },
+    });
+    if (!user?.telegramChatId) return; // user hasn't connected Telegram
+    await this.sendMessage(user.telegramChatId, text);
   }
 
   private async sendMessage(chatId: string, text: string): Promise<void> {

@@ -47,4 +47,10 @@ export class AddCartItemDto {
   @IsInt()
   @Min(1)
   price: number;
+
+  @ApiPropertyOptional({ example: 10, description: 'Max quantity per cart' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxPerCart?: number;
 }
