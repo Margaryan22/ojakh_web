@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -28,32 +28,38 @@ interface AddToCartDialogProps {
 
 export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialogProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [inputValue, setInputValue] = useState('1');
   const addItem = useCartStore((s) => s.addItem);
   const getItemByKey = useCartStore((s) => s.getItemByKey);
   const user = useAuthStore((s) => s.user);
 
-  if (!product) return null;
-
-  const isTort = product.category === 'торты';
-  const step = isTort ? 0.5 : 1;
-  const minQty = 1;
-  const emoji = CATEGORY_EMOJI[product.category as ProductCategory] ?? '🍽️';
-
-  // How many already in cart for this exact sku
-  const existingItem = getItemByKey(product.id, product.flavor, product.size);
+  const isTort = product?.category === 'торты';
+  const existingItem = product ? getItemByKey(product.id, product.flavor, product.size) : undefined;
   const existingQty = existingItem?.quantity ?? 0;
-
-  const productMax = isTort
-    ? Math.min(product.maxPerDay ?? MAX_TORTS_PER_ORDER, MAX_TORTS_PER_ORDER)
-    : Math.min(product.maxPerDay ?? MAX_ITEM_QTY_PER_ORDER, MAX_ITEM_QTY_PER_ORDER);
-
+  const productMax = product
+    ? isTort
+      ? Math.min(product.maxPerDay ?? MAX_TORTS_PER_ORDER, MAX_TORTS_PER_ORDER)
+      : Math.min(product.maxPerDay ?? MAX_ITEM_QTY_PER_ORDER, MAX_ITEM_QTY_PER_ORDER)
+    : 1;
   const available = Math.max(0, productMax - existingQty);
   const maxQty = available;
   const isAtLimit = maxQty <= 0;
 
-  const initialQty = Math.min(isTort ? 1.0 : 1, maxQty > 0 ? maxQty : step);
-  const [quantity, setQuantity] = useState(initialQty);
-  const [inputValue, setInputValue] = useState(isTort ? initialQty.toFixed(1) : String(initialQty));
+  // Reset quantity when dialog opens or product changes
+  useEffect(() => {
+    if (!open || !product) return;
+    const step = isTort ? 0.5 : 1;
+    const initial = Math.min(isTort ? 1.0 : 1, maxQty > 0 ? maxQty : step);
+    setQuantity(initial);
+    setInputValue(isTort ? initial.toFixed(1) : String(initial));
+  }, [open, product?.id]);
+
+  if (!product) return null;
+
+  const step = isTort ? 0.5 : 1;
+  const minQty = 1;
+  const emoji = CATEGORY_EMOJI[product.category as ProductCategory] ?? '🍽️';
 
   const totalPrice = product.price * quantity;
 
