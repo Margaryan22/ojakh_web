@@ -14,4 +14,4 @@ RUN mkdir -p uploads
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma db push && npx prisma db seed && node dist/src/main"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npx prisma db seed && node dist/src/main"]
