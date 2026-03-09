@@ -110,14 +110,13 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
     set({ items: optimistic });
 
     try {
-      const delta = quantity - currentItem.quantity;
-      const { data } = await api.post('/cart/items', {
+      const { data } = await api.patch('/cart/items', {
         product_id: productId,
         name: currentItem.name,
         category: currentItem.category,
         flavor,
         size,
-        quantity: delta,
+        quantity,
         unit: currentItem.unit,
         price: currentItem.price,
       });
