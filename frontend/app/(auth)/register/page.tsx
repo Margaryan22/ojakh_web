@@ -297,7 +297,7 @@ export default function RegisterPage() {
                 <p className="font-medium">Откройте Telegram-бот</p>
                 {botUsername ? (
                   <p className="text-muted-foreground">
-                    Найдите <span className="font-mono text-primary">@{botUsername}</span> и нажмите кнопку «Поделиться контактом» — вам придёт 6-значный код.
+                    Перейдите в <a href={`https://t.me/${botUsername}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">@{botUsername}</a> и нажмите кнопку «Поделиться контактом» — вам придёт 6-значный код.
                   </p>
                 ) : (
                   <p className="text-muted-foreground">

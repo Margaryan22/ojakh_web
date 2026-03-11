@@ -61,6 +61,8 @@ export default function CartPage() {
   const [selectedTime, setSelectedTime] =
     useState<DeliveryTimeSlot>('10:00-14:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deliveryCost, setDeliveryCost] = useState(0);
+  const [isLoadingCost, setIsLoadingCost] = useState(false);
   const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const availableDates = getAvailableDates();
@@ -186,7 +188,7 @@ export default function CartPage() {
     setStep('delivery');
   };
 
-  const handleConfirmStep = () => {
+  const handleConfirmStep = async () => {
     if (!selectedDate) {
       toast.error('Выберите дату доставки');
       return;
@@ -203,6 +205,24 @@ export default function CartPage() {
       toast.error(dateAvailability.reason ?? 'Дата недоступна');
       return;
     }
+
+    // Fetch delivery cost
+    if (!isPickup) {
+      setIsLoadingCost(true);
+      try {
+        const { data } = await api.get(
+          `/delivery/cost?address=${encodeURIComponent(address)}`,
+        );
+        setDeliveryCost(data.cost);
+      } catch {
+        setDeliveryCost(50000); // fallback 500₽
+      } finally {
+        setIsLoadingCost(false);
+      }
+    } else {
+      setDeliveryCost(0);
+    }
+
     setStep('confirm');
   };
 
@@ -686,9 +706,25 @@ export default function CartPage() {
                 </div>
               ))}
               <Separator />
+              <div className='flex justify-between text-sm'>
+                <span className='text-muted-foreground'>Товары:</span>
+                <span>{formatPrice(totalPrice())}</span>
+              </div>
+              {deliveryCost > 0 && (
+                <div className='flex justify-between text-sm'>
+                  <span className='text-muted-foreground'>Доставка:</span>
+                  <span>{isLoadingCost ? '...' : formatPrice(deliveryCost)}</span>
+                </div>
+              )}
+              {isPickup && (
+                <div className='flex justify-between text-sm'>
+                  <span className='text-muted-foreground'>Доставка:</span>
+                  <span className='text-green-600'>Бесплатно (самовывоз)</span>
+                </div>
+              )}
               <div className='flex justify-between font-bold'>
                 <span>Итого:</span>
-                <span>{formatPrice(totalPrice())}</span>
+                <span>{formatPrice(totalPrice() + deliveryCost)}</span>
               </div>
             </CardContent>
           </Card>
