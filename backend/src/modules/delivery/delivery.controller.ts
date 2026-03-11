@@ -41,8 +41,9 @@ export class DeliveryController {
   }
 
   @Get('cost')
-  @ApiOperation({ summary: 'Get mock delivery cost estimate' })
-  getDeliveryCost() {
-    return this.deliveryService.getDeliveryCost();
+  @ApiOperation({ summary: 'Get delivery cost estimate (Yandex Delivery API)' })
+  @ApiQuery({ name: 'address', required: false, example: 'Нижний Новгород, ул. Большая Покровская 1' })
+  getDeliveryCost(@Query('address') address?: string) {
+    return this.deliveryService.getDeliveryCost(address);
   }
 }

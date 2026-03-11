@@ -1,8 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import axios from 'axios';
 
 const ACTIVE_STATUSES = ['new', 'paid', 'preparing', 'ready'];
 const TORT_CATEGORY = 'торты';
+const FALLBACK_COST = 50000; // 500₽ в копейках
 
 export interface DateAvailability {
   available: boolean;
@@ -15,7 +18,12 @@ export interface DateAvailability {
 
 @Injectable()
 export class DeliveryService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(DeliveryService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
 
   async checkDate(dateStr: string, withTort: boolean): Promise<DateAvailability> {
     const date = new Date(dateStr);
@@ -102,8 +110,66 @@ export class DeliveryService {
     return results;
   }
 
-  async getDeliveryCost(): Promise<{ cost: number }> {
-    // Mock delivery cost: 500 RUB = 50000 kopecks
-    return { cost: 50000 };
+  async getDeliveryCost(destinationAddress?: string): Promise<{ cost: number }> {
+    const token = this.config.get<string>('YANDEX_DELIVERY_TOKEN');
+    if (!token || !destinationAddress) {
+      return { cost: FALLBACK_COST };
+    }
+
+    const warehouseAddress =
+      this.config.get<string>('WAREHOUSE_ADDRESS') ??
+      'Нижний Новгород, Мельникова 29А';
+    const warehouseLat = parseFloat(
+      this.config.get<string>('WAREHOUSE_LAT') ?? '56.3269',
+    );
+    const warehouseLon = parseFloat(
+      this.config.get<string>('WAREHOUSE_LON') ?? '43.9548',
+    );
+
+    try {
+      const response = await axios.post(
+        'https://b2b.taxi.yandex.net/b2b/cargo/integration/v2/check-price',
+        {
+          items: [
+            {
+              quantity: 1,
+              size: { height: 0.3, length: 0.4, width: 0.3 },
+              weight: 5,
+            },
+          ],
+          requirements: { taxi_class: 'courier' },
+          route_points: [
+            {
+              fullname: warehouseAddress,
+              coordinates: [warehouseLon, warehouseLat],
+            },
+            {
+              fullname: destinationAddress,
+            },
+          ],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Accept-Language': 'ru',
+          },
+          timeout: 10000,
+        },
+      );
+
+      const price = parseFloat(response.data?.price);
+      if (isNaN(price)) {
+        this.logger.warn('Yandex Delivery вернул невалидную цену, используем fallback');
+        return { cost: FALLBACK_COST };
+      }
+
+      // Yandex возвращает цену в рублях → конвертируем в копейки
+      return { cost: Math.round(price * 100) };
+    } catch (error) {
+      this.logger.error(
+        `Ошибка Yandex Delivery API: ${error?.message ?? error}`,
+      );
+      return { cost: FALLBACK_COST };
+    }
   }
 }

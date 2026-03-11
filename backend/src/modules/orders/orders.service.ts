@@ -105,8 +105,18 @@ export class OrdersService {
       );
     }
 
-    // 6. Calculate subtotal
+    // 6. Calculate subtotal and delivery cost
     const subtotal = cart.items.reduce((sum, item) => sum + item.subtotal, 0);
+
+    let deliveryCost = 0;
+    if (!dto.is_pickup) {
+      const costResult = await this.deliveryService.getDeliveryCost(
+        dto.address?.trim(),
+      );
+      deliveryCost = costResult.cost;
+    }
+
+    const total = subtotal + deliveryCost;
 
     // 7. Create order
     const deliveryDateUtc = new Date(
@@ -125,7 +135,8 @@ export class OrdersService {
         userId,
         items: cart.items as any,
         subtotal,
-        total: subtotal,
+        deliveryCost,
+        total,
         deliveryDate: deliveryDateUtc,
         deliveryTime: dto.delivery_time ?? null,
         isPickup: dto.is_pickup,
