@@ -14,6 +14,7 @@ interface AuthActions {
   setAccessToken: (token: string) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (data: { email: string; name: string; password: string; phone: string }) => Promise<void>;
+  socialLogin: (provider: 'telegram' | 'google' | 'apple', payload: any) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
@@ -48,6 +49,21 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     set({ isLoading: true });
     try {
       const { data } = await api.post('/auth/register', registerData);
+      set({
+        user: data.user,
+        accessToken: data.accessToken,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  socialLogin: async (provider, payload) => {
+    set({ isLoading: true });
+    try {
+      const { data } = await api.post(`/auth/${provider}`, payload);
       set({
         user: data.user,
         accessToken: data.accessToken,

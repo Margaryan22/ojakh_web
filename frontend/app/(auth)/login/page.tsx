@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/auth.store';
+import { SocialLoginButtons } from '@/components/auth/social-login-buttons';
 import { AxiosError } from 'axios';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -124,6 +125,7 @@ export default function LoginPage() {
           >
             {isLoading ? 'Вход...' : 'Войти'}
           </Button>
+          <SocialLoginButtons />
           <p className="text-sm text-muted-foreground text-center">
             Нет аккаунта?{' '}
             <Link href="/register" className="text-primary hover:underline font-semibold transition-colors">
