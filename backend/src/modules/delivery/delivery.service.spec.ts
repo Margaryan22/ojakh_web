@@ -36,19 +36,19 @@ describe('DeliveryService', () => {
       const result = await service.checkDate(futureDate, false);
 
       expect(result.available).toBe(true);
-      expect(result.orderCount).toBe(0);
-      expect(result.maxOrders).toBe(15);
+      expect(result.unitCount).toBe(0);
+      expect(result.maxUnits).toBe(100);
       expect(result.tortCount).toBe(0);
       expect(result.maxTorts).toBe(2);
     });
 
     it('должен использовать кастомные лимиты из DailyLimit', async () => {
-      mockPrisma.dailyLimit.findUnique.mockResolvedValue({ maxOrders: 5, maxTorts: 1 });
+      mockPrisma.dailyLimit.findUnique.mockResolvedValue({ maxUnits: 5, maxTorts: 1 });
       mockPrisma.order.findMany.mockResolvedValue([]);
 
       const result = await service.checkDate(futureDate, false);
 
-      expect(result.maxOrders).toBe(5);
+      expect(result.maxUnits).toBe(5);
       expect(result.maxTorts).toBe(1);
     });
 
