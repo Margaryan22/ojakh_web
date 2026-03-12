@@ -48,9 +48,12 @@ export const CATEGORY_ORDER: ProductCategory[] = [
 ];
 
 export const DELIVERY_TIME_SLOTS: DeliveryTimeSlot[] = [
-  '10:00-14:00',
-  '14:00-18:00',
-  '18:00-22:00',
+  '10:00-12:00',
+  '12:00-14:00',
+  '14:00-16:00',
+  '16:00-18:00',
+  '18:00-20:00',
+  '20:00-22:00',
 ];
 
 export const MAX_TORTS_PER_ORDER = 2;

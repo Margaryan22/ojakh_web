@@ -13,9 +13,9 @@ export class CreateOrderDto {
   @IsDateString()
   delivery_date: string;
 
-  @ApiPropertyOptional({ example: '14:00-18:00' })
+  @ApiPropertyOptional({ example: '14:00-16:00' })
   @IsOptional()
-  @IsIn(['10:00-14:00', '14:00-18:00', '18:00-22:00'])
+  @IsIn(['10:00-12:00', '12:00-14:00', '14:00-16:00', '16:00-18:00', '18:00-20:00', '20:00-22:00'])
   delivery_time?: string;
 
   @ApiProperty({ example: false })
