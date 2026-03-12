@@ -59,7 +59,7 @@ export default function CartPage() {
   const [addressValidated, setAddressValidated] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] =
-    useState<DeliveryTimeSlot>('10:00-14:00');
+    useState<DeliveryTimeSlot>('10:00-12:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [isLoadingCost, setIsLoadingCost] = useState(false);
