@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/auth.store';
+import { SocialLoginButtons } from '@/components/auth/social-login-buttons';
 import api from '@/lib/api';
 import { AxiosError } from 'axios';
 import {
@@ -279,6 +280,7 @@ export default function RegisterPage() {
             >
               {isRequestingOtp ? 'Запрос...' : 'Получить код в Telegram'}
             </Button>
+            <SocialLoginButtons />
             <p className="text-sm text-muted-foreground text-center">
               Уже есть аккаунт?{' '}
               <Link href="/login" className="text-primary hover:underline font-semibold">Войти</Link>

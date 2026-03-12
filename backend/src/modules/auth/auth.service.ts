@@ -7,11 +7,14 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import axios from 'axios';
+import { OAuth2Client } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { TelegramLoginDto, GoogleLoginDto, AppleLoginDto } from './dto/social-login.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 export interface TokenPayload {
@@ -131,6 +134,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (!user.password) {
+      throw new UnauthorizedException('Этот аккаунт использует вход через соцсеть');
+    }
+
     const passwordMatch = await bcrypt.compare(dto.password, user.password);
     if (!passwordMatch) {
       throw new UnauthorizedException('Invalid credentials');
@@ -141,6 +148,175 @@ export class AuthService {
       user: this.sanitizeUser(user),
       ...tokens,
     };
+  }
+
+  // ─── Social Login: Telegram ──────────────────────────────────────────────
+
+  async loginWithTelegram(dto: TelegramLoginDto): Promise<{ user: any; accessToken: string; refreshToken: string }> {
+    const botToken = this.config.get<string>('TELEGRAM_BOT_TOKEN');
+    if (!botToken) throw new BadRequestException('Telegram login not configured');
+
+    // Verify hash
+    const secret = crypto.createHash('sha256').update(botToken).digest();
+    const checkString = Object.keys(dto)
+      .filter((k) => k !== 'hash')
+      .sort()
+      .map((k) => `${k}=${(dto as any)[k]}`)
+      .join('\n');
+    const hmac = crypto.createHmac('sha256', secret).update(checkString).digest('hex');
+
+    if (hmac !== dto.hash) {
+      throw new UnauthorizedException('Invalid Telegram auth data');
+    }
+
+    // Check auth_date freshness (5 min)
+    if (Date.now() / 1000 - dto.auth_date > 300) {
+      throw new UnauthorizedException('Telegram auth data expired');
+    }
+
+    const telegramChatId = String(dto.id);
+    const name = [dto.first_name, dto.last_name].filter(Boolean).join(' ') || 'Telegram User';
+
+    return this.findOrCreateSocialUser({
+      providerField: 'telegramChatId',
+      providerId: telegramChatId,
+      email: `tg_${dto.id}@oauth.local`,
+      name,
+    });
+  }
+
+  // ─── Social Login: Google ───────────────────────────────────────────────
+
+  async loginWithGoogle(dto: GoogleLoginDto): Promise<{ user: any; accessToken: string; refreshToken: string }> {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    if (!clientId) throw new BadRequestException('Google login not configured');
+
+    const client = new OAuth2Client(clientId);
+    let payload: any;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: dto.idToken,
+        audience: clientId,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      throw new UnauthorizedException('Invalid Google ID token');
+    }
+
+    if (!payload?.sub) throw new UnauthorizedException('Invalid Google token payload');
+
+    return this.findOrCreateSocialUser({
+      providerField: 'googleId',
+      providerId: payload.sub,
+      email: payload.email,
+      name: payload.name || payload.email?.split('@')[0] || 'Google User',
+    });
+  }
+
+  // ─── Social Login: Apple ────────────────────────────────────────────────
+
+  async loginWithApple(dto: AppleLoginDto): Promise<{ user: any; accessToken: string; refreshToken: string }> {
+    const clientId = this.config.get<string>('APPLE_CLIENT_ID');
+    if (!clientId) throw new BadRequestException('Apple login not configured');
+
+    // Decode and verify Apple ID token
+    let applePayload: any;
+    try {
+      applePayload = await this.verifyAppleToken(dto.idToken, clientId);
+    } catch {
+      throw new UnauthorizedException('Invalid Apple ID token');
+    }
+
+    if (!applePayload?.sub) throw new UnauthorizedException('Invalid Apple token payload');
+
+    return this.findOrCreateSocialUser({
+      providerField: 'appleId',
+      providerId: applePayload.sub,
+      email: applePayload.email || undefined,
+      name: dto.name || 'Apple User',
+    });
+  }
+
+  private async verifyAppleToken(idToken: string, clientId: string): Promise<any> {
+    // Fetch Apple public keys
+    const { data: jwks } = await axios.get('https://appleid.apple.com/auth/keys');
+
+    // Decode JWT header to find kid
+    const headerB64 = idToken.split('.')[0];
+    const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString());
+
+    const key = jwks.keys.find((k: any) => k.kid === header.kid);
+    if (!key) throw new Error('Apple key not found');
+
+    // Build RSA public key from JWK
+    const pubKey = crypto.createPublicKey({ key, format: 'jwk' });
+
+    // Verify signature
+    const [headerPart, payloadPart, signaturePart] = idToken.split('.');
+    const signedData = `${headerPart}.${payloadPart}`;
+    const signature = Buffer.from(signaturePart, 'base64url');
+
+    const isValid = crypto.createVerify('RSA-SHA256')
+      .update(signedData)
+      .verify(pubKey, signature);
+
+    if (!isValid) throw new Error('Invalid signature');
+
+    const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString());
+
+    // Verify claims
+    if (payload.iss !== 'https://appleid.apple.com') throw new Error('Invalid issuer');
+    if (payload.aud !== clientId) throw new Error('Invalid audience');
+    if (payload.exp < Date.now() / 1000) throw new Error('Token expired');
+
+    return payload;
+  }
+
+  // ─── Common social login helper ─────────────────────────────────────────
+
+  private async findOrCreateSocialUser(opts: {
+    providerField: 'telegramChatId' | 'googleId' | 'appleId';
+    providerId: string;
+    email?: string;
+    name: string;
+  }): Promise<{ user: any; accessToken: string; refreshToken: string }> {
+    // 1. Find by provider ID
+    let user = await this.prisma.user.findFirst({
+      where: { [opts.providerField]: opts.providerId },
+    });
+
+    if (user) {
+      const tokens = this.generateTokens(user);
+      return { user: this.sanitizeUser(user), ...tokens };
+    }
+
+    // 2. Find by email and link provider
+    if (opts.email && !opts.email.endsWith('@oauth.local')) {
+      user = await this.prisma.user.findUnique({
+        where: { email: opts.email.toLowerCase() },
+      });
+      if (user) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { [opts.providerField]: opts.providerId },
+        });
+        const tokens = this.generateTokens(user);
+        return { user: this.sanitizeUser(user), ...tokens };
+      }
+    }
+
+    // 3. Create new user
+    const email = opts.email?.toLowerCase() || `${opts.providerField}_${opts.providerId}@oauth.local`;
+    user = await this.prisma.user.create({
+      data: {
+        email,
+        name: opts.name,
+        [opts.providerField]: opts.providerId,
+      } as any,
+    });
+
+    const tokens = this.generateTokens(user);
+    return { user: this.sanitizeUser(user), ...tokens };
   }
 
   async refresh(refreshToken: string): Promise<{ accessToken: string }> {
