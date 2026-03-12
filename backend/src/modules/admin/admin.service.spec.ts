@@ -215,10 +215,10 @@ describe('AdminService', () => {
       const result = await service.getCalendar(7);
       const tomorrowEntry = result.find((d) => d.date === tomorrowKey);
 
-      expect(tomorrowEntry?.orderCount).toBe(2);
+      expect(tomorrowEntry?.unitCount).toBe(0);
     });
 
-    it('доступность должна быть false когда orderCount >= 15', async () => {
+    it('доступность должна быть false когда unitCount >= maxUnits', async () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(0, 0, 0, 0);
