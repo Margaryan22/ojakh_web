@@ -622,33 +622,23 @@ export default function CartPage() {
               </div>
 
               {/* Date availability info */}
-              {dateAvailability && selectedDate && (
-                <div className='text-xs space-y-1 mt-2'>
-                  <p
-                    className={cn(
-                      dateAvailability.available
-                        ? 'text-green-600'
-                        : 'text-red-600',
-                    )}
-                  >
-                    {dateAvailability.available
-                      ? 'Дата доступна'
-                      : (dateAvailability.reason ?? 'Дата недоступна')}
-                  </p>
-                  {hasTorts && (
-                    <p className='text-muted-foreground'>
-                      Тортов на эту дату: {dateAvailability.tortCount} /{' '}
-                      {dateAvailability.maxTorts}
-                    </p>
-                  )}
-                </div>
+              {dateAvailability && selectedDate && !dateAvailability.available && (
+                <p className='text-sm text-foreground mt-2'>
+                  Заказов очень много на этот день, выбери другой
+                </p>
+              )}
+              {dateAvailability && selectedDate && hasTorts && (
+                <p className='text-xs text-muted-foreground mt-1'>
+                  Тортов на эту дату: {dateAvailability.tortCount} /{' '}
+                  {dateAvailability.maxTorts}
+                </p>
               )}
             </div>
 
             {/* Time slot */}
             <div className='space-y-2'>
               <Label>Время доставки</Label>
-              <div className='flex gap-2'>
+              <div className='grid grid-cols-3 gap-2'>
                 {DELIVERY_TIME_SLOTS.map((slot) => (
                   <Button
                     key={slot}

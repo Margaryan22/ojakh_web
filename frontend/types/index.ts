@@ -1,6 +1,6 @@
 export type ProductCategory = 'хинкали' | 'пельмени' | 'блинчики' | 'хлеб' | 'десерты' | 'торты';
 export type OrderStatus = 'new' | 'paid' | 'preparing' | 'ready' | 'delivery_ordered' | 'completed' | 'cancelled';
-export type DeliveryTimeSlot = '10:00-14:00' | '14:00-18:00' | '18:00-22:00';
+export type DeliveryTimeSlot = '10:00-12:00' | '12:00-14:00' | '14:00-16:00' | '16:00-18:00' | '18:00-20:00' | '20:00-22:00';
 
 export interface User {
   id: number;
