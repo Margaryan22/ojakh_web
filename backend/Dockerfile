@@ -8,7 +8,7 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci --legacy-peer-deps
 
 COPY . .
-RUN node node_modules/.bin/prisma generate && npm run build
+RUN node node_modules/prisma/build/index.js generate && npm run build
 
 # ── Runtime ─────────────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
