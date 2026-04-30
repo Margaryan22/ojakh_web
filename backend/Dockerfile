@@ -5,7 +5,7 @@ WORKDIR /app
 # Copy lock files first — layer is cached until dependencies change
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --legacy-peer-deps
+    npm ci --legacy-peer-deps --include=dev
 
 COPY . .
 RUN npm run prisma:generate && npm run build
