@@ -3,8 +3,9 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps && \
+    ls node_modules/.bin/prisma && \
+    echo "prisma OK"
 
 COPY . .
 RUN npm run prisma:generate && npm run build
