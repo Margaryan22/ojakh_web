@@ -21,6 +21,14 @@ export class TelegramController {
 
     const chatId = String(message.chat.id);
 
+    if (message?.text?.startsWith('/start ')) {
+      const token = message.text.split(' ')[1];
+      if (token) {
+        await this.telegramService.handleStartCommand(token, message.from);
+        return;
+      }
+    }
+
     if (message.contact) {
       // User shared their phone via the "Share Contact" button
       const phone = message.contact.phone_number as string;

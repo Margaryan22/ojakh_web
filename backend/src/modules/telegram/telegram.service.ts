@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
 const OTP_TTL_MINUTES = 10;
 
@@ -124,6 +125,62 @@ export class TelegramService {
       text,
       parse_mode: 'Markdown',
     });
+  }
+
+  // ─── TgAuthSession (deep link OTP) ──────────────────────────────────────────
+
+  async createTgSession(): Promise<{ token: string }> {
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
+    await this.prisma.tgAuthSession.create({ data: { token, expiresAt } });
+    return { token };
+  }
+
+  async handleStartCommand(
+    token: string,
+    from: { id: number; first_name?: string; last_name?: string; username?: string },
+  ): Promise<void> {
+    const session = await this.prisma.tgAuthSession.findUnique({ where: { token } });
+    if (!session || new Date() > session.expiresAt) return;
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const telegramName = [from.first_name, from.last_name].filter(Boolean).join(' ') || 'Пользователь';
+
+    await this.prisma.tgAuthSession.update({
+      where: { token },
+      data: {
+        code,
+        telegramId: String(from.id),
+        telegramName,
+        telegramUsername: from.username ?? null,
+      },
+    });
+
+    await this.sendMessage(
+      String(from.id),
+      `Ваш код для входа: *${code}*\n\nКод действителен ${OTP_TTL_MINUTES} минут.`,
+    );
+  }
+
+  async verifyTgCode(token: string, code: string): Promise<{
+    telegramId: string;
+    telegramName: string;
+    telegramUsername?: string;
+  }> {
+    const session = await this.prisma.tgAuthSession.findUnique({ where: { token } });
+
+    if (!session) throw new BadRequestException('Сессия не найдена. Начните заново.');
+    if (new Date() > session.expiresAt) throw new BadRequestException('Код истёк. Запросите новый.');
+    if (!session.telegramId) throw new BadRequestException('Откройте ссылку в Telegram, чтобы получить код.');
+    if (session.code !== code) throw new BadRequestException('Неверный код.');
+
+    await this.prisma.tgAuthSession.delete({ where: { token } });
+
+    return {
+      telegramId: session.telegramId,
+      telegramName: session.telegramName ?? 'Пользователь',
+      telegramUsername: session.telegramUsername ?? undefined,
+    };
   }
 
   /** Send a "Share Contact" keyboard to the user */
