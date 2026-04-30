@@ -115,3 +115,15 @@ model OtpSession {
   verified  Boolean  @default(false)
   createdAt DateTime @default(now())
 }
+
+// ─── TgAuthSession ────────────────────────────────────────────────────────────
+
+model TgAuthSession {
+  token            String   @id
+  code             String?
+  telegramId       String?
+  telegramName     String?
+  telegramUsername String?
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+}

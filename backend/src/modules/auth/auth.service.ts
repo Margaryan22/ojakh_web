@@ -150,6 +150,25 @@ export class AuthService {
     };
   }
 
+  // ─── Telegram deep link OTP ─────────────────────────────────────────────
+
+  async startTgAuth(): Promise<{ token: string; deepLink: string }> {
+    const { token } = await this.telegramService.createTgSession();
+    const botUsername = this.config.get<string>('TELEGRAM_BOT_USERNAME', '');
+    return { token, deepLink: `https://t.me/${botUsername}?start=${token}` };
+  }
+
+  async verifyTgCode(token: string, code: string): Promise<{ user: any; accessToken: string; refreshToken: string }> {
+    const { telegramId, telegramName } = await this.telegramService.verifyTgCode(token, code);
+
+    return this.findOrCreateSocialUser({
+      providerField: 'telegramChatId',
+      providerId: telegramId,
+      email: `tg_${telegramId}@oauth.local`,
+      name: telegramName,
+    });
+  }
+
   // ─── Social Login: Telegram ──────────────────────────────────────────────
 
   async loginWithTelegram(dto: TelegramLoginDto): Promise<{ user: any; accessToken: string; refreshToken: string }> {

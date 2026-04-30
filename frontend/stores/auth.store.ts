@@ -15,6 +15,7 @@ interface AuthActions {
   login: (email: string, password: string) => Promise<void>;
   register: (data: { email: string; name: string; password: string; phone: string }) => Promise<void>;
   socialLogin: (provider: 'telegram' | 'google' | 'apple', payload: any) => Promise<void>;
+  loginWithTgCode: (token: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
@@ -54,6 +55,17 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
         accessToken: data.accessToken,
         isLoading: false,
       });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  loginWithTgCode: async (token: string, code: string) => {
+    set({ isLoading: true });
+    try {
+      const { data } = await api.post('/auth/tg-verify', { token, code });
+      set({ user: data.user, accessToken: data.accessToken, isLoading: false });
     } catch (error) {
       set({ isLoading: false });
       throw error;
