@@ -7,9 +7,8 @@ echo ">>> Pulling latest code..."
 git pull origin main
 
 echo ">>> Building and restarting services..."
-# --build: пересобирает образы если изменился код
-# docker compose сам определит какие контейнеры нужно перезапустить
-docker compose up -d --build
+docker compose build --parallel
+docker compose up -d
 
 echo ">>> Status:"
 docker compose ps
