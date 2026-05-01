@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import api from '@/lib/api';
 import type { CartItem } from '@/types';
-import { MAX_TORTS_PER_ORDER } from '@/lib/constants';
+import { MAX_TORTS_PER_ORDER, CAKE_CATEGORY } from '@/lib/constants';
 
 interface CartState {
   items: CartItem[];
@@ -49,7 +49,7 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
     const itemWithSubtotal: CartItem = { ...newItem, subtotal };
 
     // Check tort limit
-    if (newItem.category === 'торты') {
+    if (newItem.category === CAKE_CATEGORY) {
       const currentTortCount = get().tortCount();
       if (currentTortCount + 1 > MAX_TORTS_PER_ORDER) {
         throw new Error(`Максимум ${MAX_TORTS_PER_ORDER} торта в одном заказе`);
@@ -163,7 +163,7 @@ export const useCartStore = create<CartState & CartActions>((set, get) => ({
   },
 
   tortCount: () => {
-    return get().items.filter((item) => item.category === 'торты').length;
+    return get().items.filter((item) => item.category === CAKE_CATEGORY).length;
   },
 
   getItemQuantity: (productId) => {

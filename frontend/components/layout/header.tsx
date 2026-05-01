@@ -29,6 +29,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
 import { useNotificationsStore } from '@/stores/notifications.store';
 import { cn } from '@/lib/utils';
+import { ADMIN_ROLE, POLLING_INTERVAL_MS } from '@/lib/constants';
 
 const navLinks = [
   { href: '/catalog', label: 'Каталог' },
@@ -36,7 +37,7 @@ const navLinks = [
   { href: '/orders', label: 'Заказы' },
 ];
 
-const STATUS_LABELS: Record<string, string> = {
+const NOTIFICATION_LABELS: Record<string, string> = {
   preparing: 'Готовится',
   ready: 'Готов',
   delivery_ordered: 'Едет к вам',
@@ -61,7 +62,7 @@ export function Header() {
     if (user) {
       fetchNotifications();
       // Poll every 30s
-      const interval = setInterval(fetchNotifications, 30_000);
+      const interval = setInterval(fetchNotifications, POLLING_INTERVAL_MS);
       return () => clearInterval(interval);
     }
   }, [user, fetchNotifications]);
@@ -114,7 +115,7 @@ export function Header() {
                 )}
                 <div className={cn(!n.isRead ? '' : 'pl-4')}>
                   <p className='font-medium text-xs text-muted-foreground mb-0.5'>
-                    Заказ #{n.orderId} · {STATUS_LABELS[n.status] ?? n.status}
+                    Заказ #{n.orderId} · {NOTIFICATION_LABELS[n.status] ?? n.status}
                   </p>
                   <p className='text-foreground leading-snug'>{n.message}</p>
                   <p className='text-[11px] text-muted-foreground mt-1'>
@@ -207,7 +208,7 @@ export function Header() {
                   <ClipboardList className='mr-2 h-4 w-4' />
                   Мои заказы
                 </DropdownMenuItem>
-                {user.role === 'admin' && (
+                {user.role === ADMIN_ROLE && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => router.push('/admin')} className='cursor-pointer'>
@@ -321,7 +322,7 @@ export function Header() {
                   <Heart className='h-4 w-4' />
                   Избранное
                 </Link>
-                {user.role === 'admin' && (
+                {user.role === ADMIN_ROLE && (
                   <Link
                     href='/admin'
                     onClick={() => setMobileOpen(false)}

@@ -29,7 +29,7 @@ import {
   getAvailableDates,
   toDateString,
 } from '@/lib/format';
-import { DELIVERY_TIME_SLOTS, MAX_ITEM_QTY_PER_ORDER } from '@/lib/constants';
+import { DELIVERY_TIME_SLOTS, MAX_ITEM_QTY_PER_ORDER, CAKE_CATEGORY, FALLBACK_DELIVERY_COST } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import type { DateAvailability, DeliveryTimeSlot } from '@/types';
@@ -215,7 +215,7 @@ export default function CartPage() {
         );
         setDeliveryCost(data.cost);
       } catch {
-        setDeliveryCost(50000); // fallback 500₽
+        setDeliveryCost(FALLBACK_DELIVERY_COST);
       } finally {
         setIsLoadingCost(false);
       }
@@ -249,7 +249,7 @@ export default function CartPage() {
     }
   };
 
-  const isTortItem = (category: string) => category === 'торты';
+  const isTortItem = (category: string) => category === CAKE_CATEGORY;
 
   if (!user) {
     return (

@@ -56,6 +56,15 @@ export const DELIVERY_TIME_SLOTS: DeliveryTimeSlot[] = [
   '20:00-22:00',
 ];
 
+export const CAKE_CATEGORY = 'торты';
+export const ADMIN_ROLE = 'admin';
+
 export const MAX_TORTS_PER_ORDER = 2;
 export const MAX_TORTS_PER_DAY = 2;
 export const MAX_ITEM_QTY_PER_ORDER = 50;
+
+export const MIN_DAYS_AHEAD = 2;
+export const MAX_DAYS_AHEAD = 15;
+
+export const POLLING_INTERVAL_MS = 30_000;
+export const FALLBACK_DELIVERY_COST = 50_000;

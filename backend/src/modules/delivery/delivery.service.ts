@@ -2,10 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
-
-const ACTIVE_STATUSES = ['new', 'paid', 'preparing', 'ready'];
-const TORT_CATEGORY = 'торты';
-const FALLBACK_COST = 50000; // 500₽ в копейках
+import {
+  ACTIVE_STATUSES,
+  TORT_CATEGORY,
+  FALLBACK_DELIVERY_COST,
+  DEFAULT_MAX_UNITS,
+  MAX_TORTS,
+  MIN_DAYS_AHEAD,
+  MAX_DAYS_AHEAD,
+} from '../../common/constants';
 
 export interface DateAvailability {
   available: boolean;
@@ -37,8 +42,8 @@ export class DeliveryService {
       where: { deliveryDate: dateOnly },
     });
 
-    const maxUnits = limit?.maxUnits ?? 100;
-    const maxTorts = limit?.maxTorts ?? 2;
+    const maxUnits = limit?.maxUnits ?? DEFAULT_MAX_UNITS;
+    const maxTorts = limit?.maxTorts ?? MAX_TORTS;
 
     // Get active orders for this date
     const activeOrders = await this.prisma.order.findMany({
@@ -96,7 +101,7 @@ export class DeliveryService {
   async getCalendar(withTort: boolean): Promise<Array<DateAvailability & { date: string }>> {
     const today = new Date();
     const dates: string[] = [];
-    for (let i = 2; i <= 15; i++) {
+    for (let i = MIN_DAYS_AHEAD; i <= MAX_DAYS_AHEAD; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
       dates.push(d.toISOString().split('T')[0]);
@@ -113,7 +118,7 @@ export class DeliveryService {
   async getDeliveryCost(destinationAddress?: string): Promise<{ cost: number }> {
     const token = this.config.get<string>('YANDEX_DELIVERY_TOKEN');
     if (!token || !destinationAddress) {
-      return { cost: FALLBACK_COST };
+      return { cost: FALLBACK_DELIVERY_COST };
     }
 
     const warehouseAddress =
@@ -160,7 +165,7 @@ export class DeliveryService {
       const price = parseFloat(response.data?.price);
       if (isNaN(price)) {
         this.logger.warn('Yandex Delivery вернул невалидную цену, используем fallback');
-        return { cost: FALLBACK_COST };
+        return { cost: FALLBACK_DELIVERY_COST };
       }
 
       // Yandex возвращает цену в рублях → конвертируем в копейки
@@ -169,7 +174,7 @@ export class DeliveryService {
       this.logger.error(
         `Ошибка Yandex Delivery API: ${error?.message ?? error}`,
       );
-      return { cost: FALLBACK_COST };
+      return { cost: FALLBACK_DELIVERY_COST };
     }
   }
 }

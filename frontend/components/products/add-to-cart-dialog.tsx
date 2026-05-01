@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { formatPrice } from '@/lib/format';
-import { CATEGORY_EMOJI, MAX_ITEM_QTY_PER_ORDER, MAX_TORTS_PER_ORDER } from '@/lib/constants';
+import { CATEGORY_EMOJI, MAX_ITEM_QTY_PER_ORDER, MAX_TORTS_PER_ORDER, CAKE_CATEGORY } from '@/lib/constants';
 import { useCartStore } from '@/stores/cart.store';
 import { useAuthStore } from '@/stores/auth.store';
 import type { Product, ProductCategory } from '@/types';
@@ -34,7 +34,7 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
   const getItemByKey = useCartStore((s) => s.getItemByKey);
   const user = useAuthStore((s) => s.user);
 
-  const isTort = product?.category === 'торты';
+  const isTort = product?.category === CAKE_CATEGORY;
   const existingItem = product ? getItemByKey(product.id, product.flavor, product.size) : undefined;
   const existingQty = existingItem?.quantity ?? 0;
   const productMax = product

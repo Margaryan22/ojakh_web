@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { MAX_FILE_SIZE } from './common/constants';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -37,7 +38,7 @@ async function bootstrap() {
 
   // ── Multipart (file uploads) ──────────────────────────────────────────────
   await app.register(require('@fastify/multipart'), {
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: MAX_FILE_SIZE },
   });
 
   // ── Static files (uploads) ────────────────────────────────────────────────

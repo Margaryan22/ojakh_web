@@ -18,9 +18,13 @@ export class TelegramService {
     this.botApiBase = `https://api.telegram.org/bot${token}`;
   }
 
+  private generateOtp(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
   /** Generate OTP and store session keyed by phone */
   async createOtpSession(phone: string): Promise<void> {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = this.generateOtp();
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
     await this.prisma.otpSession.upsert({
@@ -143,7 +147,7 @@ export class TelegramService {
     const session = await this.prisma.tgAuthSession.findUnique({ where: { token } });
     if (!session || new Date() > session.expiresAt) return;
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = this.generateOtp();
     const telegramName = [from.first_name, from.last_name].filter(Boolean).join(' ') || 'Пользователь';
 
     await this.prisma.tgAuthSession.update({

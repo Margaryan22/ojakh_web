@@ -7,6 +7,7 @@ import { ClipboardList, Package, CalendarDays, BarChart2, ArrowLeft } from 'luci
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth.store';
 import { cn } from '@/lib/utils';
+import { ADMIN_ROLE } from '@/lib/constants';
 
 const adminLinks = [
   { href: '/admin', label: 'Заказы', icon: ClipboardList },
@@ -26,12 +27,12 @@ export default function AdminLayout({
   const isInitialized = useAuthStore((s) => s.isInitialized);
 
   useEffect(() => {
-    if (isInitialized && (!user || user.role !== 'admin')) {
+    if (isInitialized && (!user || user.role !== ADMIN_ROLE)) {
       router.replace('/catalog');
     }
   }, [user, isInitialized, router]);
 
-  if (!isInitialized || !user || user.role !== 'admin') {
+  if (!isInitialized || !user || user.role !== ADMIN_ROLE) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-pulse text-muted-foreground">Загрузка...</div>
