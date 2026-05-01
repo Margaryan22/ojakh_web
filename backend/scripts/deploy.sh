@@ -21,8 +21,12 @@ fi
 echo ">>> Pulling latest code..."
 git pull origin main
 
-echo ">>> Building and restarting services..."
-docker compose build --parallel
+echo ">>> Building backend..."
+docker compose build backend
+
+echo ">>> Building frontend..."
+docker compose build frontend
+
 docker compose up -d
 
 echo ">>> Status:"
