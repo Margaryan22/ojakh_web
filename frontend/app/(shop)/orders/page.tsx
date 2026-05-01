@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice, formatDate } from '@/lib/format';
-import { STATUS_LABELS, STATUS_COLORS } from '@/lib/constants';
+import { STATUS_LABELS, STATUS_COLORS, POLLING_INTERVAL_MS } from '@/lib/constants';
 import { useAuthStore } from '@/stores/auth.store';
 import type { Order, OrderStatus } from '@/types';
 
@@ -27,7 +27,7 @@ export default function OrdersPage() {
       return data;
     },
     enabled: !!user,
-    refetchInterval: 30000,
+    refetchInterval: POLLING_INTERVAL_MS,
   });
   const orders: Order[] = ordersData?.orders ?? [];
 

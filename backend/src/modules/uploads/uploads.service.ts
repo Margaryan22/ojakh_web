@@ -8,8 +8,8 @@ import { join, extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { pipeline } from 'stream/promises';
 import { MultipartFile } from '@fastify/multipart';
+import { MAX_FILE_SIZE } from '../../common/constants';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_MIME_PREFIX = 'image/';
 
 @Injectable()

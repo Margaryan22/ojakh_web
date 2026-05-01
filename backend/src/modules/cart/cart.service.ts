@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
+import { TORT_CATEGORY, MAX_TORTS } from '../../common/constants';
 
 export interface CartItem {
   product_id: number;
@@ -17,9 +18,6 @@ export interface CartItem {
   subtotal: number;    // kopecks total
   maxPerCart?: number; // max quantity per cart
 }
-
-const TORT_CATEGORY = 'торты';
-const MAX_TORTS_PER_CART = 2;
 
 function itemKey(item: { product_id: number; flavor?: string; size?: string }): string {
   return `${item.product_id}:${item.flavor ?? ''}:${item.size ?? ''}`;
@@ -64,9 +62,9 @@ export class CartService {
           const currentTortCount = items.filter(
             (i) => i.category === TORT_CATEGORY,
           ).length;
-          if (currentTortCount >= MAX_TORTS_PER_CART) {
+          if (currentTortCount >= MAX_TORTS) {
             throw new BadRequestException(
-              `В одном заказе может быть не более ${MAX_TORTS_PER_CART} вариантов торта`,
+              `В одном заказе может быть не более ${MAX_TORTS} вариантов торта`,
             );
           }
         }

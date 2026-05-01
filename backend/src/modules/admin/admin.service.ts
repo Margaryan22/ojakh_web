@@ -1,9 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-
-const ACTIVE_STATUSES = ['new', 'paid', 'preparing', 'ready'];
-const TORT_CATEGORY = 'торты';
+import { ACTIVE_STATUSES, TORT_CATEGORY, DEFAULT_MAX_UNITS, MAX_TORTS } from '../../common/constants';
 
 @Injectable()
 export class AdminService {
@@ -176,8 +174,7 @@ export class AdminService {
       dailyLimits.map((l) => [l.deliveryDate.toISOString().split('T')[0], l]),
     );
 
-    const DEFAULT_MAX_UNITS = 100;
-    const DEFAULT_MAX_TORTS = 2;
+
     const result: Array<{ date: string; unitCount: number; tortCount: number; maxUnits: number; maxTorts: number; available: boolean }> = [];
     const cursor = new Date(today);
 
@@ -186,7 +183,7 @@ export class AdminService {
       const entry = calendarMap.get(key) ?? { unitCount: 0, tortCount: 0 };
       const limit = limitsMap.get(key);
       const maxUnits = limit?.maxUnits ?? DEFAULT_MAX_UNITS;
-      const maxTorts = limit?.maxTorts ?? DEFAULT_MAX_TORTS;
+      const maxTorts = limit?.maxTorts ?? MAX_TORTS;
       result.push({
         date: key,
         ...entry,

@@ -1,3 +1,5 @@
+import { MIN_DAYS_AHEAD, MAX_DAYS_AHEAD } from '@/lib/constants';
+
 export function formatPrice(kopecks: number): string {
   return new Intl.NumberFormat('ru-RU', {
     style: 'currency',
@@ -25,7 +27,7 @@ export function getAvailableDates(): Date[] {
   const dates: Date[] = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  for (let i = 2; i <= 15; i++) {
+  for (let i = MIN_DAYS_AHEAD; i <= MAX_DAYS_AHEAD; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     dates.push(date);

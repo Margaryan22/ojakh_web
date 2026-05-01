@@ -11,11 +11,7 @@ import { DeliveryService } from '../delivery/delivery.service';
 import { PaymentsService } from '../payments/payments.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import axios from 'axios';
-
-const TORT_CATEGORY = 'торты';
-const MAX_TORTS_PER_ORDER = 2;
-const MIN_DAYS_AHEAD = 2;
-const MAX_DAYS_AHEAD = 15;
+import { TORT_CATEGORY, MAX_TORTS, MIN_DAYS_AHEAD, MAX_DAYS_AHEAD } from '../../common/constants';
 
 @Injectable()
 export class OrdersService {
@@ -68,9 +64,9 @@ export class OrdersService {
 
     // 4. Check tort count in cart
     const tortItems = cart.items.filter((i) => i.category === TORT_CATEGORY);
-    if (tortItems.length > MAX_TORTS_PER_ORDER) {
+    if (tortItems.length > MAX_TORTS) {
       throw new BadRequestException(
-        `В одном заказе не более ${MAX_TORTS_PER_ORDER} вариантов торта`,
+        `В одном заказе не более ${MAX_TORTS} вариантов торта`,
       );
     }
 
