@@ -25,6 +25,10 @@ export interface Product {
   ingredients?: string;
   available: boolean;
   maxPerDay: number;
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
 }
 
 export interface CartItem {

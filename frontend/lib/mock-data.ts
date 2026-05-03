@@ -23,6 +23,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Сочные хинкали с мясом высшего качества, истинная грузинская классика',
     available: true,
     maxPerDay: 5,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
   {
     id: 2,
@@ -36,6 +40,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Вегетарианский вариант с лесными грибами и специями',
     available: true,
     maxPerDay: 5,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
   {
     id: 3,
@@ -49,6 +57,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Набор хинкали с разными начинками',
     available: true,
     maxPerDay: 4,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
 
   // Пельмени
@@ -62,6 +74,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Традиционные пельмени с мясной начинкой',
     available: true,
     maxPerDay: 10,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
   {
     id: 5,
@@ -73,6 +89,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Легкие пельмени с куриной грудкой',
     available: true,
     maxPerDay: 10,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
 
   // Блинчики
@@ -87,6 +107,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Тонкие блинчики со сладкой молочной начинкой',
     available: true,
     maxPerDay: 8,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
   {
     id: 7,
@@ -99,6 +123,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Блинчики с кремовой творожной начинкой и ягодами',
     available: true,
     maxPerDay: 8,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
 
   // Хлеб
@@ -114,6 +142,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Ржаной хлеб на натуральной закваске с тонким хрустящим корочкой',
     available: true,
     maxPerDay: 15,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
   {
     id: 9,
@@ -127,6 +159,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Пшеничный хлеб с добавлением грецких орехов',
     available: true,
     maxPerDay: 12,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
 
   // Десерты
@@ -142,6 +178,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Классическое пирожное эклер с кремовой начинкой и шоколадной глазурью',
     available: true,
     maxPerDay: 20,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
   {
     id: 11,
@@ -155,6 +195,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Мини закуска с кремом и свежими ягодами',
     available: true,
     maxPerDay: 20,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
 
   // Торты
@@ -170,6 +214,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Классический торт из медовых коржей с кремом и сгущённым молоком',
     available: true,
     maxPerDay: 2,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
   {
     id: 13,
@@ -183,6 +231,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Нежный торт с воздушным суфле и помадкой',
     available: true,
     maxPerDay: 2,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
   {
     id: 14,
@@ -196,6 +248,10 @@ export const MOCK_PRODUCTS: Product[] = [
     description: 'Многослойный шоколадный торт с вишневым мусом',
     available: true,
     maxPerDay: 2,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
   },
 ];
 

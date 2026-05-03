@@ -43,6 +43,10 @@ model Product {
   maxPerDay   Int     @default(999)
   minQty      Float   @default(1)   // минимальное количество в заказе
   step        Float   @default(1)   // шаг изменения количества
+  calories    Float   @default(0)   // ккал на 100 г
+  protein     Float   @default(0)   // белки, г на 100 г
+  fat         Float   @default(0)   // жиры, г на 100 г
+  carbs       Float   @default(0)   // углеводы, г на 100 г
 }
 
 // ─── Cart ─────────────────────────────────────────────────────────────────────
