@@ -1,6 +1,7 @@
 import {
   IsBoolean,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -73,4 +74,28 @@ export class UpdateProductDto {
   @IsInt()
   @Min(1)
   maxPerDay?: number;
+
+  @ApiPropertyOptional({ example: 226.7, description: 'Калорийность, ккал на 100 г' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  calories?: number;
+
+  @ApiPropertyOptional({ example: 9.3, description: 'Белки, г на 100 г' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  protein?: number;
+
+  @ApiPropertyOptional({ example: 7.9, description: 'Жиры, г на 100 г' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  fat?: number;
+
+  @ApiPropertyOptional({ example: 29.5, description: 'Углеводы, г на 100 г' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  carbs?: number;
 }

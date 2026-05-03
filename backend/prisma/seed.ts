@@ -42,6 +42,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Хинкали с начинкой говядина-свинина',
+      calories: 235, protein: 10.5, fat: 11.2, carbs: 23.0,
     },
     {
       name: 'Хинкали',
@@ -52,6 +53,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Хинкали с начинкой говядина',
+      calories: 245, protein: 11.0, fat: 12.0, carbs: 22.5,
     },
     {
       name: 'Хинкали',
@@ -62,6 +64,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Хинкали с начинкой баранина',
+      calories: 260, protein: 11.5, fat: 14.0, carbs: 22.0,
     },
 
     // ── Пельмени ────────────────────────────────────────────────────────────
@@ -75,6 +78,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Пельмени с говядиной',
+      calories: 270, protein: 12.0, fat: 13.0, carbs: 25.0,
     },
     {
       name: 'Пельмени',
@@ -85,6 +89,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Пельмени со свининой-говядиной',
+      calories: 285, protein: 11.5, fat: 14.5, carbs: 25.5,
     },
 
     // ── Блинчики ────────────────────────────────────────────────────────────
@@ -98,6 +103,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Блинчики с курицей',
+      calories: 180, protein: 10.0, fat: 7.0, carbs: 20.0,
     },
     {
       name: 'Блинчики',
@@ -108,6 +114,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Блинчики с говядиной',
+      calories: 210, protein: 11.0, fat: 9.0, carbs: 22.0,
     },
     {
       name: 'Блинчики',
@@ -118,6 +125,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Блинчики с творогом',
+      calories: 200, protein: 9.0, fat: 7.5, carbs: 24.0,
     },
 
     // ── Хлеб на закваске ────────────────────────────────────────────────────
@@ -132,6 +140,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Хлеб на закваске S, 400 г',
+      calories: 245, protein: 8.0, fat: 1.2, carbs: 50.0,
     },
     {
       name: 'Хлеб на закваске',
@@ -143,6 +152,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Хлеб на закваске M, 750 г',
+      calories: 245, protein: 8.0, fat: 1.2, carbs: 50.0,
     },
     {
       name: 'Хлеб на закваске',
@@ -154,6 +164,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Хлеб на закваске L, 950 г',
+      calories: 245, protein: 8.0, fat: 1.2, carbs: 50.0,
     },
 
     // ── Десерты ─────────────────────────────────────────────────────────────
@@ -165,6 +176,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Домашняя пахлава, минимум 1 кг',
+      calories: 480, protein: 7.0, fat: 25.0, carbs: 55.0,
     },
     {
       name: 'Гата',
@@ -174,6 +186,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Армянская гата, минимум 1 кг',
+      calories: 430, protein: 7.0, fat: 18.0, carbs: 60.0,
     },
     {
       name: 'Эклеры',
@@ -183,6 +196,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Эклеры с кремом',
+      calories: 265, protein: 6.0, fat: 15.0, carbs: 28.0,
     },
     {
       name: 'Пончики с заварным кремом',
@@ -192,6 +206,7 @@ async function main() {
       minQty: 1,
       step: 1,
       description: 'Пончики с заварным кремом',
+      calories: 370, protein: 5.0, fat: 18.0, carbs: 50.0,
     },
 
     // ── Торты ───────────────────────────────────────────────────────────────
@@ -204,6 +219,7 @@ async function main() {
       minQty: 1,
       step: 0.5,
       description: 'Классический медовик, от 1 кг',
+      calories: 390, protein: 5.0, fat: 20.0, carbs: 47.0,
     },
     {
       name: 'Молочная девочка',
@@ -213,6 +229,7 @@ async function main() {
       minQty: 1,
       step: 0.5,
       description: 'Торт Молочная девочка, от 1 кг',
+      calories: 340, protein: 6.0, fat: 17.0, carbs: 40.0,
     },
     {
       name: 'Птичье молоко',
@@ -222,6 +239,7 @@ async function main() {
       minQty: 1,
       step: 0.5,
       description: 'Торт Птичье молоко, от 1 кг',
+      calories: 400, protein: 5.0, fat: 20.0, carbs: 50.0,
     },
     {
       name: 'Красный бархат',
@@ -231,6 +249,7 @@ async function main() {
       minQty: 1,
       step: 0.5,
       description: 'Торт Красный бархат, от 1 кг',
+      calories: 400, protein: 5.0, fat: 22.0, carbs: 47.0,
     },
     {
       name: 'Рафаэлло',
@@ -240,6 +259,7 @@ async function main() {
       minQty: 1,
       step: 0.5,
       description: 'Торт Рафаэлло, от 1 кг',
+      calories: 470, protein: 6.0, fat: 30.0, carbs: 45.0,
     },
     {
       name: 'Сникерс',
@@ -249,6 +269,7 @@ async function main() {
       minQty: 1,
       step: 0.5,
       description: 'Торт Сникерс, от 1 кг',
+      calories: 450, protein: 7.0, fat: 25.0, carbs: 50.0,
     },
     {
       name: 'Избушка',
@@ -258,6 +279,7 @@ async function main() {
       minQty: 1,
       step: 0.5,
       description: 'Торт Избушка, от 1 кг',
+      calories: 420, protein: 6.0, fat: 22.0, carbs: 50.0,
     },
   ];
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Minus, Plus } from 'lucide-react';
+import { Info, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -14,6 +14,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { NutritionInfo } from '@/components/products/nutrition-info';
 import { formatPrice } from '@/lib/format';
 import { CATEGORY_EMOJI, MAX_ITEM_QTY_PER_ORDER, MAX_TORTS_PER_ORDER, CAKE_CATEGORY } from '@/lib/constants';
 import { useCartStore } from '@/stores/cart.store';
@@ -144,9 +146,23 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 pr-8">
             <span className="text-2xl">{emoji}</span>
-            {product.name}
+            <span className="flex-1">{product.name}</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Пищевая ценность"
+                  className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <Info className="h-5 w-5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" className="w-64">
+                <NutritionInfo product={product} />
+              </PopoverContent>
+            </Popover>
           </DialogTitle>
           <DialogDescription>
             {product.description || 'Добавьте товар в корзину'}

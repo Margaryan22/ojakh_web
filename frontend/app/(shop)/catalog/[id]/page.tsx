@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ShoppingCart, Info, ChefHat } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Info, ChefHat, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { formatPrice } from '@/lib/format';
 import { CATEGORY_EMOJI, CATEGORY_LABELS } from '@/lib/constants';
 import { AddToCartDialog } from '@/components/products/add-to-cart-dialog';
+import { NutritionInfo } from '@/components/products/nutrition-info';
 import api from '@/lib/api';
 import type { Product, ProductCategory } from '@/types';
 
@@ -155,7 +156,7 @@ export default function ProductDetailPage({
       {/* Ingredients block */}
       {product.ingredients && (
         <>
-          <div className="rounded-xl border bg-card p-4 space-y-2 mb-6">
+          <div className="rounded-xl border bg-card p-4 space-y-2 mb-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <ChefHat className="h-4 w-4 text-primary" />
               Состав
@@ -167,10 +168,14 @@ export default function ProductDetailPage({
         </>
       )}
 
-      {/* If neither description nor ingredients, add spacing */}
-      {!product.description && !product.ingredients && (
-        <div className="mb-6" />
-      )}
+      {/* Nutrition block */}
+      <div className="rounded-xl border bg-card p-4 mb-6">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+          <Flame className="h-4 w-4 text-primary" />
+          Пищевая ценность
+        </div>
+        <NutritionInfo product={product} />
+      </div>
 
       <Separator className="mb-6" />
 

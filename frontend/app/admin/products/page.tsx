@@ -43,6 +43,10 @@ interface ProductFormData {
   ingredients: string;
   available: boolean;
   maxPerDay: string;
+  calories: string;
+  protein: string;
+  fat: string;
+  carbs: string;
 }
 
 const emptyForm: ProductFormData = {
@@ -57,6 +61,10 @@ const emptyForm: ProductFormData = {
   ingredients: '',
   available: true,
   maxPerDay: '50',
+  calories: '',
+  protein: '',
+  fat: '',
+  carbs: '',
 };
 
 export default function AdminProductsPage() {
@@ -96,6 +104,10 @@ export default function AdminProductsPage() {
         ingredients: form.ingredients || null,
         available: form.available,
         maxPerDay: parseInt(form.maxPerDay) || 50,
+        calories: parseFloat(form.calories),
+        protein: parseFloat(form.protein),
+        fat: parseFloat(form.fat),
+        carbs: parseFloat(form.carbs),
       };
       if (imageUrl) payload.imageUrl = imageUrl;
 
@@ -155,6 +167,10 @@ export default function AdminProductsPage() {
       ingredients: product.ingredients ?? '',
       available: product.available,
       maxPerDay: product.maxPerDay.toString(),
+      calories: product.calories.toString(),
+      protein: product.protein.toString(),
+      fat: product.fat.toString(),
+      carbs: product.carbs.toString(),
     });
     setImageFile(null);
     setDialogOpen(true);
@@ -172,6 +188,19 @@ export default function AdminProductsPage() {
     if (!form.name || !form.price) {
       toast.error('Заполните обязательные поля');
       return;
+    }
+    const nutritionFields: Array<[string, string]> = [
+      ['Калории', form.calories],
+      ['Белки', form.protein],
+      ['Жиры', form.fat],
+      ['Углеводы', form.carbs],
+    ];
+    for (const [label, value] of nutritionFields) {
+      const parsed = parseFloat(value);
+      if (value === '' || isNaN(parsed) || parsed < 0) {
+        toast.error(`Заполните пищевую ценность: ${label}`);
+        return;
+      }
     }
     saveMutation.mutate();
   };
@@ -342,6 +371,54 @@ export default function AdminProductsPage() {
                   className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                 />
               </div>
+              <div className="col-span-2 pt-2 border-t">
+                <p className="text-sm font-semibold">Пищевая ценность на 100 г *</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Калории (ккал) *</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  required
+                  value={form.calories}
+                  onChange={(e) => updateField('calories', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Белки (г) *</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  required
+                  value={form.protein}
+                  onChange={(e) => updateField('protein', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Жиры (г) *</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  required
+                  value={form.fat}
+                  onChange={(e) => updateField('fat', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Углеводы (г) *</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  required
+                  value={form.carbs}
+                  onChange={(e) => updateField('carbs', e.target.value)}
+                />
+              </div>
+
               <div className="col-span-2 flex items-center gap-2">
                 <input
                   type="checkbox"
