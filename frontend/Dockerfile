@@ -11,6 +11,9 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL=http://localhost:3001
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+ARG NEXT_PUBLIC_DADATA_API_KEY
+ENV NEXT_PUBLIC_DADATA_API_KEY=$NEXT_PUBLIC_DADATA_API_KEY
+
 RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
 
