@@ -165,6 +165,19 @@ export class OrdersService {
     return { orders, total, page, limit };
   }
 
+  async getLastAddress(userId: number): Promise<{ address: string | null }> {
+    const lastOrder = await this.prisma.order.findFirst({
+      where: {
+        userId,
+        isPickup: false,
+        address: { not: null },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { address: true },
+    });
+    return { address: lastOrder?.address ?? null };
+  }
+
   async getOrder(userId: number, orderId: number) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
 
@@ -221,7 +234,9 @@ export class OrdersService {
         {
           query: address,
           count: 1,
-          locations: [{ city: 'Нижний Новгород' }],
+          locations: [
+            { region: 'нижегородская', city: 'нижний новгород' },
+          ],
         },
         {
           headers: {

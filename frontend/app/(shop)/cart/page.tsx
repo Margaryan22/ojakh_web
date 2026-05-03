@@ -57,6 +57,7 @@ export default function CartPage() {
   const [address, setAddress] = useState('');
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [addressValidated, setAddressValidated] = useState(false);
+  const [addressFocused, setAddressFocused] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] =
     useState<DeliveryTimeSlot>('10:00-12:00');
@@ -126,7 +127,10 @@ export default function CartPage() {
             body: JSON.stringify({
               query: address,
               count: 5,
-              locations: [{ city: 'Нижний Новгород' }],
+              locations: [
+                { region: 'нижегородская', city: 'нижний новгород' },
+              ],
+              restrict_value: true,
             }),
           },
         );
@@ -174,6 +178,18 @@ export default function CartPage() {
     },
     enabled: !!selectedDate,
   });
+
+  // Last delivery address (for re-suggesting on next order)
+  const { data: lastAddressData } = useQuery<{ address: string | null }>({
+    queryKey: ['lastAddress'],
+    queryFn: async () => {
+      const { data } = await api.get('/orders/last-address');
+      return data;
+    },
+    enabled: !!user && step === 'delivery',
+    staleTime: 5 * 60 * 1000,
+  });
+  const lastAddress = lastAddressData?.address ?? null;
 
   const handleCheckout = () => {
     if (!user) {
@@ -506,9 +522,33 @@ export default function CartPage() {
                       setAddress(e.target.value);
                       setAddressValidated(false);
                     }}
+                    onFocus={() => setAddressFocused(true)}
+                    onBlur={() => setAddressFocused(false)}
                     className='pl-10'
                     autoComplete='off'
                   />
+                  {addressSuggestions.length === 0 &&
+                    addressFocused &&
+                    address.trim() === '' &&
+                    lastAddress && (
+                      <ul className='absolute z-30 top-full left-0 right-0 bg-background border border-border rounded-lg shadow-lg mt-1 overflow-hidden'>
+                        <li
+                          className='px-3 py-2 text-sm cursor-pointer hover:bg-accent flex items-start gap-2'
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setAddress(lastAddress);
+                            setAddressSuggestions([]);
+                            setAddressValidated(true);
+                          }}
+                        >
+                          <MapPin className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground' />
+                          <div className='min-w-0'>
+                            <div className='text-xs text-muted-foreground'>Прошлый адрес</div>
+                            <div className='truncate'>{lastAddress}</div>
+                          </div>
+                        </li>
+                      </ul>
+                    )}
                   {addressSuggestions.length > 0 && (
                     <ul className='absolute z-30 top-full left-0 right-0 bg-background border border-border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto'>
                       {addressSuggestions.map((s, i) => (
