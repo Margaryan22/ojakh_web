@@ -7,7 +7,6 @@ import { useAuthStore } from '@/stores/auth.store';
 
 declare global {
   interface Window {
-    onTelegramAuth: (user: any) => void;
     google?: {
       accounts: {
         id: {
@@ -22,12 +21,19 @@ declare global {
         signIn: () => Promise<any>;
       };
     };
+    YaAuthSuggest?: {
+      init: (
+        oauthQueryParams: { client_id: string; response_type: 'token' | 'code'; redirect_uri: string },
+        tokenPageOrigin: string,
+        suggestOptions?: { view?: 'button' | 'default'; parentId?: string; buttonView?: string; buttonTheme?: string; buttonSize?: string; buttonBorderRadius?: number },
+      ) => Promise<{ handler: () => Promise<{ access_token: string; expires_in: number; token_type: string }> }>;
+    };
   }
 }
 
-const TELEGRAM_BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const APPLE_CLIENT_ID = process.env.NEXT_PUBLIC_APPLE_CLIENT_ID;
+const YANDEX_CLIENT_ID = process.env.NEXT_PUBLIC_YANDEX_CLIENT_ID;
 
 function loadScript(src: string, id: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -48,7 +54,6 @@ export function SocialLoginButtons() {
   const isLoading = useAuthStore((s) => s.isLoading);
 
   const googleBtnRef = useRef<HTMLDivElement>(null);
-  const telegramContainerRef = useRef<HTMLDivElement>(null);
 
   const handleSuccess = useCallback(() => {
     toast.success('Вы вошли в систему');
@@ -59,38 +64,6 @@ export function SocialLoginButtons() {
     const msg = err?.response?.data?.message || `Ошибка входа через ${provider}`;
     toast.error(msg);
   }, []);
-
-  // ─── Telegram Login Widget ──────────────────────────────────────────────
-  useEffect(() => {
-    if (!TELEGRAM_BOT || !telegramContainerRef.current) return;
-
-    window.onTelegramAuth = async (user: any) => {
-      try {
-        await socialLogin('telegram', user);
-        handleSuccess();
-      } catch (err: any) {
-        handleError('Telegram', err);
-      }
-    };
-
-    const container = telegramContainerRef.current;
-    // Clear previous widget if any
-    container.innerHTML = '';
-
-    const script = document.createElement('script');
-    script.src = 'https://telegram.org/js/telegram-widget.js?22';
-    script.setAttribute('data-telegram-login', TELEGRAM_BOT);
-    script.setAttribute('data-size', 'large');
-    script.setAttribute('data-radius', '12');
-    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-    script.setAttribute('data-request-access', 'write');
-    script.async = true;
-    container.appendChild(script);
-
-    return () => {
-      delete (window as any).onTelegramAuth;
-    };
-  }, [socialLogin, handleSuccess, handleError]);
 
   // ─── Google Sign-In ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -155,39 +128,47 @@ export function SocialLoginButtons() {
     }
   }, [socialLogin, handleSuccess, handleError]);
 
-  // Don't render if no providers configured
-  const hasAny = TELEGRAM_BOT || GOOGLE_CLIENT_ID || APPLE_CLIENT_ID;
+  // ─── Yandex ID ──────────────────────────────────────────────────────────
+  const handleYandexLogin = useCallback(async () => {
+    if (!YANDEX_CLIENT_ID) return;
+
+    try {
+      await loadScript(
+        'https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-token-with-polyfills-latest.js',
+        'yandex-id-sdk',
+      );
+
+      if (!window.YaAuthSuggest) throw new Error('Yandex SDK not loaded');
+
+      const origin = window.location.origin;
+      const { handler } = await window.YaAuthSuggest.init(
+        {
+          client_id: YANDEX_CLIENT_ID,
+          response_type: 'token',
+          redirect_uri: `${origin}/login`,
+        },
+        origin,
+      );
+
+      const result = await handler();
+      if (!result?.access_token) throw new Error('No access_token from Yandex');
+
+      await socialLogin('yandex', { accessToken: result.access_token });
+      handleSuccess();
+    } catch (err: any) {
+      handleError('Yandex', err);
+    }
+  }, [socialLogin, handleSuccess, handleError]);
+
+  const hasAny = GOOGLE_CLIENT_ID || APPLE_CLIENT_ID || YANDEX_CLIENT_ID;
   if (!hasAny) return null;
 
   return (
-    <div className="space-y-3">
-      {/* Divider */}
-      <div className="relative my-4">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-2 text-muted-foreground">или</span>
-        </div>
-      </div>
-
-      {/* Telegram */}
-      {TELEGRAM_BOT && (
-        <div
-          ref={telegramContainerRef}
-          className="flex justify-center [&>iframe]:!rounded-xl"
-        />
-      )}
-
-      {/* Google */}
+    <div className="space-y-3 w-full">
       {GOOGLE_CLIENT_ID && (
-        <div
-          ref={googleBtnRef}
-          className="flex justify-center"
-        />
+        <div ref={googleBtnRef} className="flex justify-center" />
       )}
 
-      {/* Apple */}
       {APPLE_CLIENT_ID && (
         <button
           type="button"
@@ -199,6 +180,20 @@ export function SocialLoginButtons() {
             <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
           </svg>
           Продолжить с Apple
+        </button>
+      )}
+
+      {YANDEX_CLIENT_ID && (
+        <button
+          type="button"
+          onClick={handleYandexLogin}
+          disabled={isLoading}
+          className="w-full h-11 rounded-xl border border-border bg-[#FC3F1D] text-white font-medium text-sm flex items-center justify-center gap-2 hover:bg-[#e0381a] transition-colors disabled:opacity-50"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+            <path d="M13.32 21.5h2.74V2.5h-3.99c-4 0-6.1 2.06-6.1 5.07 0 2.41 1.16 3.83 3.21 5.27L5.62 21.5h2.97l3.96-9.74-1.39-.93c-1.66-1.12-2.47-1.99-2.47-3.85 0-1.64 1.16-2.74 3.36-2.74h1.27V21.5z"/>
+          </svg>
+          Продолжить с Яндекс ID
         </button>
       )}
     </div>

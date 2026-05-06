@@ -15,9 +15,9 @@ model User {
   password         String?
   name             String
   phone            String?
-  telegramChatId   String?
   googleId         String?        @unique
   appleId          String?        @unique
+  yandexId         String?        @unique
   role             String         @default("user")
   createdAt        DateTime       @default(now())
   cart             Cart?
@@ -108,26 +108,3 @@ model DailyLimit {
   maxTorts     Int      @default(2)
 }
 
-// ─── OtpSession ───────────────────────────────────────────────────────────────
-
-model OtpSession {
-  id        Int      @id @default(autoincrement())
-  phone     String   @unique
-  code      String
-  chatId    String?
-  expiresAt DateTime
-  verified  Boolean  @default(false)
-  createdAt DateTime @default(now())
-}
-
-// ─── TgAuthSession ────────────────────────────────────────────────────────────
-
-model TgAuthSession {
-  token            String   @id
-  code             String?
-  telegramId       String?
-  telegramName     String?
-  telegramUsername String?
-  expiresAt        DateTime
-  createdAt        DateTime @default(now())
-}

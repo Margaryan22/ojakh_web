@@ -13,9 +13,8 @@ interface AuthState {
 interface AuthActions {
   setAccessToken: (token: string) => void;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; name: string; password: string; phone: string }) => Promise<void>;
-  socialLogin: (provider: 'telegram' | 'google' | 'apple', payload: any) => Promise<void>;
-  loginWithTgCode: (token: string, code: string) => Promise<void>;
+  register: (data: { email: string; name: string; password: string; phone?: string }) => Promise<void>;
+  socialLogin: (provider: 'google' | 'apple' | 'yandex', payload: any) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
@@ -49,23 +48,19 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   register: async (registerData) => {
     set({ isLoading: true });
     try {
-      const { data } = await api.post('/auth/register', registerData);
+      const payload: Record<string, unknown> = {
+        email: registerData.email,
+        name: registerData.name,
+        password: registerData.password,
+      };
+      if (registerData.phone) payload.phone = registerData.phone;
+
+      const { data } = await api.post('/auth/register', payload);
       set({
         user: data.user,
         accessToken: data.accessToken,
         isLoading: false,
       });
-    } catch (error) {
-      set({ isLoading: false });
-      throw error;
-    }
-  },
-
-  loginWithTgCode: async (token: string, code: string) => {
-    set({ isLoading: true });
-    try {
-      const { data } = await api.post('/auth/tg-verify', { token, code });
-      set({ user: data.user, accessToken: data.accessToken, isLoading: false });
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -101,7 +96,6 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     try {
       const { accessToken } = get();
       if (!accessToken) {
-        // Try to restore session via httpOnly refresh token cookie
         const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
         const { data: refreshData } = await axios.post(
           `${apiUrl}/auth/refresh`,

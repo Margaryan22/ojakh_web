@@ -1,5 +1,6 @@
 import {
   IsEmail,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -26,8 +27,9 @@ export class RegisterDto {
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ example: '+79001234567' })
+  @ApiProperty({ example: '+79001234567', required: false })
+  @IsOptional()
   @IsString()
   @Matches(/^\+7\d{10}$/, { message: 'Неверный формат номера телефона' })
-  phone: string;
+  phone?: string;
 }
