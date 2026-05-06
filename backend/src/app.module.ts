@@ -12,7 +12,6 @@ import { AdminModule } from './modules/admin/admin.module';
 import { HealthModule } from './modules/health/health.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
-import { TelegramModule } from './modules/telegram/telegram.module';
 
 @Module({
   imports: [
@@ -29,7 +28,6 @@ import { TelegramModule } from './modules/telegram/telegram.module';
     HealthModule,
     UploadsModule,
     NotificationsModule,
-    TelegramModule,
   ],
 })
 export class AppModule {}

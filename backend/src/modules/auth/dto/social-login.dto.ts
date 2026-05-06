@@ -1,16 +1,6 @@
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class TelegramLoginDto {
-  @ApiProperty() @IsNotEmpty() id: number;
-  @ApiProperty() @IsOptional() @IsString() first_name?: string;
-  @ApiProperty() @IsOptional() @IsString() last_name?: string;
-  @ApiProperty() @IsOptional() @IsString() username?: string;
-  @ApiProperty() @IsOptional() @IsString() photo_url?: string;
-  @ApiProperty() @IsNotEmpty() auth_date: number;
-  @ApiProperty() @IsNotEmpty() @IsString() hash: string;
-}
-
 export class GoogleLoginDto {
   @ApiProperty({ description: 'Google ID token from Sign-In' })
   @IsNotEmpty()
@@ -28,4 +18,11 @@ export class AppleLoginDto {
   @IsOptional()
   @IsString()
   name?: string;
+}
+
+export class YandexLoginDto {
+  @ApiProperty({ description: 'Yandex OAuth access_token (received from Yandex ID SDK)' })
+  @IsNotEmpty()
+  @IsString()
+  accessToken: string;
 }
