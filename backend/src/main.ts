@@ -24,6 +24,13 @@ async function bootstrap() {
     'http://localhost:3000',
   );
   const uploadsDir = configService.get<string>('UPLOADS_DIR', './uploads');
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (isProd && frontendUrl.startsWith('http://localhost')) {
+    throw new Error(
+      'FRONTEND_URL must not be localhost in production — refusing to start',
+    );
+  }
 
   // ── CORS ──────────────────────────────────────────────────────────────────
   app.enableCors({
@@ -63,15 +70,17 @@ async function bootstrap() {
     }),
   );
 
-  // ── Swagger ───────────────────────────────────────────────────────────────
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Ojakh API')
-    .setDescription('REST API for Ojakh food ordering web app')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api', app, document);
+  // ── Swagger (только не в production) ──────────────────────────────────────
+  if (!isProd) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Ojakh API')
+      .setDescription('REST API for Ojakh food ordering web app')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api', app, document);
+  }
 
   await app.listen(port, '0.0.0.0');
   console.log(`Application running on port ${port}`);

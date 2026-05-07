@@ -7,6 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { JwtGuard } from '../auth/jwt.guard';
 import { OptionalJwtGuard } from '../auth/optional-jwt.guard';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService, CheckDateOpts } from './delivery.service';
@@ -63,6 +64,14 @@ export class DeliveryController {
   @ApiQuery({ name: 'address', required: false, example: 'Нижний Новгород, ул. Большая Покровская 1' })
   getDeliveryCost(@Query('address') address?: string) {
     return this.deliveryService.getDeliveryCost(address);
+  }
+
+  @Get('suggest-address')
+  @UseGuards(JwtGuard)
+  @ApiOperation({ summary: 'Address autocomplete via server-side DaData proxy' })
+  @ApiQuery({ name: 'q', required: true })
+  suggestAddress(@Query('q') q?: string) {
+    return this.deliveryService.suggestAddress(q ?? '');
   }
 
   /**

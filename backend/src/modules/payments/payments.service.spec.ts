@@ -75,7 +75,7 @@ describe('PaymentsService', () => {
       mockPrisma.order.findFirst.mockResolvedValue(order);
       mockPrisma.order.update.mockResolvedValue({ ...order, status: 'paid' });
 
-      const result = await service.confirmPayment('some-uuid');
+      const result = await service.confirmPayment('some-uuid', 1);
 
       expect(result).toEqual({ ok: true, order_id: 1 });
       expect(mockPrisma.order.update).toHaveBeenCalledWith(
@@ -91,7 +91,7 @@ describe('PaymentsService', () => {
       mockPrisma.order.findFirst.mockResolvedValue(order);
       mockPrisma.order.update.mockResolvedValue({ ...order, status: 'paid' });
 
-      await service.confirmPayment('some-uuid');
+      await service.confirmPayment('some-uuid', 1);
 
       const updateCall = mockPrisma.order.update.mock.calls[0][0];
       expect(updateCall.data.paidAt).toBeInstanceOf(Date);
@@ -100,7 +100,7 @@ describe('PaymentsService', () => {
     it('должен выбросить NotFoundException если платёж не найден', async () => {
       mockPrisma.order.findFirst.mockResolvedValue(null);
 
-      await expect(service.confirmPayment('invalid-uuid')).rejects.toThrow(NotFoundException);
+      await expect(service.confirmPayment('invalid-uuid', 1)).rejects.toThrow(NotFoundException);
     });
   });
 });

@@ -49,8 +49,8 @@ export default function RegisterPage() {
       : null;
   const passwordError = touched.password && !password
     ? 'Пароль обязателен'
-    : touched.password && password.length < 6
-      ? 'Минимум 6 символов'
+    : touched.password && password.length < 8
+      ? 'Минимум 8 символов'
       : null;
   const phoneError = validatePhone(phone, touched.phone);
 
@@ -64,7 +64,7 @@ export default function RegisterPage() {
   const isFormValid =
     !validateName(name, true) &&
     EMAIL_REGEX.test(email) &&
-    password.length >= 6 &&
+    password.length >= 8 &&
     !validatePhone(phone, true);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -143,7 +143,7 @@ export default function RegisterPage() {
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Минимум 6 символов"
+                placeholder="Минимум 8 символов"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onBlur={() => touch('password')}

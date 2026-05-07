@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -25,13 +26,20 @@ export class PaymentsService {
     return { payment_id: paymentId, status: 'pending' };
   }
 
-  async confirmPayment(paymentId: string): Promise<{ ok: boolean; order_id: number }> {
+  async confirmPayment(
+    paymentId: string,
+    userId: number,
+  ): Promise<{ ok: boolean; order_id: number }> {
     const order = await this.prisma.order.findFirst({
       where: { paymentId },
     });
 
     if (!order) {
       throw new NotFoundException(`Payment ${paymentId} not found`);
+    }
+
+    if (order.userId !== userId) {
+      throw new ForbiddenException('Cannot confirm payment for another user');
     }
 
     await this.prisma.order.update({
