@@ -73,5 +73,7 @@ export interface DateAvailability {
   maxTorts: number;
   unitCount: number;
   maxUnits: number;
+  unitsAvailable: number;
+  tortsAvailable: number;
   reason?: string;
 }

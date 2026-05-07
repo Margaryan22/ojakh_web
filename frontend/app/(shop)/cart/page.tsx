@@ -67,7 +67,9 @@ export default function CartPage() {
   const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const availableDates = getAvailableDates();
-  const hasTorts = tortCount() > 0;
+  const cartUnits = totalItems();
+  const cartTorts = tortCount();
+  const hasTorts = cartTorts > 0;
 
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
@@ -148,18 +150,21 @@ export default function CartPage() {
     };
   }, [address, isPickup]);
 
-  // Bulk calendar availability (fetched when delivery step opens)
+  // Bulk calendar availability (учитывает корзину: для гостей через query, для юзеров — на бэке)
   const { data: calendarData } = useQuery<
     Array<DateAvailability & { date: string }>
   >({
-    queryKey: ['deliveryCalendar', hasTorts],
+    queryKey: ['deliveryCalendar', hasTorts, cartUnits, cartTorts],
     queryFn: async () => {
-      const { data } = await api.get(
-        `/delivery/calendar?with_tort=${hasTorts}`,
-      );
+      const params = new URLSearchParams({
+        with_tort: String(hasTorts),
+        extra_units: String(cartUnits),
+        extra_torts: String(cartTorts),
+      });
+      const { data } = await api.get(`/delivery/calendar?${params}`);
       return data;
     },
-    enabled: step === 'delivery',
+    enabled: items.length > 0,
   });
 
   const bookedDateSet = useMemo(() => {
@@ -167,13 +172,24 @@ export default function CartPage() {
     return new Set(calendarData.filter((d) => !d.available).map((d) => d.date));
   }, [calendarData]);
 
-  // Single-date availability check (after user selects a date)
+  const availableCalendarDates = useMemo(() => {
+    if (!calendarData) return [];
+    return calendarData.filter((d) => d.available);
+  }, [calendarData]);
+
+  const noDatesFit = !!calendarData && availableCalendarDates.length === 0 && items.length > 0;
+
+  // Single-date availability check (после выбора даты)
   const { data: dateAvailability } = useQuery<DateAvailability>({
-    queryKey: ['dateAvailability', selectedDate, hasTorts],
+    queryKey: ['dateAvailability', selectedDate, hasTorts, cartUnits, cartTorts],
     queryFn: async () => {
-      const { data } = await api.get(
-        `/delivery/check-date?date=${selectedDate}&with_tort=${hasTorts}`,
-      );
+      const params = new URLSearchParams({
+        date: selectedDate,
+        with_tort: String(hasTorts),
+        extra_units: String(cartUnits),
+        extra_torts: String(cartTorts),
+      });
+      const { data } = await api.get(`/delivery/check-date?${params}`);
       return data;
     },
     enabled: !!selectedDate,
@@ -456,6 +472,43 @@ export default function CartPage() {
 
               <Separator />
 
+              {/* Превью доступности дат с учётом корзины */}
+              {calendarData && (
+                <div
+                  className={cn(
+                    'rounded-lg border p-3 text-sm',
+                    noDatesFit
+                      ? 'border-destructive/50 bg-destructive/5 text-destructive'
+                      : 'border-border/60 bg-muted/30',
+                  )}
+                >
+                  {noDatesFit ? (
+                    <>
+                      <p className='font-medium'>
+                        Заказ слишком большой для ближайших дней
+                      </p>
+                      <p className='text-xs mt-1 opacity-90'>
+                        Уменьшите количество тортов или единиц — на ближайшие{' '}
+                        {calendarData.length} дней нет места под такой объём.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className='font-medium text-foreground'>
+                        Ближайшие доступные даты:
+                      </p>
+                      <p className='text-muted-foreground mt-1'>
+                        {availableCalendarDates
+                          .slice(0, 3)
+                          .map((d) => formatDate(d.date))
+                          .join(' · ')}
+                        {availableCalendarDates.length > 3 && ' · …'}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className='flex items-center justify-between'>
                 <div>
                   <p className='text-sm text-muted-foreground'>
@@ -469,7 +522,9 @@ export default function CartPage() {
                   <Button variant='outline' onClick={() => clearCart()}>
                     Очистить
                   </Button>
-                  <Button onClick={handleCheckout}>Оформить</Button>
+                  <Button onClick={handleCheckout} disabled={noDatesFit}>
+                    Оформить
+                  </Button>
                 </div>
               </div>
             </>

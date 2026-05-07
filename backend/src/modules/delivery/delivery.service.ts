@@ -18,7 +18,15 @@ export interface DateAvailability {
   maxTorts: number;
   unitCount: number;
   maxUnits: number;
+  unitsAvailable: number;
+  tortsAvailable: number;
   reason?: string;
+}
+
+export interface CheckDateOpts {
+  withTort?: boolean;
+  extraUnits?: number;
+  extraTorts?: number;
 }
 
 @Injectable()
@@ -30,14 +38,16 @@ export class DeliveryService {
     private readonly config: ConfigService,
   ) {}
 
-  async checkDate(dateStr: string, withTort: boolean): Promise<DateAvailability> {
+  async checkDate(dateStr: string, opts: CheckDateOpts = {}): Promise<DateAvailability> {
+    const withTort = opts.withTort ?? false;
+    const extraUnits = Math.max(0, Math.floor(opts.extraUnits ?? 0));
+    const extraTorts = Math.max(0, Math.floor(opts.extraTorts ?? 0));
+
     const date = new Date(dateStr);
-    // Normalize to UTC midnight for Date-only comparison
     const dateOnly = new Date(
       Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
     );
 
-    // Get daily limit (or use defaults)
     const limit = await this.prisma.dailyLimit.findUnique({
       where: { deliveryDate: dateOnly },
     });
@@ -45,7 +55,6 @@ export class DeliveryService {
     const maxUnits = limit?.maxUnits ?? DEFAULT_MAX_UNITS;
     const maxTorts = limit?.maxTorts ?? MAX_TORTS;
 
-    // Get active orders for this date
     const activeOrders = await this.prisma.order.findMany({
       where: {
         deliveryDate: dateOnly,
@@ -54,7 +63,6 @@ export class DeliveryService {
       select: { items: true },
     });
 
-    // Sum total item units and count tort positions
     let unitCount = 0;
     let tortCount = 0;
     for (const order of activeOrders) {
@@ -62,43 +70,52 @@ export class DeliveryService {
       for (const item of items) {
         unitCount += Number(item.quantity) || 0;
         if (item.category === TORT_CATEGORY) {
-          tortCount += 1; // count distinct positions, not quantity
+          tortCount += 1;
         }
       }
     }
 
-    if (unitCount >= maxUnits) {
+    const unitsAvailable = Math.max(0, maxUnits - unitCount);
+    const tortsAvailable = Math.max(0, maxTorts - tortCount);
+
+    const base = {
+      tortCount,
+      maxTorts,
+      unitCount,
+      maxUnits,
+      unitsAvailable,
+      tortsAvailable,
+    };
+
+    if (unitCount + extraUnits > maxUnits) {
       return {
         available: false,
-        tortCount,
-        maxTorts,
-        unitCount,
-        maxUnits,
-        reason: 'На эту дату все слоты для заказов уже заняты',
+        ...base,
+        reason:
+          extraUnits > 0
+            ? `Заказ не помещается: на эту дату осталось ${unitsAvailable} ед., в корзине ${extraUnits}`
+            : 'На эту дату все слоты для заказов уже заняты',
       };
     }
 
-    if (withTort && tortCount >= maxTorts) {
+    if (withTort && tortCount + extraTorts > maxTorts) {
       return {
         available: false,
-        tortCount,
-        maxTorts,
-        unitCount,
-        maxUnits,
-        reason: 'На эту дату все слоты для тортов уже заняты',
+        ...base,
+        reason:
+          extraTorts > 0
+            ? `На эту дату осталось ${tortsAvailable} мест для тортов, в корзине ${extraTorts}`
+            : 'На эту дату все слоты для тортов уже заняты',
       };
     }
 
     return {
       available: true,
-      tortCount,
-      maxTorts,
-      unitCount,
-      maxUnits,
+      ...base,
     };
   }
 
-  async getCalendar(withTort: boolean): Promise<Array<DateAvailability & { date: string }>> {
+  async getCalendar(opts: CheckDateOpts = {}): Promise<Array<DateAvailability & { date: string }>> {
     const today = new Date();
     const dates: string[] = [];
     for (let i = MIN_DAYS_AHEAD; i <= MAX_DAYS_AHEAD; i++) {
@@ -108,7 +125,7 @@ export class DeliveryService {
     }
     const results = await Promise.all(
       dates.map(async (dateStr) => {
-        const availability = await this.checkDate(dateStr, withTort);
+        const availability = await this.checkDate(dateStr, opts);
         return { date: dateStr, ...availability };
       }),
     );
