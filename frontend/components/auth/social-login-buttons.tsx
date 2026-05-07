@@ -21,19 +21,13 @@ declare global {
         signIn: () => Promise<any>;
       };
     };
-    YaAuthSuggest?: {
-      init: (
-        oauthQueryParams: { client_id: string; response_type: 'token' | 'code'; redirect_uri: string },
-        tokenPageOrigin: string,
-        suggestOptions?: { view?: 'button' | 'default'; parentId?: string; buttonView?: string; buttonTheme?: string; buttonSize?: string; buttonBorderRadius?: number },
-      ) => Promise<{ handler: () => Promise<{ access_token: string; expires_in: number; token_type: string }> }>;
-    };
   }
 }
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const APPLE_CLIENT_ID = process.env.NEXT_PUBLIC_APPLE_CLIENT_ID;
 const YANDEX_CLIENT_ID = process.env.NEXT_PUBLIC_YANDEX_CLIENT_ID;
+const YANDEX_STATE_KEY = 'yandex_oauth_state';
 
 function loadScript(src: string, id: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -128,37 +122,60 @@ export function SocialLoginButtons() {
     }
   }, [socialLogin, handleSuccess, handleError]);
 
-  // ─── Yandex ID ──────────────────────────────────────────────────────────
-  const handleYandexLogin = useCallback(async () => {
+  // ─── Yandex ID (OAuth implicit redirect, без SDK — не блокируется адблокерами) ──
+  useEffect(() => {
+    if (!YANDEX_CLIENT_ID) return;
+    if (typeof window === 'undefined') return;
+    if (!window.location.hash) return;
+
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const accessToken = params.get('access_token');
+    const returnedState = params.get('state');
+    const error = params.get('error');
+
+    if (error) {
+      handleError('Yandex', { response: { data: { message: params.get('error_description') || error } } });
+      window.history.replaceState(null, '', window.location.pathname);
+      return;
+    }
+
+    if (!accessToken) return;
+
+    const savedState = sessionStorage.getItem(YANDEX_STATE_KEY);
+    sessionStorage.removeItem(YANDEX_STATE_KEY);
+    window.history.replaceState(null, '', window.location.pathname);
+
+    if (!savedState || savedState !== returnedState) {
+      handleError('Yandex', { response: { data: { message: 'Неверный state — попробуйте снова' } } });
+      return;
+    }
+
+    (async () => {
+      try {
+        await socialLogin('yandex', { accessToken });
+        handleSuccess();
+      } catch (err: any) {
+        handleError('Yandex', err);
+      }
+    })();
+  }, [socialLogin, handleSuccess, handleError]);
+
+  const handleYandexLogin = useCallback(() => {
     if (!YANDEX_CLIENT_ID) return;
 
-    try {
-      await loadScript(
-        'https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-token-with-polyfills-latest.js',
-        'yandex-id-sdk',
-      );
+    const state = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem(YANDEX_STATE_KEY, state);
 
-      if (!window.YaAuthSuggest) throw new Error('Yandex SDK not loaded');
+    const redirectUri = `${window.location.origin}/login`;
+    const url =
+      `https://oauth.yandex.ru/authorize?response_type=token` +
+      `&client_id=${encodeURIComponent(YANDEX_CLIENT_ID)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&state=${encodeURIComponent(state)}` +
+      `&force_confirm=yes`;
 
-      const origin = window.location.origin;
-      const { handler } = await window.YaAuthSuggest.init(
-        {
-          client_id: YANDEX_CLIENT_ID,
-          response_type: 'token',
-          redirect_uri: `${origin}/login`,
-        },
-        origin,
-      );
-
-      const result = await handler();
-      if (!result?.access_token) throw new Error('No access_token from Yandex');
-
-      await socialLogin('yandex', { accessToken: result.access_token });
-      handleSuccess();
-    } catch (err: any) {
-      handleError('Yandex', err);
-    }
-  }, [socialLogin, handleSuccess, handleError]);
+    window.location.href = url;
+  }, []);
 
   const hasAny = GOOGLE_CLIENT_ID || APPLE_CLIENT_ID || YANDEX_CLIENT_ID;
   if (!hasAny) return null;
