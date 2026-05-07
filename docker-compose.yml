@@ -42,6 +42,9 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=${API_URL:-https://ojakh.api.whysargis.ru}
         - NEXT_PUBLIC_DADATA_API_KEY=${DADATA_API_KEY:-}
+        - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+        - NEXT_PUBLIC_APPLE_CLIENT_ID=${APPLE_CLIENT_ID:-}
+        - NEXT_PUBLIC_YANDEX_CLIENT_ID=${YANDEX_CLIENT_ID:-}
     ports:
       - '3000:3000'
     depends_on:
