@@ -88,11 +88,19 @@ export class OrdersService {
       }
     }
 
-    // 5. Check date availability
+    // 5. Check date availability (включая корзину текущего пользователя)
     const hasTort = tortItems.length > 0;
+    const cartUnits = cart.items.reduce(
+      (sum, i) => sum + (Number(i.quantity) || 0),
+      0,
+    );
     const availability = await this.deliveryService.checkDate(
       dto.delivery_date,
-      hasTort,
+      {
+        withTort: hasTort,
+        extraUnits: cartUnits,
+        extraTorts: tortItems.length,
+      },
     );
 
     if (!availability.available) {

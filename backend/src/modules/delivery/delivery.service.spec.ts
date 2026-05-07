@@ -33,7 +33,7 @@ describe('DeliveryService', () => {
       mockPrisma.dailyLimit.findUnique.mockResolvedValue(null);
       mockPrisma.order.findMany.mockResolvedValue([]);
 
-      const result = await service.checkDate(futureDate, false);
+      const result = await service.checkDate(futureDate, { withTort: false });
 
       expect(result.available).toBe(true);
       expect(result.unitCount).toBe(0);
@@ -46,7 +46,7 @@ describe('DeliveryService', () => {
       mockPrisma.dailyLimit.findUnique.mockResolvedValue({ maxUnits: 5, maxTorts: 1 });
       mockPrisma.order.findMany.mockResolvedValue([]);
 
-      const result = await service.checkDate(futureDate, false);
+      const result = await service.checkDate(futureDate, { withTort: false });
 
       expect(result.maxUnits).toBe(5);
       expect(result.maxTorts).toBe(1);
@@ -58,7 +58,7 @@ describe('DeliveryService', () => {
       const fullOrders = Array.from({ length: 15 }, () => ({ items: [] }));
       mockPrisma.order.findMany.mockResolvedValue(fullOrders);
 
-      const result = await service.checkDate(futureDate, false);
+      const result = await service.checkDate(futureDate, { withTort: false });
 
       expect(result.available).toBe(false);
       expect(result.reason).toContain('все слоты для заказов');
@@ -73,7 +73,7 @@ describe('DeliveryService', () => {
       ];
       mockPrisma.order.findMany.mockResolvedValue(ordersWithCakes);
 
-      const result = await service.checkDate(futureDate, true);
+      const result = await service.checkDate(futureDate, { withTort: true });
 
       expect(result.available).toBe(false);
       expect(result.tortCount).toBe(2);
@@ -88,7 +88,7 @@ describe('DeliveryService', () => {
       ];
       mockPrisma.order.findMany.mockResolvedValue(ordersWithCakes);
 
-      const result = await service.checkDate(futureDate, false); // без торта
+      const result = await service.checkDate(futureDate, { withTort: false }); // без торта
 
       expect(result.available).toBe(true);
     });
@@ -99,7 +99,7 @@ describe('DeliveryService', () => {
       const orders = [{ items: [{ category: 'торты', quantity: 10 }] }];
       mockPrisma.order.findMany.mockResolvedValue(orders);
 
-      const result = await service.checkDate(futureDate, true);
+      const result = await service.checkDate(futureDate, { withTort: true });
 
       expect(result.tortCount).toBe(1);
       expect(result.available).toBe(true); // только 1 позиция из 2 занята
@@ -109,7 +109,7 @@ describe('DeliveryService', () => {
       mockPrisma.dailyLimit.findUnique.mockResolvedValue(null);
       mockPrisma.order.findMany.mockResolvedValue([]);
 
-      await service.checkDate(futureDate, false);
+      await service.checkDate(futureDate, { withTort: false });
 
       const findManyCall = mockPrisma.order.findMany.mock.calls[0][0];
       expect(findManyCall.where.status).toEqual({
@@ -123,7 +123,7 @@ describe('DeliveryService', () => {
       mockPrisma.dailyLimit.findUnique.mockResolvedValue(null);
       mockPrisma.order.findMany.mockResolvedValue([]);
 
-      const result = await service.getCalendar(false);
+      const result = await service.getCalendar({ withTort: false });
 
       expect(result).toHaveLength(14);
     });
@@ -132,7 +132,7 @@ describe('DeliveryService', () => {
       mockPrisma.dailyLimit.findUnique.mockResolvedValue(null);
       mockPrisma.order.findMany.mockResolvedValue([]);
 
-      const result = await service.getCalendar(false);
+      const result = await service.getCalendar({ withTort: false });
 
       result.forEach((entry) => {
         expect(entry).toHaveProperty('date');
