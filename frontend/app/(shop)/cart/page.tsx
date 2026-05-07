@@ -107,7 +107,7 @@ export default function CartPage() {
     }
   }, [user, fetchCart]);
 
-  // DaData address suggestions with debounce
+  // DaData address suggestions via backend proxy (DaData key stays server-side)
   useEffect(() => {
     if (isPickup || address.length < 5) {
       setAddressSuggestions([]);
@@ -116,31 +116,10 @@ export default function CartPage() {
     if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
     addressDebounceRef.current = setTimeout(async () => {
       try {
-        const apiKey = process.env.NEXT_PUBLIC_DADATA_API_KEY;
-        if (!apiKey) return;
-        const res = await fetch(
-          'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Token ${apiKey}`,
-            },
-            body: JSON.stringify({
-              query: address,
-              count: 5,
-              locations: [
-                { region: 'нижегородская', city: 'нижний новгород' },
-              ],
-              restrict_value: true,
-            }),
-          },
-        );
-        const data = await res.json();
-        const values: string[] = (data.suggestions ?? []).map(
-          (s: { value: string }) => s.value,
-        );
-        setAddressSuggestions(values);
+        const { data } = await api.get('/delivery/suggest-address', {
+          params: { q: address },
+        });
+        setAddressSuggestions(data.suggestions ?? []);
       } catch {
         // ignore suggestion errors
       }

@@ -132,6 +132,44 @@ export class DeliveryService {
     return results;
   }
 
+  /**
+   * Server-side DaData proxy: keeps API key out of the browser bundle.
+   * Returns up to 5 address suggestions limited to Нижний Новгород.
+   */
+  async suggestAddress(query: string): Promise<{ suggestions: string[] }> {
+    const q = (query ?? '').trim();
+    if (q.length < 3) return { suggestions: [] };
+
+    const apiKey = this.config.get<string>('DADATA_API_KEY');
+    if (!apiKey) return { suggestions: [] };
+
+    try {
+      const { data } = await axios.post(
+        'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
+        {
+          query: q,
+          count: 5,
+          locations: [{ region: 'нижегородская', city: 'нижний новгород' }],
+          restrict_value: true,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Token ${apiKey}`,
+          },
+          timeout: 5000,
+        },
+      );
+      const suggestions: string[] = (data?.suggestions ?? []).map(
+        (s: { value: string }) => s.value,
+      );
+      return { suggestions };
+    } catch (e) {
+      this.logger.warn(`DaData suggest failed: ${(e as Error)?.message ?? e}`);
+      return { suggestions: [] };
+    }
+  }
+
   async getDeliveryCost(destinationAddress?: string): Promise<{ cost: number }> {
     const token = this.config.get<string>('YANDEX_DELIVERY_TOKEN');
     if (!token || !destinationAddress) {

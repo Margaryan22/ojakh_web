@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -36,7 +37,7 @@ export class PaymentsController {
   @Post('confirm/:payment_id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Confirm mock payment (marks order as paid)' })
-  confirmPayment(@Param('payment_id') paymentId: string) {
-    return this.paymentsService.confirmPayment(paymentId);
+  confirmPayment(@Req() req: any, @Param('payment_id') paymentId: string) {
+    return this.paymentsService.confirmPayment(paymentId, req.user.id);
   }
 }

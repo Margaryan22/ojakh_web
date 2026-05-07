@@ -8,8 +8,11 @@ import {
   Res,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { AuthService } from './auth.service';
+
+const STRICT_THROTTLE = { default: { ttl: 60_000, limit: 5 } };
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ValidateEmailDto } from './dto/validate-email.dto';
@@ -38,12 +41,14 @@ export class AuthController {
 
   @Post('validate-email')
   @HttpCode(HttpStatus.OK)
+  @Throttle(STRICT_THROTTLE)
   @ApiOperation({ summary: 'Validate email deliverability via Abstract API' })
   validateEmail(@Body() dto: ValidateEmailDto) {
     return this.authService.validateEmailDeliverability(dto.email);
   }
 
   @Post('register')
+  @Throttle(STRICT_THROTTLE)
   @ApiOperation({ summary: 'Register a new user (email + password, phone optional)' })
   async register(
     @Body() dto: RegisterDto,
@@ -59,6 +64,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Throttle(STRICT_THROTTLE)
   @ApiOperation({ summary: 'Login with email and password' })
   async login(
     @Body() dto: LoginDto,
@@ -76,6 +82,7 @@ export class AuthController {
 
   @Post('google')
   @HttpCode(HttpStatus.OK)
+  @Throttle(STRICT_THROTTLE)
   @ApiOperation({ summary: 'Login/register via Google Sign-In' })
   async googleLogin(
     @Body() dto: GoogleLoginDto,
@@ -91,6 +98,7 @@ export class AuthController {
 
   @Post('apple')
   @HttpCode(HttpStatus.OK)
+  @Throttle(STRICT_THROTTLE)
   @ApiOperation({ summary: 'Login/register via Sign in with Apple' })
   async appleLogin(
     @Body() dto: AppleLoginDto,
@@ -106,6 +114,7 @@ export class AuthController {
 
   @Post('yandex')
   @HttpCode(HttpStatus.OK)
+  @Throttle(STRICT_THROTTLE)
   @ApiOperation({ summary: 'Login/register via Yandex ID' })
   async yandexLogin(
     @Body() dto: YandexLoginDto,
