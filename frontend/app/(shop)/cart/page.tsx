@@ -151,12 +151,41 @@ export default function CartPage() {
     return new Set(calendarData.filter((d) => !d.available).map((d) => d.date));
   }, [calendarData]);
 
+  const calendarReasonByDate = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (!calendarData) return map;
+    for (const d of calendarData) if (!d.available && d.reason) map[d.date] = d.reason;
+    return map;
+  }, [calendarData]);
+
   const availableCalendarDates = useMemo(() => {
     if (!calendarData) return [];
     return calendarData.filter((d) => d.available);
   }, [calendarData]);
 
   const noDatesFit = !!calendarData && availableCalendarDates.length === 0 && items.length > 0;
+
+  // Распределяем недоступные даты по причине, чтобы сообщение было точным.
+  const blockBreakdown = useMemo(() => {
+    if (!calendarData) return { tortBlocked: 0, unitBlocked: 0, total: 0 };
+    let tortBlocked = 0;
+    let unitBlocked = 0;
+    for (const d of calendarData) {
+      if (d.available) continue;
+      const tortFull = hasTorts && d.tortsAvailable < cartTorts;
+      const unitFull = d.unitsAvailable < cartUnits;
+      if (tortFull && !unitFull) tortBlocked++;
+      else if (unitFull) unitBlocked++;
+    }
+    return { tortBlocked, unitBlocked, total: tortBlocked + unitBlocked };
+  }, [calendarData, hasTorts, cartTorts, cartUnits]);
+
+  const blockReason: 'torts' | 'units' | 'mixed' = (() => {
+    const { tortBlocked, unitBlocked } = blockBreakdown;
+    if (tortBlocked > 0 && unitBlocked === 0) return 'torts';
+    if (unitBlocked > 0 && tortBlocked === 0) return 'units';
+    return 'mixed';
+  })();
 
   // Single-date availability check (после выбора даты)
   const { data: dateAvailability } = useQuery<DateAvailability>({
@@ -464,11 +493,18 @@ export default function CartPage() {
                   {noDatesFit ? (
                     <>
                       <p className='font-medium'>
-                        Заказ слишком большой для ближайших дней
+                        {blockReason === 'torts'
+                          ? 'Все торты разобраны на ближайшие дни'
+                          : blockReason === 'units'
+                            ? 'Заказ слишком большой для ближайших дней'
+                            : 'Нет подходящих дат для вашего заказа'}
                       </p>
                       <p className='text-xs mt-1 opacity-90'>
-                        Уменьшите количество тортов или единиц — на ближайшие{' '}
-                        {calendarData.length} дней нет места под такой объём.
+                        {blockReason === 'torts'
+                          ? `На ближайшие ${calendarData.length} дней все слоты для тортов уже заняты. Уменьшите количество тортов в корзине или попробуйте позже.`
+                          : blockReason === 'units'
+                            ? `На ближайшие ${calendarData.length} дней нет места под такой объём. Уменьшите количество единиц в корзине.`
+                            : `Уменьшите количество тортов или единиц — на ближайшие ${calendarData.length} дней нет места под такой объём.`}
                       </p>
                     </>
                   ) : (
@@ -666,6 +702,9 @@ export default function CartPage() {
                   const isBooked = bookedDateSet.has(dateStr);
                   const isAvailable = isInRange && !isBooked;
                   const isSelected = selectedDate === dateStr;
+                  const tooltipText =
+                    calendarReasonByDate[dateStr] ??
+                    'Заказов очень много на этот день, выбери другой';
                   return (
                     <div key={dateStr} className={cn('relative', isBooked && 'group/day')}>
                       <button
@@ -685,8 +724,8 @@ export default function CartPage() {
                         {date.getDate()}
                       </button>
                       {isBooked && (
-                        <div className='pointer-events-none absolute bottom-full left-1/2 mb-1.5 hidden -translate-x-1/2 group-hover/day:block z-20 w-44 rounded-lg bg-foreground px-2.5 py-2 text-center text-xs text-background shadow-lg'>
-                          Заказов очень много на этот день, выбери другой
+                        <div className='pointer-events-none absolute bottom-full left-1/2 mb-1.5 hidden -translate-x-1/2 group-hover/day:block z-20 w-52 rounded-lg bg-foreground px-2.5 py-2 text-center text-xs text-background shadow-lg'>
+                          {tooltipText}
                           <span className='absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-foreground' />
                         </div>
                       )}
@@ -697,9 +736,22 @@ export default function CartPage() {
 
               {/* Date availability info */}
               {dateAvailability && selectedDate && !dateAvailability.available && (
-                <p className='text-sm text-foreground mt-2'>
-                  Заказов очень много на этот день, выбери другой
-                </p>
+                <div className='mt-2 space-y-1'>
+                  <p className='text-sm text-destructive'>
+                    {dateAvailability.reason ??
+                      'Заказов очень много на этот день, выбери другой'}
+                  </p>
+                  {availableCalendarDates.length > 0 && (
+                    <p className='text-xs text-muted-foreground'>
+                      Свободно на:{' '}
+                      {availableCalendarDates
+                        .slice(0, 3)
+                        .map((d) => formatDate(d.date))
+                        .join(' · ')}
+                      {availableCalendarDates.length > 3 && ' · …'}
+                    </p>
+                  )}
+                </div>
               )}
               {dateAvailability && selectedDate && hasTorts && (
                 <p className='text-xs text-muted-foreground mt-1'>
