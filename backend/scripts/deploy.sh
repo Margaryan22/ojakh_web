@@ -21,6 +21,17 @@ fi
 echo ">>> Pulling latest code..."
 git pull origin main
 
+echo ">>> Disk usage before cleanup:"
+df -h / | tail -n +1
+
+echo ">>> Cleaning Docker cache (volumes are preserved)..."
+docker container prune -f
+docker image prune -af
+docker builder prune -af
+
+echo ">>> Disk usage after cleanup:"
+df -h / | tail -n +1
+
 echo ">>> Building backend..."
 docker compose build backend
 
