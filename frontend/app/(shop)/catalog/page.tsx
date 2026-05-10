@@ -1,17 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProductCard } from '@/components/products/product-card';
 import { AddToCartDialog } from '@/components/products/add-to-cart-dialog';
 import { ProductGridSkeleton } from '@/components/products/product-grid-skeleton';
+import { CategoryNav } from '@/components/products/category-nav';
 import { CATEGORY_ORDER, CATEGORY_LABELS } from '@/lib/constants';
 import type { Product, ProductCategory } from '@/types';
 
 export default function CatalogPage() {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [dialogProduct, setDialogProduct] = useState<Product | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -23,10 +22,15 @@ export default function CatalogPage() {
     },
   });
 
-  const filteredProducts =
-    selectedCategory === 'all'
-      ? products.filter((p) => p.available)
-      : products.filter((p) => p.category === selectedCategory && p.available);
+  const groups = useMemo(() => {
+    const available = products.filter((p) => p.available);
+    return CATEGORY_ORDER
+      .map((cat) => ({
+        category: cat as ProductCategory,
+        items: available.filter((p) => p.category === cat),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [products]);
 
   const handleAddClick = (product: Product) => {
     setDialogProduct(product);
@@ -40,51 +44,45 @@ export default function CatalogPage() {
         <p className="text-muted-foreground mt-1">Домашние полуфабрикаты, торты и десерты</p>
       </div>
 
-      {/* Category tabs */}
-      <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-        <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
-          <TabsTrigger
-            value="all"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full px-4"
-          >
-            Все
-          </TabsTrigger>
-          {CATEGORY_ORDER.map((cat) => (
-            <TabsTrigger
-              key={cat}
-              value={cat}
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full px-4"
-            >
-              {CATEGORY_LABELS[cat as ProductCategory]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-
-      {/* Products grid */}
       {isLoading ? (
         <ProductGridSkeleton />
       ) : error ? (
         <div className="text-center py-12 text-muted-foreground">
           Не удалось загрузить каталог. Попробуйте позже.
         </div>
-      ) : filteredProducts.length === 0 ? (
+      ) : groups.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          В этой категории пока нет товаров
+          Пока нет доступных товаров
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAdd={handleAddClick}
-            />
-          ))}
-        </div>
+        <>
+          <CategoryNav categories={groups.map((g) => g.category)} />
+
+          <div className="space-y-10">
+            {groups.map(({ category, items }) => (
+              <section
+                key={category}
+                id={category}
+                className="scroll-mt-32 space-y-3"
+              >
+                <h2 className="text-xl font-bold">
+                  {CATEGORY_LABELS[category]}
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {items.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAdd={handleAddClick}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </>
       )}
 
-      {/* Add to cart dialog */}
       <AddToCartDialog
         product={dialogProduct}
         open={dialogOpen}
