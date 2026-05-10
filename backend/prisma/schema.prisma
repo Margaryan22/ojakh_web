@@ -23,6 +23,7 @@ model User {
   cart             Cart?
   orders           Order[]
   notifications    Notification[]
+  reviews          Review[]
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -47,6 +48,25 @@ model Product {
   protein     Float   @default(0)   // белки, г на 100 г
   fat         Float   @default(0)   // жиры, г на 100 г
   carbs       Float   @default(0)   // углеводы, г на 100 г
+  reviews     Review[]
+}
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  rating    Int
+  text      String   @db.VarChar(2000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId, createdAt])
 }
 
 // ─── Cart ─────────────────────────────────────────────────────────────────────

@@ -15,8 +15,10 @@ import { formatPrice } from '@/lib/format';
 import { CATEGORY_EMOJI, CATEGORY_LABELS } from '@/lib/constants';
 import { AddToCartDialog } from '@/components/products/add-to-cart-dialog';
 import { NutritionInfo } from '@/components/products/nutrition-info';
+import { StarRating } from '@/components/reviews/star-rating';
+import { ReviewList } from '@/components/reviews/review-list';
 import api from '@/lib/api';
-import type { Product, ProductCategory } from '@/types';
+import type { Product, ProductCategory, ReviewSummary } from '@/types';
 
 export default function ProductDetailPage({
   params,
@@ -31,6 +33,14 @@ export default function ProductDetailPage({
     queryKey: ['product', id],
     queryFn: async () => {
       const { data } = await api.get(`/products/${id}`);
+      return data;
+    },
+  });
+
+  const { data: summary } = useQuery<ReviewSummary>({
+    queryKey: ['reviews-summary', id],
+    queryFn: async () => {
+      const { data } = await api.get(`/products/${id}/reviews/summary`);
       return data;
     },
   });
@@ -110,6 +120,19 @@ export default function ProductDetailPage({
               {categoryLabel}
             </p>
             <h1 className="text-2xl font-bold leading-tight">{product.name}</h1>
+            {summary && summary.count > 0 ? (
+              <div className="flex items-center gap-1.5 pt-1">
+                <StarRating value={summary.average ?? 0} size="sm" />
+                <span className="text-sm font-medium">
+                  {summary.average?.toFixed(1)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  · {summary.count} {summary.count === 1 ? 'отзыв' : summary.count < 5 ? 'отзыва' : 'отзывов'}
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground pt-1">Нет отзывов</p>
+            )}
           </div>
           <div className="text-right shrink-0">
             <p className="text-2xl font-bold text-primary">{formatPrice(product.price)}</p>
@@ -195,6 +218,13 @@ export default function ProductDetailPage({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
       />
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold">Отзывы</h2>
+        <ReviewList productId={product.id} />
+      </section>
     </div>
   );
 }
