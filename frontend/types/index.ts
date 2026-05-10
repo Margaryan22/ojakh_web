@@ -67,6 +67,19 @@ export interface Order {
   paymentId?: string;
 }
 
+export interface Review {
+  id: number;
+  rating: number;
+  text: string;
+  createdAt: string;
+  user: { id: number; name: string };
+}
+
+export interface ReviewSummary {
+  average: number | null;
+  count: number;
+}
+
 export interface DateAvailability {
   available: boolean;
   tortCount: number;
