@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
@@ -11,12 +11,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/auth.store';
 import { SocialLoginButtons } from '@/components/auth/social-login-buttons';
+import { finalizeAuthSuccess, readNextFromQuery } from '@/lib/post-auth';
 import { AxiosError } from 'axios';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = readNextFromQuery(searchParams);
   const login = useAuthStore((s) => s.login);
   const isLoading = useAuthStore((s) => s.isLoading);
 
@@ -43,8 +46,9 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      await finalizeAuthSuccess();
       toast.success('Вы вошли в систему');
-      router.push('/catalog');
+      router.push(next);
     } catch (error) {
       if (error instanceof AxiosError) {
         toast.error(error.response?.data?.message ?? 'Ошибка входа');
@@ -60,6 +64,11 @@ export default function LoginPage() {
         <CardTitle className="text-center text-2xl" style={{ fontFamily: 'Nunito, system-ui, sans-serif' }}>
           Вход
         </CardTitle>
+        {next === '/cart' && (
+          <p className="text-center text-sm text-muted-foreground mt-2">
+            Войдите, чтобы оформить заказ — корзина сохранится
+          </p>
+        )}
       </CardHeader>
 
       <form onSubmit={handleSubmit}>
@@ -136,7 +145,10 @@ export default function LoginPage() {
           <SocialLoginButtons />
           <p className="text-sm text-muted-foreground text-center">
             Нет аккаунта?{' '}
-            <Link href="/register" className="text-primary hover:underline font-semibold transition-colors">
+            <Link
+              href={next === '/catalog' ? '/register' : `/register?next=${encodeURIComponent(next)}`}
+              className="text-primary hover:underline font-semibold transition-colors"
+            >
               Зарегистрироваться
             </Link>
           </p>

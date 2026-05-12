@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/auth.store';
+import { finalizeAuthSuccess, readNextFromQuery } from '@/lib/post-auth';
 
 declare global {
   interface Window {
@@ -44,15 +45,18 @@ function loadScript(src: string, id: string): Promise<void> {
 
 export function SocialLoginButtons() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const socialLogin = useAuthStore((s) => s.socialLogin);
   const isLoading = useAuthStore((s) => s.isLoading);
 
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
-  const handleSuccess = useCallback(() => {
+  const handleSuccess = useCallback(async () => {
+    const next = readNextFromQuery(searchParams);
+    await finalizeAuthSuccess();
     toast.success('Вы вошли в систему');
-    router.push('/catalog');
-  }, [router]);
+    router.push(next);
+  }, [router, searchParams]);
 
   const handleError = useCallback((provider: string, err: any) => {
     const msg = err?.response?.data?.message || `Ошибка входа через ${provider}`;

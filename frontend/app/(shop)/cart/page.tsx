@@ -102,9 +102,8 @@ export default function CartPage() {
   });
 
   useEffect(() => {
-    if (user) {
-      fetchCart();
-    }
+    // Для гостя fetchCart — no-op (persist уже восстановил), для юзера тянет с сервера.
+    fetchCart();
   }, [user, fetchCart]);
 
   // DaData address suggestions via backend proxy (DaData key stays server-side)
@@ -216,13 +215,13 @@ export default function CartPage() {
   const lastAddress = lastAddressData?.address ?? null;
 
   const handleCheckout = () => {
-    if (!user) {
-      toast.error('Войдите в систему для оформления заказа');
-      router.push('/login');
-      return;
-    }
     if (items.length === 0) {
       toast.error('Корзина пуста');
+      return;
+    }
+    if (!user) {
+      toast.info('Войдите, чтобы оформить заказ');
+      router.push('/login?next=/cart');
       return;
     }
     setStep('delivery');
@@ -290,17 +289,6 @@ export default function CartPage() {
   };
 
   const isTortItem = (category: string) => category === CAKE_CATEGORY;
-
-  if (!user) {
-    return (
-      <div className='text-center py-12 space-y-4'>
-        <p className='text-muted-foreground'>
-          Войдите в систему, чтобы просмотреть корзину
-        </p>
-        <Button onClick={() => router.push('/login')}>Войти</Button>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -521,6 +509,29 @@ export default function CartPage() {
                       </p>
                     </>
                   )}
+                </div>
+              )}
+
+              {!user && (
+                <div className='rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3'>
+                  <span className='flex-1 text-foreground'>
+                    Для оформления заказа нужно войти или зарегистрироваться. Корзина сохранится.
+                  </span>
+                  <div className='flex gap-2'>
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      onClick={() => router.push('/login?next=/cart')}
+                    >
+                      Войти
+                    </Button>
+                    <Button
+                      size='sm'
+                      onClick={() => router.push('/register?next=/cart')}
+                    >
+                      Регистрация
+                    </Button>
+                  </div>
                 </div>
               )}
 

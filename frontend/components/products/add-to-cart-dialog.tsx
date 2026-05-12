@@ -19,7 +19,6 @@ import { NutritionInfo } from '@/components/products/nutrition-info';
 import { formatPrice } from '@/lib/format';
 import { CATEGORY_EMOJI, MAX_ITEM_QTY_PER_ORDER, MAX_TORTS_PER_ORDER, CAKE_CATEGORY } from '@/lib/constants';
 import { useCartStore } from '@/stores/cart.store';
-import { useAuthStore } from '@/stores/auth.store';
 import type { Product, ProductCategory } from '@/types';
 
 interface AddToCartDialogProps {
@@ -34,7 +33,6 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
   const [inputValue, setInputValue] = useState('1');
   const addItem = useCartStore((s) => s.addItem);
   const getItemByKey = useCartStore((s) => s.getItemByKey);
-  const user = useAuthStore((s) => s.user);
 
   const isTort = product?.category === CAKE_CATEGORY;
   const existingItem = product ? getItemByKey(product.id, product.flavor, product.size) : undefined;
@@ -101,11 +99,6 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
   };
 
   const handleAdd = async () => {
-    if (!user) {
-      toast.error('Войдите в систему, чтобы добавить товар в корзину');
-      onOpenChange(false);
-      return;
-    }
     if (isAtLimit) return;
 
     setIsAdding(true);

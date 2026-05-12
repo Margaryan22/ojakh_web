@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/auth.store';
 import { SocialLoginButtons } from '@/components/auth/social-login-buttons';
+import { finalizeAuthSuccess, readNextFromQuery } from '@/lib/post-auth';
 import {
   EMAIL_REGEX,
   formatPhone,
@@ -23,6 +24,8 @@ import {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = readNextFromQuery(searchParams);
   const register = useAuthStore((s) => s.register);
   const isLoading = useAuthStore((s) => s.isLoading);
 
@@ -82,8 +85,9 @@ export default function RegisterPage() {
         password,
         phone: phoneNormalized,
       });
+      await finalizeAuthSuccess();
       toast.success('Добро пожаловать!');
-      router.push('/catalog');
+      router.push(next);
     } catch (error) {
       if (error instanceof AxiosError) {
         toast.error(error.response?.data?.message ?? 'Ошибка регистрации');
@@ -99,6 +103,11 @@ export default function RegisterPage() {
         <CardTitle className="text-center text-2xl" style={{ fontFamily: 'Nunito, system-ui, sans-serif' }}>
           Регистрация
         </CardTitle>
+        {next === '/cart' && (
+          <p className="text-center text-sm text-muted-foreground mt-2">
+            Зарегистрируйтесь, чтобы оформить заказ — корзина сохранится
+          </p>
+        )}
       </CardHeader>
 
       <form onSubmit={handleSubmit}>
@@ -204,7 +213,12 @@ export default function RegisterPage() {
           <SocialLoginButtons />
           <p className="text-sm text-muted-foreground text-center">
             Уже есть аккаунт?{' '}
-            <Link href="/login" className="text-primary hover:underline font-semibold">Войти</Link>
+            <Link
+              href={next === '/catalog' ? '/login' : `/login?next=${encodeURIComponent(next)}`}
+              className="text-primary hover:underline font-semibold"
+            >
+              Войти
+            </Link>
           </p>
         </CardFooter>
       </form>
