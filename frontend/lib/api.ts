@@ -102,6 +102,11 @@ if (USE_MOCK_DATA) {
     async (error) => {
       const originalRequest = error.config;
       if (error.response?.status === 401 && !originalRequest._retry) {
+        const hadToken = Boolean(useAuthStore.getState().accessToken);
+        if (!hadToken) {
+          // Гостевой запрос — не редиректить, просто пробросить 401 наверх.
+          return Promise.reject(error);
+        }
         originalRequest._retry = true;
         try {
           const { data } = await axios.post(

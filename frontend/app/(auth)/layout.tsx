@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+
 export default function AuthLayout({
   children,
 }: {
@@ -12,7 +14,7 @@ export default function AuthLayout({
             Домашние полуфабрикаты, торты и десерты
           </p>
         </div>
-        {children}
+        <Suspense>{children}</Suspense>
       </div>
     </div>
   );

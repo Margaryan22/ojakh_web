@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import axios from 'axios';
 import api from '@/lib/api';
+import { useCartStore } from '@/stores/cart.store';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -89,6 +90,12 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       // ignore errors on logout
     }
     set({ user: null, accessToken: null });
+    useCartStore.setState({ items: [] });
+    try {
+      useCartStore.persist.clearStorage();
+    } catch {
+      // ignore
+    }
   },
 
   loadUser: async () => {
@@ -106,6 +113,8 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       }
       const { data } = await api.get('/users/me');
       set({ user: data, isLoading: false, isInitialized: true });
+      // Silent restore: подтянуть серверную корзину, не сливая локальную.
+      useCartStore.getState().fetchCart();
     } catch {
       set({ user: null, accessToken: null, isLoading: false, isInitialized: true });
     }
