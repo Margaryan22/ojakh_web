@@ -1,19 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'motion/react';
 import { CATEGORY_LABELS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { ProductCategory } from '@/types';
-
-const CATEGORY_DESCRIPTORS: Record<ProductCategory, string> = {
-  'хинкали': 'Тбилисский рецепт',
-  'пельмени': 'Сибирские и домашние',
-  'блинчики': 'С разной начинкой',
-  'хлеб': 'На закваске',
-  'десерты': 'Без консервантов',
-  'торты': 'По предзаказу',
-};
 
 interface CategoryNavProps {
   categories: ProductCategory[];
@@ -52,7 +42,7 @@ export function CategoryNav({ categories }: CategoryNavProps) {
         }
       },
       {
-        rootMargin: '-140px 0px -50% 0px',
+        rootMargin: '-120px 0px -50% 0px',
         threshold: 0,
       },
     );
@@ -72,28 +62,16 @@ export function CategoryNav({ categories }: CategoryNavProps) {
     if (!el) return;
     setActive(cat);
     isScrollingProgrammatically.current = true;
-
-    const lenis = window.__lenis;
-    if (lenis) {
-      lenis.scrollTo(el, {
-        offset: -110,
-        duration: 1.2,
-        onComplete: () => {
-          isScrollingProgrammatically.current = false;
-        },
-      });
-    } else {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      window.setTimeout(() => {
-        isScrollingProgrammatically.current = false;
-      }, 700);
-    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => {
+      isScrollingProgrammatically.current = false;
+    }, 700);
   };
 
   return (
-    <nav className='sticky top-20 z-30 -mx-4 md:-mx-8 px-4 md:px-8 py-4 bg-background/85 backdrop-blur-md border-b border-border'>
-      <div className='flex gap-8 overflow-x-auto scrollbar-hide'>
-        {categories.map((cat, i) => {
+    <nav className="sticky top-16 z-30 -mx-4 px-4 py-3 bg-background/95 backdrop-blur border-b border-border">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+        {categories.map((cat) => {
           const isActive = active === cat;
           return (
             <button
@@ -102,31 +80,16 @@ export function CategoryNav({ categories }: CategoryNavProps) {
                 if (el) pillRefs.current.set(cat, el);
                 else pillRefs.current.delete(cat);
               }}
-              type='button'
+              type="button"
               onClick={() => handleClick(cat)}
               className={cn(
-                'group shrink-0 relative pb-1.5 transition-colors text-left',
-                isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                'shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground hover:bg-muted/70',
               )}
             >
-              <span className='flex items-baseline gap-2'>
-                <span className='font-mono text-[10px] text-gold tabular-nums'>
-                  0{i + 1}
-                </span>
-                <span className='font-display text-sm uppercase tracking-[0.15em] whitespace-nowrap'>
-                  {CATEGORY_LABELS[cat]}
-                </span>
-                <span className='hidden md:inline font-display italic text-xs text-muted-foreground whitespace-nowrap'>
-                  · {CATEGORY_DESCRIPTORS[cat]}
-                </span>
-              </span>
-              {isActive && (
-                <motion.span
-                  layoutId='cat-underline'
-                  className='absolute left-0 right-0 -bottom-0.5 h-px bg-gold'
-                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                />
-              )}
+              {CATEGORY_LABELS[cat]}
             </button>
           );
         })}
