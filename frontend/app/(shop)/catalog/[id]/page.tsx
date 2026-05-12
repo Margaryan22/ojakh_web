@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { use } from 'react';
+import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ShoppingCart, Info, ChefHat, Flame } from 'lucide-react';
+import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
+import { GoldDivider } from '@/components/editorial/gold-divider';
+import { Reveal } from '@/components/editorial/reveal';
+import { Magnetic } from '@/components/editorial/magnetic';
 import { formatPrice } from '@/lib/format';
 import { CATEGORY_EMOJI, CATEGORY_LABELS } from '@/lib/constants';
 import { AddToCartDialog } from '@/components/products/add-to-cart-dialog';
@@ -47,21 +47,28 @@ export default function ProductDetailPage({
 
   if (isLoading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6 pb-10">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-72 w-full rounded-2xl" />
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
+      <div className='max-w-5xl mx-auto space-y-6 pb-10'>
+        <Skeleton className='h-8 w-32' />
+        <div className='grid md:grid-cols-2 gap-12'>
+          <Skeleton className='aspect-[4/5] w-full rounded-none' />
+          <div className='space-y-4'>
+            <Skeleton className='h-12 w-3/4' />
+            <Skeleton className='h-4 w-full' />
+            <Skeleton className='h-4 w-full' />
+            <Skeleton className='h-4 w-2/3' />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (isError || !product) {
     return (
-      <div className="max-w-2xl mx-auto text-center py-20 space-y-4">
-        <p className="text-muted-foreground text-lg">Товар не найден</p>
-        <Button variant="outline" onClick={() => router.push('/catalog')}>
+      <div className='max-w-2xl mx-auto text-center py-20 space-y-4'>
+        <p className='text-muted-foreground font-display italic text-lg'>
+          Товар не найден
+        </p>
+        <Button variant='outline' onClick={() => router.push('/catalog')}>
           Вернуться в каталог
         </Button>
       </div>
@@ -74,157 +81,185 @@ export default function ProductDetailPage({
     ? `${apiUrl}${product.imageUrl}`
     : product.imageUrl;
 
-  const categoryLabel = CATEGORY_LABELS[product.category as ProductCategory] ?? product.category;
+  const categoryLabel =
+    CATEGORY_LABELS[product.category as ProductCategory] ?? product.category;
 
   return (
-    <div className="max-w-2xl mx-auto pb-10">
-      {/* Back button */}
-      <div className="mb-5">
-        <Link
-          href="/catalog"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Каталог
-        </Link>
-      </div>
+    <Reveal>
+      <div className='max-w-5xl mx-auto pb-16'>
+        {/* Back link */}
+        <div className='mb-10'>
+          <Link
+            href='/catalog'
+            className='inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.25em] text-muted-foreground hover:text-foreground transition-colors'
+          >
+            <ArrowLeft className='h-3.5 w-3.5' strokeWidth={1.5} />
+            Каталог
+          </Link>
+        </div>
 
-      {/* Hero image */}
-      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-muted to-accent mb-6 shadow-md">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={product.name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 672px"
-            priority
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-9xl">{emoji}</span>
+        <div className='grid md:grid-cols-2 gap-10 md:gap-16'>
+          {/* Image */}
+          <div className='md:sticky md:top-28 md:self-start'>
+            <div
+              className='relative w-full aspect-[4/5] bg-sand overflow-hidden border border-gold/40'
+              style={{
+                viewTransitionName: `product-image-${product.id}`,
+              } as React.CSSProperties}
+            >
+              {imageUrl ? (
+                <Image
+                  src={imageUrl}
+                  alt={product.name}
+                  fill
+                  className='object-cover'
+                  sizes='(max-width: 768px) 100vw, 50vw'
+                  priority
+                />
+              ) : (
+                <div className='absolute inset-0 flex items-center justify-center'>
+                  <span className='text-[12rem] opacity-80'>{emoji}</span>
+                </div>
+              )}
+              {!product.available && (
+                <div className='absolute inset-0 bg-foreground/50 flex items-center justify-center'>
+                  <span className='font-display italic text-background text-2xl'>
+                    Недоступен
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-        {!product.available && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="text-white font-semibold text-lg">Недоступен</span>
-          </div>
-        )}
-      </div>
 
-      {/* Product header */}
-      <div className="space-y-3 mb-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {categoryLabel}
-            </p>
-            <h1 className="text-2xl font-bold leading-tight">{product.name}</h1>
-            {summary && summary.count > 0 ? (
-              <div className="flex items-center gap-1.5 pt-1">
-                <StarRating value={summary.average ?? 0} size="sm" />
-                <span className="text-sm font-medium">
-                  {summary.average?.toFixed(1)}
+          {/* Copy */}
+          <div className='space-y-8'>
+            <div className='space-y-5'>
+              <span className='font-mono text-[10px] uppercase tracking-[0.3em] text-gold'>
+                {categoryLabel}
+              </span>
+              <h1 className='font-display text-4xl md:text-5xl leading-[1.05] tracking-tight'>
+                {product.name}
+              </h1>
+
+              {summary && summary.count > 0 ? (
+                <div className='flex items-center gap-2'>
+                  <StarRating value={summary.average ?? 0} size='sm' />
+                  <span className='font-mono text-xs text-foreground'>
+                    {summary.average?.toFixed(1)}
+                  </span>
+                  <span className='font-mono text-[10px] uppercase tracking-wider text-muted-foreground'>
+                    · {summary.count}{' '}
+                    {summary.count === 1
+                      ? 'отзыв'
+                      : summary.count < 5
+                        ? 'отзыва'
+                        : 'отзывов'}
+                  </span>
+                </div>
+              ) : (
+                <span className='font-mono text-[10px] uppercase tracking-wider text-muted-foreground'>
+                  Нет отзывов
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  · {summary.count} {summary.count === 1 ? 'отзыв' : summary.count < 5 ? 'отзыва' : 'отзывов'}
-                </span>
+              )}
+            </div>
+
+            <GoldDivider align='left' />
+
+            {/* Price */}
+            <div className='flex items-baseline gap-3'>
+              <p className='font-display italic text-4xl text-primary'>
+                {formatPrice(product.price)}
+              </p>
+              <p className='font-mono text-xs text-muted-foreground'>
+                / {product.unit}
+              </p>
+            </div>
+
+            {/* Attributes */}
+            {(product.flavor || product.size) && (
+              <div className='flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground'>
+                {product.flavor && <span>{product.flavor}</span>}
+                {product.flavor && product.size && <span>·</span>}
+                {product.size && (
+                  <span>
+                    {product.size}
+                    {product.weightGrams ? ` · ${product.weightGrams} г` : ''}
+                  </span>
+                )}
+                {product.weightGrams && !product.size && (
+                  <span>{product.weightGrams} г</span>
+                )}
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground pt-1">Нет отзывов</p>
             )}
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-2xl font-bold text-primary">{formatPrice(product.price)}</p>
-            <p className="text-xs text-muted-foreground">/ {product.unit}</p>
-          </div>
-        </div>
 
-        {/* Badges */}
-        <div className="flex flex-wrap gap-2">
-          {product.flavor && (
-            <Badge variant="secondary" className="text-sm px-3 py-1">
-              {product.flavor}
-            </Badge>
-          )}
-          {product.size && (
-            <Badge variant="secondary" className="text-sm px-3 py-1">
-              {product.size}
-              {product.weightGrams ? ` · ${product.weightGrams} г` : ''}
-            </Badge>
-          )}
-          {product.weightGrams && !product.size && (
-            <Badge variant="outline" className="text-sm px-3 py-1">
-              {product.weightGrams} г
-            </Badge>
-          )}
-        </div>
-      </div>
+            {/* Description */}
+            {product.description && (
+              <div className='space-y-2 pt-2'>
+                <p className='font-mono text-[10px] uppercase tracking-[0.25em] text-gold'>
+                  Описание
+                </p>
+                <p className='text-base text-foreground/85 leading-relaxed'>
+                  {product.description}
+                </p>
+              </div>
+            )}
 
-      {/* Description block */}
-      {product.description && (
-        <>
-          <div className="rounded-xl border bg-card p-4 space-y-2 mb-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Info className="h-4 w-4 text-primary" />
-              Описание
+            {/* Ingredients */}
+            {product.ingredients && (
+              <div className='space-y-2'>
+                <p className='font-mono text-[10px] uppercase tracking-[0.25em] text-gold'>
+                  Состав
+                </p>
+                <p className='text-sm text-muted-foreground leading-relaxed'>
+                  {product.ingredients}
+                </p>
+              </div>
+            )}
+
+            {/* Nutrition */}
+            <div className='space-y-3'>
+              <p className='font-mono text-[10px] uppercase tracking-[0.25em] text-gold'>
+                Пищевая ценность
+              </p>
+              <NutritionInfo product={product} />
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {product.description}
-            </p>
-          </div>
-        </>
-      )}
 
-      {/* Ingredients block */}
-      {product.ingredients && (
-        <>
-          <div className="rounded-xl border bg-card p-4 space-y-2 mb-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <ChefHat className="h-4 w-4 text-primary" />
-              Состав
+            {/* CTA */}
+            <div className='pt-4'>
+              <Magnetic strength={0.15}>
+                <button
+                  onClick={() => setDialogOpen(true)}
+                  disabled={!product.available}
+                  className='group inline-flex w-full items-center justify-center gap-3 h-14 px-8 bg-foreground text-background font-display uppercase tracking-[0.2em] text-xs hover:bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer'
+                >
+                  <ShoppingCart className='h-4 w-4' strokeWidth={1.5} />
+                  {product.available ? 'Добавить в корзину' : 'Недоступен'}
+                </button>
+              </Magnetic>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {product.ingredients}
-            </p>
           </div>
-        </>
-      )}
-
-      {/* Nutrition block */}
-      <div className="rounded-xl border bg-card p-4 mb-6">
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-          <Flame className="h-4 w-4 text-primary" />
-          Пищевая ценность
         </div>
-        <NutritionInfo product={product} />
+
+        <AddToCartDialog
+          product={product}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+        />
+
+        {/* Reviews */}
+        <section className='mt-24 md:mt-32 space-y-8'>
+          <div className='space-y-4'>
+            <span className='font-mono text-[10px] uppercase tracking-[0.3em] text-gold'>
+              Отзывы
+            </span>
+            <h2 className='font-display text-3xl md:text-4xl'>
+              Что говорят гости
+            </h2>
+            <GoldDivider align='left' />
+          </div>
+          <ReviewList productId={product.id} />
+        </section>
       </div>
-
-      <Separator className="mb-6" />
-
-      {/* Add to cart */}
-      <Button
-        size="lg"
-        className="w-full h-12 text-base font-semibold gap-2"
-        onClick={() => setDialogOpen(true)}
-        disabled={!product.available}
-      >
-        <ShoppingCart className="h-5 w-5" />
-        {product.available ? 'Добавить в корзину' : 'Недоступен'}
-      </Button>
-
-      <AddToCartDialog
-        product={product}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      />
-
-      <Separator className="my-8" />
-
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold">Отзывы</h2>
-        <ReviewList productId={product.id} />
-      </section>
-    </div>
+    </Reveal>
   );
 }

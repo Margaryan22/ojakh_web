@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { motion } from 'motion/react';
 import {
   Menu,
   X,
@@ -25,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { GoldBurst } from '@/components/editorial/gold-burst';
 import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
 import { useNotificationsStore } from '@/stores/notifications.store';
@@ -45,6 +46,8 @@ const NOTIFICATION_LABELS: Record<string, string> = {
   cancelled: 'Отменён',
 };
 
+const ICON_STROKE = 1.5;
+
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -61,7 +64,6 @@ export function Header() {
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      // Poll every 30s
       const interval = setInterval(fetchNotifications, POLLING_INTERVAL_MS);
       return () => clearInterval(interval);
     }
@@ -82,13 +84,13 @@ export function Header() {
   const NotificationsPanel = () => (
     <div className='flex flex-col'>
       <div className='flex items-center justify-between px-3 py-2 border-b border-border'>
-        <span className='text-sm font-semibold'>Уведомления</span>
+        <span className='text-sm font-display'>Уведомления</span>
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
             className='flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors'
           >
-            <CheckCheck className='h-3.5 w-3.5' />
+            <CheckCheck className='h-3.5 w-3.5' strokeWidth={ICON_STROKE} />
             Прочитать все
           </button>
         )}
@@ -99,7 +101,10 @@ export function Header() {
           Нет уведомлений
         </p>
       ) : (
-        <div className='max-h-72 overflow-y-auto divide-y divide-border'>
+        <div
+          data-lenis-prevent
+          className='max-h-72 overflow-y-auto divide-y divide-border'
+        >
           {notifications.map((n) => (
             <button
               key={n.id}
@@ -111,14 +116,14 @@ export function Header() {
             >
               <div className='flex items-start gap-2'>
                 {!n.isRead && (
-                  <span className='mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary' />
+                  <span className='mt-1.5 h-2 w-2 shrink-0 rounded-full bg-gold' />
                 )}
                 <div className={cn(!n.isRead ? '' : 'pl-4')}>
-                  <p className='font-medium text-xs text-muted-foreground mb-0.5'>
+                  <p className='font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5'>
                     Заказ #{n.orderId} · {NOTIFICATION_LABELS[n.status] ?? n.status}
                   </p>
                   <p className='text-foreground leading-snug'>{n.message}</p>
-                  <p className='text-[11px] text-muted-foreground mt-1'>
+                  <p className='text-[11px] text-muted-foreground mt-1 font-mono'>
                     {new Date(n.createdAt).toLocaleString('ru-RU', {
                       day: 'numeric',
                       month: 'short',
@@ -136,44 +141,54 @@ export function Header() {
   );
 
   return (
-    <header className='sticky top-0 z-40 w-full bg-background shadow-sm border-b border-border'>
-      <div className='max-w-7xl mx-auto px-4 flex h-16 items-center justify-between'>
+    <header className='sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-gold/40'>
+      <div className='max-w-7xl mx-auto px-4 md:px-8 flex h-20 items-center justify-between'>
         {/* Logo */}
         <Link
-          href='/catalog'
-          className='flex items-center gap-2 font-bold text-2xl text-primary hover:opacity-80 transition-opacity'
+          href='/'
+          className='flex items-center gap-2 font-display text-xl md:text-2xl uppercase tracking-[0.22em] text-foreground hover:text-primary transition-colors'
         >
-          <span style={{ fontFamily: "'Comic Relief', system-ui, sans-serif", fontWeight: '700' }}>Ojakh</span>
+          <span>Ojakh</span>
         </Link>
 
         {/* Desktop nav */}
-        <nav className='hidden md:flex items-center gap-6'>
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                'text-sm font-medium transition-colors hover:text-primary',
-                pathname === link.href ? 'text-primary' : 'text-muted-foreground',
-              )}
-            >
-              {link.label}
-              {link.href === '/cart' && cartCount > 0 && (
-                <span className='ml-1.5 inline-block h-2 w-2 rounded-full bg-primary align-middle' />
-              )}
-            </Link>
-          ))}
+        <nav className='hidden md:flex items-center gap-8'>
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  'relative font-display text-sm uppercase tracking-[0.18em] py-1.5 transition-colors',
+                  isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {link.label}
+                {link.href === '/cart' && cartCount > 0 && (
+                  <span className='ml-1.5 inline-block h-1 w-1 rounded-full bg-gold align-middle' />
+                )}
+                {isActive && (
+                  <motion.span
+                    layoutId='nav-underline'
+                    className='absolute left-0 right-0 -bottom-0.5 h-px bg-gold'
+                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Desktop right */}
-        <div className='hidden md:flex items-center gap-2'>
+        <div className='hidden md:flex items-center gap-3'>
           {user && (
             <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant='ghost' size='icon' className='relative'>
-                  <Bell className='h-5 w-5' />
+                  <Bell className='h-5 w-5' strokeWidth={ICON_STROKE} />
                   {unreadCount > 0 && (
-                    <span className='absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
+                    <span className='absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-gold bg-background text-[10px] font-mono text-gold'>
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
@@ -185,41 +200,56 @@ export function Header() {
             </DropdownMenu>
           )}
 
+          {/* Cart icon with gold-burst */}
+          <Link
+            href='/cart'
+            className='relative inline-flex h-9 w-9 items-center justify-center hover:text-primary transition-colors'
+            aria-label='Корзина'
+          >
+            <ShoppingCart className='h-5 w-5' strokeWidth={ICON_STROKE} />
+            {cartCount > 0 && (
+              <span className='absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-gold bg-background text-[10px] font-mono text-gold'>
+                {cartCount > 9 ? '9+' : cartCount}
+              </span>
+            )}
+            <GoldBurst trigger={cartCount} />
+          </Link>
+
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant='ghost' size='sm' className='gap-2'>
-                  <User className='h-4 w-4' />
+                <Button variant='ghost' size='sm' className='gap-2 font-display text-xs uppercase tracking-wider'>
+                  <User className='h-4 w-4' strokeWidth={ICON_STROKE} />
                   {user.name}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align='end' className='w-48'>
-                <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+              <DropdownMenuContent align='end' className='w-52'>
+                <DropdownMenuLabel className='font-mono text-[10px] uppercase tracking-wider text-muted-foreground'>{user.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push('/profile')} className='cursor-pointer'>
-                  <User className='mr-2 h-4 w-4' />
+                  <User className='mr-2 h-4 w-4' strokeWidth={ICON_STROKE} />
                   Профиль
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/favorites')} className='cursor-pointer'>
-                  <Image src='/ornament-fav-off.jpg' alt='' width={16} height={16} className='mr-2 rounded-full' />
+                  <Heart className='mr-2 h-4 w-4' strokeWidth={ICON_STROKE} />
                   Избранное
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/orders')} className='cursor-pointer'>
-                  <ClipboardList className='mr-2 h-4 w-4' />
+                  <ClipboardList className='mr-2 h-4 w-4' strokeWidth={ICON_STROKE} />
                   Мои заказы
                 </DropdownMenuItem>
                 {user.role === ADMIN_ROLE && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => router.push('/admin')} className='cursor-pointer'>
-                      <ShieldCheck className='mr-2 h-4 w-4' />
+                      <ShieldCheck className='mr-2 h-4 w-4' strokeWidth={ICON_STROKE} />
                       Админ-панель
                     </DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className='cursor-pointer'>
-                  <LogOut className='mr-2 h-4 w-4' />
+                  <LogOut className='mr-2 h-4 w-4' strokeWidth={ICON_STROKE} />
                   Выйти
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -227,7 +257,7 @@ export function Header() {
           ) : (
             <div className='flex items-center gap-2'>
               <Button variant='ghost' size='sm' asChild>
-                <Link href='/login'>Войти</Link>
+                <Link href='/login' className='font-display text-xs uppercase tracking-wider'>Войти</Link>
               </Button>
               <Button size='sm' asChild>
                 <Link href='/register'>Регистрация</Link>
@@ -248,9 +278,9 @@ export function Header() {
                 setMobileOpen(false);
               }}
             >
-              <Bell className='h-5 w-5' />
+              <Bell className='h-5 w-5' strokeWidth={ICON_STROKE} />
               {unreadCount > 0 && (
-                <span className='absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
+                <span className='absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-gold bg-background text-[10px] font-mono text-gold'>
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -258,10 +288,11 @@ export function Header() {
           )}
           <Button variant='ghost' size='icon' asChild>
             <Link href='/cart' className='relative'>
-              <ShoppingCart className='h-5 w-5' />
+              <ShoppingCart className='h-5 w-5' strokeWidth={ICON_STROKE} />
               {cartCount > 0 && (
-                <span className='absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary' />
+                <span className='absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-gold' />
               )}
+              <GoldBurst trigger={cartCount} />
             </Link>
           </Button>
           <Button
@@ -272,14 +303,14 @@ export function Header() {
               setNotifOpen(false);
             }}
           >
-            {mobileOpen ? <X className='h-5 w-5' /> : <Menu className='h-5 w-5' />}
+            {mobileOpen ? <X className='h-5 w-5' strokeWidth={ICON_STROKE} /> : <Menu className='h-5 w-5' strokeWidth={ICON_STROKE} />}
           </Button>
         </div>
       </div>
 
       {/* Mobile notifications panel */}
       {notifOpen && user && (
-        <div className='md:hidden border-t bg-background'>
+        <div className='md:hidden border-t border-border bg-background'>
           <div className='max-w-7xl mx-auto'>
             <NotificationsPanel />
           </div>
@@ -288,47 +319,49 @@ export function Header() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className='md:hidden border-t bg-background'>
-          <nav className='max-w-7xl mx-auto px-4 py-4 flex flex-col gap-2'>
+        <div className='md:hidden border-t border-border bg-background'>
+          <nav className='max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1'>
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent',
-                  pathname === link.href ? 'bg-accent text-primary' : 'text-muted-foreground',
+                  'font-display uppercase tracking-[0.18em] text-sm px-3 py-3 transition-colors border-b border-border last:border-b-0',
+                  pathname === link.href
+                    ? 'text-foreground border-gold'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {link.label}
               </Link>
             ))}
-            <div className='border-t my-2' />
+            <div className='border-t border-border my-2' />
             {user ? (
               <>
                 <Link
                   href='/profile'
                   onClick={() => setMobileOpen(false)}
-                  className='flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent'
+                  className='flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground'
                 >
-                  <User className='h-4 w-4' />
+                  <User className='h-4 w-4' strokeWidth={ICON_STROKE} />
                   Профиль
                 </Link>
                 <Link
                   href='/favorites'
                   onClick={() => setMobileOpen(false)}
-                  className='flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent'
+                  className='flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground'
                 >
-                  <Heart className='h-4 w-4' />
+                  <Heart className='h-4 w-4' strokeWidth={ICON_STROKE} />
                   Избранное
                 </Link>
                 {user.role === ADMIN_ROLE && (
                   <Link
                     href='/admin'
                     onClick={() => setMobileOpen(false)}
-                    className='flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent'
+                    className='flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground'
                   >
-                    <ShieldCheck className='h-4 w-4' />
+                    <ShieldCheck className='h-4 w-4' strokeWidth={ICON_STROKE} />
                     Админ-панель
                   </Link>
                 )}
@@ -337,9 +370,9 @@ export function Header() {
                     handleLogout();
                     setMobileOpen(false);
                   }}
-                  className='flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent w-full text-left cursor-pointer'
+                  className='flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground w-full text-left cursor-pointer'
                 >
-                  <LogOut className='h-4 w-4' />
+                  <LogOut className='h-4 w-4' strokeWidth={ICON_STROKE} />
                   Выйти
                 </button>
               </>
@@ -348,14 +381,14 @@ export function Header() {
                 <Link
                   href='/login'
                   onClick={() => setMobileOpen(false)}
-                  className='flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent'
+                  className='px-3 py-2 text-sm text-muted-foreground hover:text-foreground'
                 >
                   Войти
                 </Link>
                 <Link
                   href='/register'
                   onClick={() => setMobileOpen(false)}
-                  className='flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-primary hover:bg-accent'
+                  className='px-3 py-2 text-sm text-primary hover:text-foreground'
                 >
                   Регистрация
                 </Link>

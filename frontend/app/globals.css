@@ -1,34 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Comic+Relief:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-background: #faf8f3;
-  --color-foreground: #3d3d3d;
-  --color-muted: #f2ede4;
-  --color-muted-foreground: #8b7f75;
-  --color-border: #e8dfd5;
-  --color-input: #f2ede4;
-  --color-ring: #d4a574;
-  --color-primary: #d4a574;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f2ede4;
-  --color-secondary-foreground: #3d3d3d;
-  --color-accent: #fde8cc;
-  --color-accent-foreground: #d4a574;
-  --color-destructive: #d4574a;
-  --color-destructive-foreground: #ffffff;
+  --color-background: #f5f1ea;
+  --color-foreground: #1f1b17;
+  --color-muted: #ebe4d7;
+  --color-muted-foreground: #75695b;
+  --color-border: #d9cebd;
+  --color-input: #ebe4d7;
+  --color-ring: rgb(184 149 104);
+  --color-primary: #8b6543;
+  --color-primary-foreground: #f5f1ea;
+  --color-secondary: #ebe4d7;
+  --color-secondary-foreground: #1f1b17;
+  --color-accent: #f0e4cf;
+  --color-accent-foreground: #8b6543;
+  --color-destructive: #a8463d;
+  --color-destructive-foreground: #f5f1ea;
   --color-card: #ffffff;
-  --color-card-foreground: #3d3d3d;
+  --color-card-foreground: #1f1b17;
   --color-popover: #ffffff;
-  --color-popover-foreground: #3d3d3d;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --color-popover-foreground: #1f1b17;
+  --color-sand: rgb(232 221 202);
+  --color-gold: rgb(184 149 104);
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  --font-display: var(--font-lora), Georgia, 'Times New Roman', serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'SF Mono', Menlo, monospace;
 }
 
 body {
-  font-family: 'Comic Relief', system-ui, sans-serif;
+  font-family: var(--font-sans);
   color: var(--color-foreground);
   background: var(--color-background);
   -webkit-font-smoothing: antialiased;
@@ -36,8 +41,9 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Comic Relief', system-ui, sans-serif;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 @utility scrollbar-hide {
@@ -45,5 +51,45 @@ h1, h2, h3, h4, h5, h6 {
   scrollbar-width: none;
   &::-webkit-scrollbar {
     display: none;
+  }
+}
+
+@utility hairline {
+  border: 0;
+  border-top: 1px solid var(--color-gold);
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Animated gold underline on hover */
+@utility gold-underline-hover {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    height: 1px;
+    width: 0;
+    background-color: var(--color-gold);
+    transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  &:hover::after {
+    width: 100%;
+  }
+}
+
+/* View Transitions API defaults */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.35s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
 }

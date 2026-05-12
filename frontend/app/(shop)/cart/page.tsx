@@ -301,45 +301,60 @@ export default function CartPage() {
     );
   }
 
+  const steps: { id: Step; label: string }[] = [
+    { id: 'cart', label: 'Корзина' },
+    { id: 'delivery', label: 'Доставка' },
+    { id: 'confirm', label: 'Подтверждение' },
+  ];
+
   return (
-    <div className='space-y-6 max-w-3xl mx-auto'>
-      {/* Step indicator */}
-      <div className='flex items-center gap-2 text-sm'>
-        <span
-          className={cn(
-            'font-medium cursor-pointer',
-            step === 'cart' ? 'text-primary' : 'text-muted-foreground',
-          )}
-          onClick={() => setStep('cart')}
-        >
-          Корзина
-        </span>
-        <ArrowRight className='h-3 w-3 text-muted-foreground' />
-        <span
-          className={cn(
-            'font-medium',
-            step === 'delivery' ? 'text-primary' : 'text-muted-foreground',
-            step !== 'cart' ? 'cursor-pointer' : '',
-          )}
-          onClick={() => step !== 'cart' && setStep('delivery')}
-        >
-          Доставка
-        </span>
-        <ArrowRight className='h-3 w-3 text-muted-foreground' />
-        <span
-          className={cn(
-            'font-medium',
-            step === 'confirm' ? 'text-primary' : 'text-muted-foreground',
-          )}
-        >
-          Подтверждение
-        </span>
+    <div className='space-y-10 max-w-3xl mx-auto'>
+      {/* Editorial step indicator */}
+      <div className='flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-gold/40 pb-6'>
+        {steps.map((s, i) => {
+          const isActive = step === s.id;
+          const isReachable =
+            s.id === 'cart' ||
+            (s.id === 'delivery' && step !== 'cart') ||
+            s.id === step;
+          return (
+            <button
+              key={s.id}
+              type='button'
+              onClick={() => isReachable && setStep(s.id)}
+              disabled={!isReachable}
+              className={cn(
+                'group flex items-baseline gap-3 text-left transition-colors',
+                isActive
+                  ? 'text-foreground'
+                  : isReachable
+                    ? 'text-muted-foreground hover:text-foreground'
+                    : 'text-muted-foreground/50 cursor-not-allowed',
+              )}
+            >
+              <span className='font-mono text-[10px] tabular-nums text-gold tracking-wider'>
+                0{i + 1}
+              </span>
+              <span
+                className={cn(
+                  'font-display uppercase tracking-[0.18em] text-sm relative',
+                  isActive && 'pb-1.5',
+                )}
+              >
+                {s.label}
+                {isActive && (
+                  <span className='absolute left-0 right-0 -bottom-0.5 h-px bg-gold' />
+                )}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* STEP 1: Cart */}
       {step === 'cart' && (
         <>
-          <h1 className='text-2xl font-bold'>Корзина</h1>
+          <h1 className='font-display text-4xl md:text-5xl leading-none'>Корзина</h1>
 
           {items.length === 0 ? (
             <div className='text-center py-12 space-y-4'>
@@ -565,7 +580,7 @@ export default function CartPage() {
             <Button variant='ghost' size='icon' onClick={() => setStep('cart')}>
               <ArrowLeft className='h-4 w-4' />
             </Button>
-            <h1 className='text-2xl font-bold'>Доставка</h1>
+            <h1 className='font-display text-4xl md:text-5xl leading-none'>Доставка</h1>
           </div>
 
           <div className='space-y-6'>
@@ -808,7 +823,7 @@ export default function CartPage() {
             >
               <ArrowLeft className='h-4 w-4' />
             </Button>
-            <h1 className='text-2xl font-bold'>Подтверждение</h1>
+            <h1 className='font-display text-4xl md:text-5xl leading-none'>Подтверждение</h1>
           </div>
 
           <Card>
