@@ -35,6 +35,7 @@ import {
   CAKE_CATEGORY,
   FALLBACK_DELIVERY_COST,
   FREE_DELIVERY_THRESHOLD_KOPECKS,
+  WAREHOUSE_ADDRESS,
 } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -555,6 +556,40 @@ export default function CartPage() {
                 </div>
               )}
 
+              {/* Free-delivery motivation banner */}
+              {(() => {
+                const sub = totalPrice();
+                if (sub >= FREE_DELIVERY_THRESHOLD_KOPECKS) {
+                  return (
+                    <div className='rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400'>
+                      Доставка по этому заказу будет бесплатной.
+                    </div>
+                  );
+                }
+                const remaining = FREE_DELIVERY_THRESHOLD_KOPECKS - sub;
+                const pct = Math.min(
+                  100,
+                  Math.round((sub / FREE_DELIVERY_THRESHOLD_KOPECKS) * 100),
+                );
+                return (
+                  <div className='rounded-lg border border-border bg-muted/30 p-3 text-sm space-y-2'>
+                    <p>
+                      Добавьте ещё на{' '}
+                      <span className='font-semibold text-foreground'>
+                        {formatPrice(remaining)}
+                      </span>{' '}
+                      — и доставка будет бесплатной.
+                    </p>
+                    <div className='h-1.5 w-full rounded-full bg-border overflow-hidden'>
+                      <div
+                        className='h-full bg-primary transition-all'
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className='flex items-center justify-between'>
                 <div>
                   <p className='text-sm text-muted-foreground'>
@@ -608,6 +643,21 @@ export default function CartPage() {
                 Самовывоз
               </Button>
             </div>
+
+            {/* Pickup address */}
+            {isPickup && (
+              <div className='rounded-lg border border-border bg-muted/30 p-4 flex gap-3'>
+                <MapPin className='h-5 w-5 shrink-0 text-primary mt-0.5' />
+                <div className='space-y-1 text-sm'>
+                  <p className='font-medium'>Адрес самовывоза</p>
+                  <p>{WAREHOUSE_ADDRESS}</p>
+                  <p className='text-xs text-muted-foreground'>
+                    Приезжайте в выбранный день и интервал времени — заказ будет
+                    готов к выдаче.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Address */}
             {!isPickup && (

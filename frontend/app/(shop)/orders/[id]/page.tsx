@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice, formatDateFull } from '@/lib/format';
-import { STATUS_LABELS, STATUS_COLORS } from '@/lib/constants';
+import { STATUS_LABELS, STATUS_COLORS, WAREHOUSE_ADDRESS } from '@/lib/constants';
 import { useAuthStore } from '@/stores/auth.store';
 import type { Order, OrderStatus, DeliveryQuote, DeliveryClaimResponse } from '@/types';
 import { useState } from 'react';
@@ -237,6 +237,12 @@ export default function OrderDetailPage() {
           {order.address && (
             <p>
               <span className="text-muted-foreground">Адрес:</span> {order.address}
+            </p>
+          )}
+          {order.isPickup && (
+            <p>
+              <span className="text-muted-foreground">Адрес самовывоза:</span>{' '}
+              {WAREHOUSE_ADDRESS}
             </p>
           )}
           {order.recipientName && (
