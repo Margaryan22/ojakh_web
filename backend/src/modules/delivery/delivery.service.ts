@@ -13,6 +13,8 @@ import {
   MAX_TORTS,
   MIN_DAYS_AHEAD,
   MAX_DAYS_AHEAD,
+  WAREHOUSE_LAT,
+  WAREHOUSE_LON,
 } from '../../common/constants';
 
 export interface AddressSuggestion {
@@ -201,16 +203,9 @@ export class DeliveryService {
       return { cost: DELIVERY_BASE_KOPECKS, distanceKm: null };
     }
 
-    const warehouseLat = parseFloat(
-      this.config.get<string>('WAREHOUSE_LAT') ?? '56.3269',
-    );
-    const warehouseLon = parseFloat(
-      this.config.get<string>('WAREHOUSE_LON') ?? '43.9548',
-    );
-
     const distanceKm = this.haversineKm(
-      warehouseLat,
-      warehouseLon,
+      WAREHOUSE_LAT,
+      WAREHOUSE_LON,
       params.lat,
       params.lon,
     );

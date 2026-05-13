@@ -15,6 +15,11 @@ export const ACTIVE_STATUSES = [
   'delivering',
 ];
 
+// Адрес склада (захардкожен — единственная точка отгрузки).
+export const WAREHOUSE_ADDRESS = 'г. Нижний Новгород, ул. Мельникова, 29А';
+export const WAREHOUSE_LAT = 56.3269;
+export const WAREHOUSE_LON = 43.9548;
+
 // Базовая цена доставки до 5 км — фикс. Сверх — DELIVERY_PER_KM_KOPECKS за км.
 export const DELIVERY_BASE_KOPECKS = 50_000; // 500₽
 export const DELIVERY_FREE_KM = 5;
