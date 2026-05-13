@@ -82,23 +82,34 @@ model Cart {
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
 model Order {
-  id           Int       @id @default(autoincrement())
-  orderNumber  String?   @unique
-  userId       Int
-  user         User      @relation(fields: [userId], references: [id])
-  items        Json
-  subtotal     Int
-  deliveryCost Int       @default(0)
-  total        Int
-  status       String    @default("new")
-  address      String?
-  deliveryDate DateTime  @db.Date
-  deliveryTime String?
-  isPickup     Boolean   @default(false)
-  paymentId    String?
-  createdAt    DateTime  @default(now())
-  paidAt       DateTime?
-  readyAt      DateTime?
+  id                       Int       @id @default(autoincrement())
+  orderNumber              String?   @unique
+  userId                   Int
+  user                     User      @relation(fields: [userId], references: [id])
+  items                    Json
+  subtotal                 Int
+  deliveryCost             Int       @default(0)
+  total                    Int
+  status                   String    @default("new")
+  address                  String?
+  addressLat               Float?
+  addressLon               Float?
+  recipientName            String?
+  deliveryDate             DateTime  @db.Date
+  deliveryTime             String?
+  isPickup                 Boolean   @default(false)
+  paymentId                String?
+  createdAt                DateTime  @default(now())
+  paidAt                   DateTime?
+  readyAt                  DateTime?
+
+  dispatchedAt             DateTime?
+  deliveryRecalcKopecks    Int?
+  deliverySurchargeKopecks Int?
+  recalcId                 String?
+  recalcExpiresAt          DateTime?
+  doplataPaymentId         String?   @unique
+  doplataPaidAt            DateTime?
 
   @@index([userId])
   @@index([deliveryDate])

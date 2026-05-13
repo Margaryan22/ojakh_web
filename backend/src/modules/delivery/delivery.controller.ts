@@ -60,10 +60,22 @@ export class DeliveryController {
   }
 
   @Get('cost')
-  @ApiOperation({ summary: 'Get delivery cost estimate (Yandex Delivery API)' })
-  @ApiQuery({ name: 'address', required: false, example: 'Нижний Новгород, ул. Большая Покровская 1' })
-  getDeliveryCost(@Query('address') address?: string) {
-    return this.deliveryService.getDeliveryCost(address);
+  @ApiOperation({ summary: 'Расчёт стоимости доставки по расстоянию от склада' })
+  @ApiQuery({ name: 'address', required: false })
+  @ApiQuery({ name: 'lat', required: false, type: Number })
+  @ApiQuery({ name: 'lon', required: false, type: Number })
+  getDeliveryCost(
+    @Query('address') address?: string,
+    @Query('lat') lat?: string,
+    @Query('lon') lon?: string,
+  ) {
+    const latNum = lat != null && lat !== '' ? parseFloat(lat) : null;
+    const lonNum = lon != null && lon !== '' ? parseFloat(lon) : null;
+    return this.deliveryService.getDeliveryCost({
+      address,
+      lat: Number.isFinite(latNum as number) ? latNum : null,
+      lon: Number.isFinite(lonNum as number) ? lonNum : null,
+    });
   }
 
   @Get('suggest-address')

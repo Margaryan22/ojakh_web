@@ -114,9 +114,11 @@ export class OrdersService {
 
     let deliveryCost = 0;
     if (!dto.is_pickup) {
-      const costResult = await this.deliveryService.getDeliveryCost(
-        dto.address?.trim(),
-      );
+      const costResult = this.deliveryService.getDeliveryCost({
+        address: dto.address?.trim(),
+        lat: dto.address_lat ?? null,
+        lon: dto.address_lon ?? null,
+      });
       deliveryCost = costResult.cost;
     }
 
@@ -145,6 +147,9 @@ export class OrdersService {
         deliveryTime: dto.delivery_time ?? null,
         isPickup: dto.is_pickup,
         address: dto.address?.trim() ?? null,
+        addressLat: dto.is_pickup ? null : dto.address_lat ?? null,
+        addressLon: dto.is_pickup ? null : dto.address_lon ?? null,
+        recipientName: dto.recipient_name?.trim() || null,
         status: 'new',
       },
     });

@@ -2,6 +2,7 @@ import {
   IsBoolean,
   IsDateString,
   IsIn,
+  IsNumber,
   IsOptional,
   IsString,
   ValidateIf,
@@ -26,4 +27,19 @@ export class CreateOrderDto {
   @ValidateIf((o) => !o.is_pickup)
   @IsString()
   address?: string;
+
+  @ApiPropertyOptional({ example: 56.3269 })
+  @IsOptional()
+  @IsNumber()
+  address_lat?: number;
+
+  @ApiPropertyOptional({ example: 43.9548 })
+  @IsOptional()
+  @IsNumber()
+  address_lon?: number;
+
+  @ApiPropertyOptional({ example: 'Иван Иванов' })
+  @IsOptional()
+  @IsString()
+  recipient_name?: string;
 }

@@ -40,7 +40,8 @@ const navLinks = [
 const NOTIFICATION_LABELS: Record<string, string> = {
   preparing: 'Готовится',
   ready: 'Готов',
-  delivery_ordered: 'Едет к вам',
+  awaiting_payment_for_courier: 'Нужна доплата',
+  delivering: 'В доставке',
   completed: 'Доставлен',
   cancelled: 'Отменён',
 };

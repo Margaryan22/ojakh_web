@@ -6,11 +6,20 @@ import {
   ACTIVE_STATUSES,
   TORT_CATEGORY,
   FALLBACK_DELIVERY_COST,
+  DELIVERY_BASE_KOPECKS,
+  DELIVERY_FREE_KM,
+  DELIVERY_PER_KM_KOPECKS,
   DEFAULT_MAX_UNITS,
   MAX_TORTS,
   MIN_DAYS_AHEAD,
   MAX_DAYS_AHEAD,
 } from '../../common/constants';
+
+export interface AddressSuggestion {
+  value: string;
+  geoLat: number | null;
+  geoLon: number | null;
+}
 
 export interface DateAvailability {
   available: boolean;
@@ -27,6 +36,12 @@ export interface CheckDateOpts {
   withTort?: boolean;
   extraUnits?: number;
   extraTorts?: number;
+}
+
+export interface DeliveryCostInput {
+  address?: string;
+  lat?: number | null;
+  lon?: number | null;
 }
 
 @Injectable()
@@ -132,11 +147,7 @@ export class DeliveryService {
     return results;
   }
 
-  /**
-   * Server-side DaData proxy: keeps API key out of the browser bundle.
-   * Returns up to 5 address suggestions limited to Нижний Новгород.
-   */
-  async suggestAddress(query: string): Promise<{ suggestions: string[] }> {
+  async suggestAddress(query: string): Promise<{ suggestions: AddressSuggestion[] }> {
     const q = (query ?? '').trim();
     if (q.length < 3) return { suggestions: [] };
 
@@ -160,8 +171,12 @@ export class DeliveryService {
           timeout: 5000,
         },
       );
-      const suggestions: string[] = (data?.suggestions ?? []).map(
-        (s: { value: string }) => s.value,
+      const suggestions: AddressSuggestion[] = (data?.suggestions ?? []).map(
+        (s: { value: string; data?: { geo_lat?: string; geo_lon?: string } }) => ({
+          value: s.value,
+          geoLat: s.data?.geo_lat ? parseFloat(s.data.geo_lat) : null,
+          geoLon: s.data?.geo_lon ? parseFloat(s.data.geo_lon) : null,
+        }),
       );
       return { suggestions };
     } catch (e) {
@@ -170,15 +185,22 @@ export class DeliveryService {
     }
   }
 
-  async getDeliveryCost(destinationAddress?: string): Promise<{ cost: number }> {
-    const token = this.config.get<string>('YANDEX_DELIVERY_TOKEN');
-    if (!token || !destinationAddress) {
-      return { cost: FALLBACK_DELIVERY_COST };
+  /**
+   * Расчёт стоимости доставки по расстоянию от склада до точки.
+   * Базовый тариф покрывает зону DELIVERY_FREE_KM км; сверх неё —
+   * DELIVERY_PER_KM_KOPECKS за каждый километр (округление вверх).
+   *
+   * Если координаты неизвестны (например, при предварительном расчёте
+   * до выбора адреса), возвращаем базовый тариф.
+   */
+  getDeliveryCost(input: DeliveryCostInput | string = {}): { cost: number; distanceKm: number | null } {
+    const params: DeliveryCostInput =
+      typeof input === 'string' ? { address: input } : input;
+
+    if (params.lat == null || params.lon == null) {
+      return { cost: DELIVERY_BASE_KOPECKS, distanceKm: null };
     }
 
-    const warehouseAddress =
-      this.config.get<string>('WAREHOUSE_ADDRESS') ??
-      'Нижний Новгород, Мельникова 29А';
     const warehouseLat = parseFloat(
       this.config.get<string>('WAREHOUSE_LAT') ?? '56.3269',
     );
@@ -186,50 +208,35 @@ export class DeliveryService {
       this.config.get<string>('WAREHOUSE_LON') ?? '43.9548',
     );
 
-    try {
-      const response = await axios.post(
-        'https://b2b.taxi.yandex.net/b2b/cargo/integration/v2/check-price',
-        {
-          items: [
-            {
-              quantity: 1,
-              size: { height: 0.3, length: 0.4, width: 0.3 },
-              weight: 5,
-            },
-          ],
-          requirements: { taxi_class: 'courier' },
-          route_points: [
-            {
-              fullname: warehouseAddress,
-              coordinates: [warehouseLon, warehouseLat],
-            },
-            {
-              fullname: destinationAddress,
-            },
-          ],
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Accept-Language': 'ru',
-          },
-          timeout: 10000,
-        },
-      );
+    const distanceKm = this.haversineKm(
+      warehouseLat,
+      warehouseLon,
+      params.lat,
+      params.lon,
+    );
 
-      const price = parseFloat(response.data?.price);
-      if (isNaN(price)) {
-        this.logger.warn('Yandex Delivery вернул невалидную цену, используем fallback');
-        return { cost: FALLBACK_DELIVERY_COST };
-      }
+    return {
+      cost: this.priceForDistanceKm(distanceKm),
+      distanceKm,
+    };
+  }
 
-      // Yandex возвращает цену в рублях → конвертируем в копейки
-      return { cost: Math.round(price * 100) };
-    } catch (error) {
-      this.logger.error(
-        `Ошибка Yandex Delivery API: ${error?.message ?? error}`,
-      );
-      return { cost: FALLBACK_DELIVERY_COST };
+  priceForDistanceKm(distanceKm: number): number {
+    if (!Number.isFinite(distanceKm) || distanceKm < 0) {
+      return FALLBACK_DELIVERY_COST;
     }
+    const extra = Math.max(0, Math.ceil(distanceKm) - DELIVERY_FREE_KM);
+    return DELIVERY_BASE_KOPECKS + extra * DELIVERY_PER_KM_KOPECKS;
+  }
+
+  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // км
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
   }
 }
