@@ -68,6 +68,7 @@ export class DeliveryClaimsService {
       address: order.address,
       lat: order.addressLat,
       lon: order.addressLon,
+      subtotalKopecks: order.subtotal,
     });
     const surchargeKopecks = Math.max(0, priceKopecks - (order.deliveryCost ?? 0));
 

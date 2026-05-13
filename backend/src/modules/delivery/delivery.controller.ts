@@ -64,17 +64,27 @@ export class DeliveryController {
   @ApiQuery({ name: 'address', required: false })
   @ApiQuery({ name: 'lat', required: false, type: Number })
   @ApiQuery({ name: 'lon', required: false, type: Number })
+  @ApiQuery({
+    name: 'subtotal',
+    required: false,
+    type: Number,
+    description: 'Сумма заказа в копейках — для оценки бесплатной доставки',
+  })
   getDeliveryCost(
     @Query('address') address?: string,
     @Query('lat') lat?: string,
     @Query('lon') lon?: string,
+    @Query('subtotal') subtotal?: string,
   ) {
     const latNum = lat != null && lat !== '' ? parseFloat(lat) : null;
     const lonNum = lon != null && lon !== '' ? parseFloat(lon) : null;
+    const subNum =
+      subtotal != null && subtotal !== '' ? parseInt(subtotal, 10) : null;
     return this.deliveryService.getDeliveryCost({
       address,
       lat: Number.isFinite(latNum as number) ? latNum : null,
       lon: Number.isFinite(lonNum as number) ? lonNum : null,
+      subtotalKopecks: Number.isFinite(subNum as number) ? subNum : null,
     });
   }
 

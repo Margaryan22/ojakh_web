@@ -15,6 +15,7 @@ import {
   MAX_DAYS_AHEAD,
   WAREHOUSE_LAT,
   WAREHOUSE_LON,
+  FREE_DELIVERY_THRESHOLD_KOPECKS,
 } from '../../common/constants';
 
 export interface AddressSuggestion {
@@ -44,6 +45,7 @@ export interface DeliveryCostInput {
   address?: string;
   lat?: number | null;
   lon?: number | null;
+  subtotalKopecks?: number | null;
 }
 
 @Injectable()
@@ -195,12 +197,24 @@ export class DeliveryService {
    * Если координаты неизвестны (например, при предварительном расчёте
    * до выбора адреса), возвращаем базовый тариф.
    */
-  getDeliveryCost(input: DeliveryCostInput | string = {}): { cost: number; distanceKm: number | null } {
+  getDeliveryCost(input: DeliveryCostInput | string = {}): {
+    cost: number;
+    distanceKm: number | null;
+    freeDelivery: boolean;
+  } {
     const params: DeliveryCostInput =
       typeof input === 'string' ? { address: input } : input;
 
+    const freeByThreshold =
+      params.subtotalKopecks != null &&
+      params.subtotalKopecks >= FREE_DELIVERY_THRESHOLD_KOPECKS;
+
     if (params.lat == null || params.lon == null) {
-      return { cost: DELIVERY_BASE_KOPECKS, distanceKm: null };
+      return {
+        cost: freeByThreshold ? 0 : DELIVERY_BASE_KOPECKS,
+        distanceKm: null,
+        freeDelivery: freeByThreshold,
+      };
     }
 
     const distanceKm = this.haversineKm(
@@ -211,8 +225,9 @@ export class DeliveryService {
     );
 
     return {
-      cost: this.priceForDistanceKm(distanceKm),
+      cost: freeByThreshold ? 0 : this.priceForDistanceKm(distanceKm),
       distanceKm,
+      freeDelivery: freeByThreshold,
     };
   }
 

@@ -29,7 +29,13 @@ import {
   getAvailableDates,
   toDateString,
 } from '@/lib/format';
-import { DELIVERY_TIME_SLOTS, MAX_ITEM_QTY_PER_ORDER, CAKE_CATEGORY, FALLBACK_DELIVERY_COST } from '@/lib/constants';
+import {
+  DELIVERY_TIME_SLOTS,
+  MAX_ITEM_QTY_PER_ORDER,
+  CAKE_CATEGORY,
+  FALLBACK_DELIVERY_COST,
+  FREE_DELIVERY_THRESHOLD_KOPECKS,
+} from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import type { DateAvailability, DeliveryTimeSlot, AddressSuggestion } from '@/types';
@@ -257,10 +263,15 @@ export default function CartPage() {
         const params = new URLSearchParams({ address });
         if (addressCoords.lat != null) params.set('lat', String(addressCoords.lat));
         if (addressCoords.lon != null) params.set('lon', String(addressCoords.lon));
+        params.set('subtotal', String(totalPrice()));
         const { data } = await api.get(`/delivery/cost?${params.toString()}`);
         setDeliveryCost(data.cost);
       } catch {
-        setDeliveryCost(FALLBACK_DELIVERY_COST);
+        setDeliveryCost(
+          totalPrice() >= FREE_DELIVERY_THRESHOLD_KOPECKS
+            ? 0
+            : FALLBACK_DELIVERY_COST,
+        );
       } finally {
         setIsLoadingCost(false);
       }
@@ -662,7 +673,8 @@ export default function CartPage() {
                   )}
                 </div>
                 <p className='text-xs text-muted-foreground'>
-                  Доставка осуществляется только по Нижнему Новгороду
+                  Доставка осуществляется только по Нижнему Новгороду.
+                  Бесплатно при заказе от {formatPrice(FREE_DELIVERY_THRESHOLD_KOPECKS)}.
                 </p>
                 <div className='space-y-1 pt-2'>
                   <Label htmlFor='recipient'>Получатель (необязательно)</Label>
@@ -862,10 +874,18 @@ export default function CartPage() {
                 <span className='text-muted-foreground'>Товары:</span>
                 <span>{formatPrice(totalPrice())}</span>
               </div>
-              {deliveryCost > 0 && (
+              {!isPickup && deliveryCost > 0 && (
                 <div className='flex justify-between text-sm'>
                   <span className='text-muted-foreground'>Доставка:</span>
                   <span>{isLoadingCost ? '...' : formatPrice(deliveryCost)}</span>
+                </div>
+              )}
+              {!isPickup && deliveryCost === 0 && !isLoadingCost && (
+                <div className='flex justify-between text-sm'>
+                  <span className='text-muted-foreground'>Доставка:</span>
+                  <span className='text-green-600'>
+                    Бесплатно (от {formatPrice(FREE_DELIVERY_THRESHOLD_KOPECKS)})
+                  </span>
                 </div>
               )}
               {isPickup && (
