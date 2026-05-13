@@ -52,6 +52,13 @@ export class AdminController {
     return this.adminService.cancelOrder(id);
   }
 
+  @Patch('orders/:id/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark order as completed / delivered (admin only)' })
+  markCompleted(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.markCompleted(id);
+  }
+
   @Get('analytics')
   @ApiOperation({ summary: 'Get sales analytics (admin only)' })
   @ApiQuery({ name: 'period', required: false, enum: ['week', 'month', 'all'], example: 'month' })
