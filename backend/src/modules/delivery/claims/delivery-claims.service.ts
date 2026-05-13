@@ -59,12 +59,11 @@ export class DeliveryClaimsService {
     if (order.dispatchedAt) {
       throw new ConflictException('Доставка по заказу уже оформлена');
     }
-    if (!order.address || order.addressLat == null || order.addressLon == null) {
-      throw new BadRequestException(
-        'У заказа не сохранены координаты адреса доставки',
-      );
+    if (!order.address) {
+      throw new BadRequestException('У заказа не указан адрес доставки');
     }
 
+    // Если координат нет (старые заказы) — расчёт упадёт на базовый тариф.
     const { cost: priceKopecks } = this.delivery.getDeliveryCost({
       address: order.address,
       lat: order.addressLat,
