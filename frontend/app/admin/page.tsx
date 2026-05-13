@@ -20,6 +20,7 @@ const statusFilters: { value: string; label: string }[] = [
   { value: 'paid', label: 'Оплачены' },
   { value: 'preparing', label: 'Готовятся' },
   { value: 'ready', label: 'Готовы' },
+  { value: 'delivering', label: 'В доставке' },
   { value: 'completed', label: 'Завершены' },
   { value: 'cancelled', label: 'Отменены' },
 ];
@@ -73,6 +74,21 @@ export default function AdminOrdersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       toast.success('Заказ отменён');
+    },
+    onError: (error) => {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Ошибка');
+      }
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: async (orderId: number) => {
+      await api.patch(`/admin/orders/${orderId}/complete`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      toast.success('Заказ завершён');
     },
     onError: (error) => {
       if (error instanceof AxiosError) {
@@ -175,6 +191,24 @@ export default function AdminOrdersPage() {
                       disabled={markReadyMutation.isPending}
                     >
                       Отметить готовым
+                    </Button>
+                  )}
+                  {order.status === 'ready' && order.isPickup && (
+                    <Button
+                      size="sm"
+                      onClick={() => completeMutation.mutate(order.id)}
+                      disabled={completeMutation.isPending}
+                    >
+                      Выдан клиенту
+                    </Button>
+                  )}
+                  {order.status === 'delivering' && (
+                    <Button
+                      size="sm"
+                      onClick={() => completeMutation.mutate(order.id)}
+                      disabled={completeMutation.isPending}
+                    >
+                      Доставлен
                     </Button>
                   )}
                   {order.status !== 'cancelled' && order.status !== 'completed' && (

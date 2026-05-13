@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ACTIVE_STATUSES, TORT_CATEGORY, DEFAULT_MAX_UNITS, MAX_TORTS } from '../../common/constants';
@@ -69,6 +69,27 @@ export class AdminService {
       data: { status: 'cancelled' },
     });
     await this.notifications.createForOrder(order.userId, orderId, 'cancelled');
+    return updated;
+  }
+
+  async markCompleted(orderId: number) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException(`Order #${orderId} not found`);
+
+    const allowed =
+      order.status === 'delivering' ||
+      (order.status === 'ready' && order.isPickup);
+    if (!allowed) {
+      throw new BadRequestException(
+        `Заказ нельзя завершить из статуса ${order.status}`,
+      );
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'completed' },
+    });
+    await this.notifications.createForOrder(order.userId, orderId, 'completed');
     return updated;
   }
 
