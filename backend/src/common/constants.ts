@@ -15,8 +15,8 @@ export const ACTIVE_STATUSES = [
   'delivering',
 ];
 
-// Адрес склада (захардкожен — единственная точка отгрузки).
-export const WAREHOUSE_ADDRESS = 'г. Нижний Новгород, ул. Мельникова, 29А';
+// Координаты склада (захардкожены — единственная точка отгрузки,
+// г. Нижний Новгород, ул. Мельникова, 29А).
 export const WAREHOUSE_LAT = 56.3269;
 export const WAREHOUSE_LON = 43.9548;
 
