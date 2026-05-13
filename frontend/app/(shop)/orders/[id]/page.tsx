@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,12 +10,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatPrice, formatDate, formatDateFull } from '@/lib/format';
+import { formatPrice, formatDateFull } from '@/lib/format';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/constants';
 import { useAuthStore } from '@/stores/auth.store';
-import type { Order, OrderStatus } from '@/types';
+import type { Order, OrderStatus, DeliveryQuote, DeliveryClaimResponse } from '@/types';
 import { useState } from 'react';
 import { AxiosError } from 'axios';
+
+const ACTIVE_CLAIM_STATUSES: OrderStatus[] = [
+  'awaiting_payment_for_courier',
+  'delivering',
+];
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -23,6 +28,10 @@ export default function OrderDetailPage() {
   const user = useAuthStore((s) => s.user);
   const [isPaying, setIsPaying] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [quote, setQuote] = useState<DeliveryQuote | null>(null);
+  const [isQuoting, setIsQuoting] = useState(false);
+  const [isCreatingClaim, setIsCreatingClaim] = useState(false);
+  const [isPayingDoplata, setIsPayingDoplata] = useState(false);
 
   const orderId = params.id as string;
 
@@ -33,6 +42,11 @@ export default function OrderDetailPage() {
       return data;
     },
     enabled: !!user && !!orderId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status as OrderStatus | undefined;
+      if (!status) return false;
+      return ACTIVE_CLAIM_STATUSES.includes(status) ? 15_000 : false;
+    },
   });
 
   const handleCancel = async () => {
@@ -74,6 +88,65 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleRequestQuote = async () => {
+    setIsQuoting(true);
+    try {
+      const { data } = await api.post<DeliveryQuote>(`/orders/${orderId}/delivery-quote`);
+      setQuote(data);
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Не удалось получить расчёт');
+      } else {
+        toast.error('Не удалось получить расчёт');
+      }
+    } finally {
+      setIsQuoting(false);
+    }
+  };
+
+  const handleConfirmClaim = async () => {
+    if (!quote) return;
+    setIsCreatingClaim(true);
+    try {
+      const { data } = await api.post<DeliveryClaimResponse>(
+        `/orders/${orderId}/delivery-claim`,
+        { recalcId: quote.recalcId },
+      );
+      if (data.status === 'awaiting_payment') {
+        toast.message('Подтвердите доплату за доставку');
+        setIsPayingDoplata(true);
+        try {
+          await api.post(`/payments/confirm/${data.doplataPaymentId}`);
+          toast.success('Заказ передан в доставку');
+        } catch (e) {
+          if (e instanceof AxiosError) {
+            toast.error(e.response?.data?.message ?? 'Ошибка оплаты доплаты');
+          } else {
+            toast.error('Ошибка оплаты доплаты');
+          }
+          return;
+        } finally {
+          setIsPayingDoplata(false);
+        }
+      } else {
+        toast.success('Заказ передан в доставку');
+      }
+      setQuote(null);
+      refetch();
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Не удалось оформить доставку');
+        if (error.response?.status === 410) {
+          setQuote(null);
+        }
+      } else {
+        toast.error('Не удалось оформить доставку');
+      }
+    } finally {
+      setIsCreatingClaim(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="text-center py-12">
@@ -98,6 +171,9 @@ export default function OrderDetailPage() {
       </div>
     );
   }
+
+  const canCallCourier =
+    order.status === 'ready' && !order.isPickup && !order.dispatchedAt;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -163,6 +239,11 @@ export default function OrderDetailPage() {
               <span className="text-muted-foreground">Адрес:</span> {order.address}
             </p>
           )}
+          {order.recipientName && (
+            <p>
+              <span className="text-muted-foreground">Получатель:</span> {order.recipientName}
+            </p>
+          )}
           <p>
             <span className="text-muted-foreground">Дата:</span>{' '}
             {formatDateFull(order.deliveryDate)}
@@ -180,6 +261,14 @@ export default function OrderDetailPage() {
             <p>
               <span className="text-muted-foreground">Оплачен:</span>{' '}
               {formatDateFull(order.paidAt)}
+            </p>
+          )}
+          {order.dispatchedAt && (
+            <p className="pt-1 border-t">
+              <span className="text-muted-foreground">Статус доставки:</span>{' '}
+              <span className="font-medium">
+                {STATUS_LABELS[order.status as OrderStatus]}
+              </span>
             </p>
           )}
         </CardContent>
@@ -208,6 +297,70 @@ export default function OrderDetailPage() {
         >
           {isCancelling ? 'Отмена...' : 'Отменить заказ'}
         </Button>
+      )}
+
+      {/* Dispatch button — only when ready, delivery, not yet dispatched */}
+      {canCallCourier && !quote && (
+        <Button
+          className="w-full gap-2"
+          size="lg"
+          onClick={handleRequestQuote}
+          disabled={isQuoting}
+        >
+          <Truck className="h-4 w-4" />
+          {isQuoting ? 'Считаем стоимость...' : 'Оформить доставку'}
+        </Button>
+      )}
+
+      {/* Quote confirmation card */}
+      {canCallCourier && quote && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Подтверждение доставки</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Актуальная цена доставки:</span>
+              <span className="font-medium">{formatPrice(quote.priceKopecks)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Оплачено в заказе:</span>
+              <span>{formatPrice(order.deliveryCost)}</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between font-semibold">
+              <span>Доплата:</span>
+              <span>
+                {quote.surchargeKopecks > 0 ? formatPrice(quote.surchargeKopecks) : 'не требуется'}
+              </span>
+            </div>
+            {quote.surchargeKopecks > 0 && (
+              <p className="text-xs text-muted-foreground">
+                После подтверждения мы спишем доплату и сразу передадим заказ в доставку.
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={handleConfirmClaim}
+                disabled={isCreatingClaim || isPayingDoplata}
+              >
+                {isCreatingClaim || isPayingDoplata
+                  ? 'Оформляем...'
+                  : quote.surchargeKopecks > 0
+                    ? `Доплатить ${formatPrice(quote.surchargeKopecks)} и передать в доставку`
+                    : 'Передать в доставку'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setQuote(null)}
+                disabled={isCreatingClaim || isPayingDoplata}
+              >
+                Отмена
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

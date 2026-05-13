@@ -32,7 +32,7 @@ import {
 import { DELIVERY_TIME_SLOTS, MAX_ITEM_QTY_PER_ORDER, CAKE_CATEGORY, FALLBACK_DELIVERY_COST } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
-import type { DateAvailability, DeliveryTimeSlot } from '@/types';
+import type { DateAvailability, DeliveryTimeSlot, AddressSuggestion } from '@/types';
 import { AxiosError } from 'axios';
 
 type Step = 'cart' | 'delivery' | 'confirm';
@@ -55,7 +55,12 @@ export default function CartPage() {
   const [step, setStep] = useState<Step>('cart');
   const [isPickup, setIsPickup] = useState(false);
   const [address, setAddress] = useState('');
-  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [addressCoords, setAddressCoords] = useState<{ lat: number | null; lon: number | null }>({
+    lat: null,
+    lon: null,
+  });
+  const [recipientName, setRecipientName] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [addressValidated, setAddressValidated] = useState(false);
   const [addressFocused, setAddressFocused] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
@@ -249,9 +254,10 @@ export default function CartPage() {
     if (!isPickup) {
       setIsLoadingCost(true);
       try {
-        const { data } = await api.get(
-          `/delivery/cost?address=${encodeURIComponent(address)}`,
-        );
+        const params = new URLSearchParams({ address });
+        if (addressCoords.lat != null) params.set('lat', String(addressCoords.lat));
+        if (addressCoords.lon != null) params.set('lon', String(addressCoords.lon));
+        const { data } = await api.get(`/delivery/cost?${params.toString()}`);
         setDeliveryCost(data.cost);
       } catch {
         setDeliveryCost(FALLBACK_DELIVERY_COST);
@@ -273,6 +279,9 @@ export default function CartPage() {
         delivery_time: selectedTime,
         is_pickup: isPickup,
         address: isPickup ? undefined : address,
+        address_lat: isPickup ? undefined : addressCoords.lat ?? undefined,
+        address_lon: isPickup ? undefined : addressCoords.lon ?? undefined,
+        recipient_name: isPickup ? undefined : recipientName.trim() || undefined,
       });
       toast.success(`Заказ создан`);
       await clearCart();
@@ -602,6 +611,7 @@ export default function CartPage() {
                     onChange={(e) => {
                       setAddress(e.target.value);
                       setAddressValidated(false);
+                      setAddressCoords({ lat: null, lon: null });
                     }}
                     onFocus={() => setAddressFocused(true)}
                     onBlur={() => setAddressFocused(false)}
@@ -618,6 +628,7 @@ export default function CartPage() {
                           onMouseDown={(e) => {
                             e.preventDefault();
                             setAddress(lastAddress);
+                            setAddressCoords({ lat: null, lon: null });
                             setAddressSuggestions([]);
                             setAddressValidated(true);
                           }}
@@ -638,12 +649,13 @@ export default function CartPage() {
                           className='px-3 py-2 text-sm cursor-pointer hover:bg-accent'
                           onMouseDown={(e) => {
                             e.preventDefault();
-                            setAddress(s);
+                            setAddress(s.value);
+                            setAddressCoords({ lat: s.geoLat, lon: s.geoLon });
                             setAddressSuggestions([]);
                             setAddressValidated(true);
                           }}
                         >
-                          {s}
+                          {s.value}
                         </li>
                       ))}
                     </ul>
@@ -652,6 +664,19 @@ export default function CartPage() {
                 <p className='text-xs text-muted-foreground'>
                   Доставка осуществляется только по Нижнему Новгороду
                 </p>
+                <div className='space-y-1 pt-2'>
+                  <Label htmlFor='recipient'>Получатель (необязательно)</Label>
+                  <Input
+                    id='recipient'
+                    placeholder={user?.name ?? 'Имя получателя'}
+                    value={recipientName}
+                    onChange={(e) => setRecipientName(e.target.value)}
+                    autoComplete='name'
+                  />
+                  <p className='text-xs text-muted-foreground'>
+                    Если оставить пустым, передадим курьеру ваше имя из профиля.
+                  </p>
+                </div>
               </div>
             )}
 

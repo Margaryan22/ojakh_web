@@ -6,8 +6,21 @@ export const DEFAULT_MAX_UNITS = 100;
 export const MIN_DAYS_AHEAD = 2;
 export const MAX_DAYS_AHEAD = 15;
 
-export const ACTIVE_STATUSES = ['new', 'paid', 'preparing', 'ready'];
+export const ACTIVE_STATUSES = [
+  'new',
+  'paid',
+  'preparing',
+  'ready',
+  'awaiting_payment_for_courier',
+  'delivering',
+];
 
-export const FALLBACK_DELIVERY_COST = 50_000; // 500₽ в копейках
+// Базовая цена доставки до 5 км — фикс. Сверх — DELIVERY_PER_KM_KOPECKS за км.
+export const DELIVERY_BASE_KOPECKS = 50_000; // 500₽
+export const DELIVERY_FREE_KM = 5;
+export const DELIVERY_PER_KM_KOPECKS = 4_000; // 40₽
+export const FALLBACK_DELIVERY_COST = DELIVERY_BASE_KOPECKS;
+
+export const RECALC_TTL_SECONDS_DEFAULT = 300;
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB

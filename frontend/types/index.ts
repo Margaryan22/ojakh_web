@@ -1,5 +1,13 @@
 export type ProductCategory = 'хинкали' | 'пельмени' | 'блинчики' | 'хлеб' | 'десерты' | 'торты';
-export type OrderStatus = 'new' | 'paid' | 'preparing' | 'ready' | 'delivery_ordered' | 'completed' | 'cancelled';
+export type OrderStatus =
+  | 'new'
+  | 'paid'
+  | 'preparing'
+  | 'ready'
+  | 'awaiting_payment_for_courier'
+  | 'delivering'
+  | 'completed'
+  | 'cancelled';
 export type DeliveryTimeSlot = '10:00-12:00' | '12:00-14:00' | '14:00-16:00' | '16:00-18:00' | '18:00-20:00' | '20:00-22:00';
 
 export interface User {
@@ -58,6 +66,9 @@ export interface Order {
   total: number;
   status: OrderStatus;
   address?: string;
+  addressLat?: number | null;
+  addressLon?: number | null;
+  recipientName?: string | null;
   deliveryDate: string;
   deliveryTime?: string;
   isPickup: boolean;
@@ -65,6 +76,27 @@ export interface Order {
   paidAt?: string;
   readyAt?: string;
   paymentId?: string;
+  dispatchedAt?: string | null;
+  deliveryRecalcKopecks?: number | null;
+  deliverySurchargeKopecks?: number | null;
+  doplataPaymentId?: string | null;
+}
+
+export interface DeliveryQuote {
+  priceKopecks: number;
+  surchargeKopecks: number;
+  recalcId: string;
+  expiresAt: string;
+}
+
+export type DeliveryClaimResponse =
+  | { status: 'awaiting_payment'; doplataPaymentId: string; surchargeKopecks: number }
+  | { status: 'delivering' };
+
+export interface AddressSuggestion {
+  value: string;
+  geoLat: number | null;
+  geoLon: number | null;
 }
 
 export interface Review {

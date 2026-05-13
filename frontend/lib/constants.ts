@@ -5,7 +5,8 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   paid: 'Оплачен',
   preparing: 'Готовится',
   ready: 'Готов',
-  delivery_ordered: 'Доставка оформлена',
+  awaiting_payment_for_courier: 'Ожидает доплату за доставку',
+  delivering: 'В доставке',
   completed: 'Завершён',
   cancelled: 'Отменён',
 };
@@ -15,7 +16,8 @@ export const STATUS_COLORS: Record<OrderStatus, string> = {
   paid: 'bg-blue-100 text-blue-800',
   preparing: 'bg-purple-100 text-purple-800',
   ready: 'bg-green-100 text-green-800',
-  delivery_ordered: 'bg-teal-100 text-teal-800',
+  awaiting_payment_for_courier: 'bg-amber-100 text-amber-800',
+  delivering: 'bg-cyan-100 text-cyan-800',
   completed: 'bg-gray-100 text-gray-800',
   cancelled: 'bg-red-100 text-red-800',
 };

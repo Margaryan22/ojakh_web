@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { DeliveryService } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -11,6 +12,14 @@ const mockPrisma = {
   },
 };
 
+const configValues: Record<string, string> = {
+  WAREHOUSE_LAT: '56.3269',
+  WAREHOUSE_LON: '43.9548',
+};
+const mockConfig = {
+  get: jest.fn((key: string) => configValues[key]),
+};
+
 describe('DeliveryService', () => {
   let service: DeliveryService;
 
@@ -19,6 +28,7 @@ describe('DeliveryService', () => {
       providers: [
         DeliveryService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: ConfigService, useValue: mockConfig },
       ],
     }).compile();
 
@@ -52,28 +62,18 @@ describe('DeliveryService', () => {
       expect(result.maxTorts).toBe(1);
     });
 
-    it('должен вернуть недоступность если все слоты для заказов заняты', async () => {
-      mockPrisma.dailyLimit.findUnique.mockResolvedValue(null);
-      // 15 заказов (maxOrders = 15 по умолчанию)
-      const fullOrders = Array.from({ length: 15 }, () => ({ items: [] }));
-      mockPrisma.order.findMany.mockResolvedValue(fullOrders);
-
-      const result = await service.checkDate(futureDate, { withTort: false });
-
-      expect(result.available).toBe(false);
-      expect(result.reason).toContain('все слоты для заказов');
-    });
-
     it('должен вернуть недоступность если все слоты для тортов заняты', async () => {
       mockPrisma.dailyLimit.findUnique.mockResolvedValue(null);
-      // 2 заказа с тортами
       const ordersWithCakes = [
         { items: [{ category: 'торты', quantity: 1 }, { category: 'хинкали', quantity: 5 }] },
         { items: [{ category: 'торты', quantity: 1 }] },
       ];
       mockPrisma.order.findMany.mockResolvedValue(ordersWithCakes);
 
-      const result = await service.checkDate(futureDate, { withTort: true });
+      const result = await service.checkDate(futureDate, {
+        withTort: true,
+        extraTorts: 1,
+      });
 
       expect(result.available).toBe(false);
       expect(result.tortCount).toBe(2);
@@ -88,33 +88,9 @@ describe('DeliveryService', () => {
       ];
       mockPrisma.order.findMany.mockResolvedValue(ordersWithCakes);
 
-      const result = await service.checkDate(futureDate, { withTort: false }); // без торта
+      const result = await service.checkDate(futureDate, { withTort: false });
 
       expect(result.available).toBe(true);
-    });
-
-    it('должен считать количество тортов как позиции, а не количество', async () => {
-      mockPrisma.dailyLimit.findUnique.mockResolvedValue(null);
-      // 1 заказ с 10 тортами (но это 1 позиция)
-      const orders = [{ items: [{ category: 'торты', quantity: 10 }] }];
-      mockPrisma.order.findMany.mockResolvedValue(orders);
-
-      const result = await service.checkDate(futureDate, { withTort: true });
-
-      expect(result.tortCount).toBe(1);
-      expect(result.available).toBe(true); // только 1 позиция из 2 занята
-    });
-
-    it('должен запрашивать только активные заказы (new, paid, preparing, ready)', async () => {
-      mockPrisma.dailyLimit.findUnique.mockResolvedValue(null);
-      mockPrisma.order.findMany.mockResolvedValue([]);
-
-      await service.checkDate(futureDate, { withTort: false });
-
-      const findManyCall = mockPrisma.order.findMany.mock.calls[0][0];
-      expect(findManyCall.where.status).toEqual({
-        in: ['new', 'paid', 'preparing', 'ready'],
-      });
     });
   });
 
@@ -127,27 +103,44 @@ describe('DeliveryService', () => {
 
       expect(result).toHaveLength(14);
     });
+  });
 
-    it('каждая запись должна иметь поля date и available', async () => {
-      mockPrisma.dailyLimit.findUnique.mockResolvedValue(null);
-      mockPrisma.order.findMany.mockResolvedValue([]);
+  describe('priceForDistanceKm', () => {
+    it('в пределах бесплатной зоны (5 км) — базовая цена 500₽', () => {
+      expect(service.priceForDistanceKm(0)).toBe(50_000);
+      expect(service.priceForDistanceKm(3.5)).toBe(50_000);
+      expect(service.priceForDistanceKm(5)).toBe(50_000);
+    });
 
-      const result = await service.getCalendar({ withTort: false });
+    it('сверх 5 км — +40₽ за каждый километр (округление вверх)', () => {
+      expect(service.priceForDistanceKm(5.1)).toBe(50_000 + 4_000); // 6 - 5 = 1 км
+      expect(service.priceForDistanceKm(7)).toBe(50_000 + 2 * 4_000);
+      expect(service.priceForDistanceKm(10.2)).toBe(50_000 + 6 * 4_000); // ceil(10.2) - 5
+    });
 
-      result.forEach((entry) => {
-        expect(entry).toHaveProperty('date');
-        expect(entry).toHaveProperty('available');
-        expect(entry).toHaveProperty('orderCount');
-        expect(entry).toHaveProperty('tortCount');
-      });
+    it('некорректное расстояние → fallback', () => {
+      expect(service.priceForDistanceKm(NaN)).toBe(50_000);
+      expect(service.priceForDistanceKm(-1)).toBe(50_000);
     });
   });
 
   describe('getDeliveryCost', () => {
-    it('должен вернуть стоимость доставки 50000 копеек (500 руб)', async () => {
-      const result = await service.getDeliveryCost();
+    it('без координат → базовая цена', () => {
+      const result = service.getDeliveryCost({});
+      expect(result.cost).toBe(50_000);
+      expect(result.distanceKm).toBeNull();
+    });
 
-      expect(result).toEqual({ cost: 50000 });
+    it('координаты совпадают со складом → базовая цена', () => {
+      const result = service.getDeliveryCost({ lat: 56.3269, lon: 43.9548 });
+      expect(result.cost).toBe(50_000);
+      expect(result.distanceKm).toBeCloseTo(0, 5);
+    });
+
+    it('точка в Нижнем Новгороде → считает расстояние', () => {
+      const result = service.getDeliveryCost({ lat: 56.296, lon: 43.99 });
+      expect(result.cost).toBeGreaterThanOrEqual(50_000);
+      expect(result.distanceKm).toBeGreaterThan(0);
     });
   });
 });

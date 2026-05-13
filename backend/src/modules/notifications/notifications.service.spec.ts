@@ -53,7 +53,7 @@ describe('NotificationsService', () => {
       expect(createCall.data.message).not.toContain('{id}');
     });
 
-    it.each(['preparing', 'ready', 'delivery_ordered', 'completed', 'cancelled'])(
+    it.each(['preparing', 'ready', 'delivering', 'completed', 'cancelled'])(
       'должен создать уведомление для статуса "%s"',
       async (status) => {
         mockPrisma.notification.create.mockResolvedValue({ id: 1 });
