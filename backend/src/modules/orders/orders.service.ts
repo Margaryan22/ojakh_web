@@ -118,6 +118,7 @@ export class OrdersService {
         address: dto.address?.trim(),
         lat: dto.address_lat ?? null,
         lon: dto.address_lon ?? null,
+        subtotalKopecks: subtotal,
       });
       deliveryCost = costResult.cost;
     }

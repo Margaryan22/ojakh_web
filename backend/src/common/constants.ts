@@ -26,6 +26,9 @@ export const DELIVERY_FREE_KM = 5;
 export const DELIVERY_PER_KM_KOPECKS = 4_000; // 40₽
 export const FALLBACK_DELIVERY_COST = DELIVERY_BASE_KOPECKS;
 
+// Бесплатная доставка при заказе от 4000₽.
+export const FREE_DELIVERY_THRESHOLD_KOPECKS = 400_000;
+
 export const RECALC_TTL_SECONDS_DEFAULT = 300;
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB

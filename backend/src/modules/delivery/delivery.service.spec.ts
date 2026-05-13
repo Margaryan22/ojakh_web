@@ -129,6 +129,7 @@ describe('DeliveryService', () => {
       const result = service.getDeliveryCost({});
       expect(result.cost).toBe(50_000);
       expect(result.distanceKm).toBeNull();
+      expect(result.freeDelivery).toBe(false);
     });
 
     it('координаты совпадают со складом → базовая цена', () => {
@@ -141,6 +142,33 @@ describe('DeliveryService', () => {
       const result = service.getDeliveryCost({ lat: 56.296, lon: 43.99 });
       expect(result.cost).toBeGreaterThanOrEqual(50_000);
       expect(result.distanceKm).toBeGreaterThan(0);
+    });
+
+    it('subtotal >= 4000₽ → бесплатная доставка (даже на большое расстояние)', () => {
+      const result = service.getDeliveryCost({
+        lat: 56.4,
+        lon: 44.1,
+        subtotalKopecks: 400_000,
+      });
+      expect(result.cost).toBe(0);
+      expect(result.freeDelivery).toBe(true);
+      expect(result.distanceKm).toBeGreaterThan(0);
+    });
+
+    it('subtotal < 4000₽ → обычный тариф', () => {
+      const result = service.getDeliveryCost({
+        lat: 56.296,
+        lon: 43.99,
+        subtotalKopecks: 399_999,
+      });
+      expect(result.cost).toBeGreaterThanOrEqual(50_000);
+      expect(result.freeDelivery).toBe(false);
+    });
+
+    it('subtotal >= 4000₽ без координат → бесплатно', () => {
+      const result = service.getDeliveryCost({ subtotalKopecks: 500_000 });
+      expect(result.cost).toBe(0);
+      expect(result.freeDelivery).toBe(true);
     });
   });
 });
