@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice, formatDate } from '@/lib/format';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/constants';
+import { FadeIn } from '@/components/motion/fade-in';
+import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import type { Order, OrderStatus } from '@/types';
 import { AxiosError } from 'axios';
 
@@ -112,9 +114,16 @@ export default function AdminOrdersPage() {
     );
   }
 
+  const useStagger = filteredOrders.length <= 30;
+  const ListWrapper: React.ElementType = useStagger ? StaggerContainer : 'div';
+  const ItemWrapper: React.ElementType = useStagger ? StaggerItem : 'div';
+  const listProps = useStagger ? { immediate: true } : {};
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Заказы</h1>
+      <FadeIn>
+        <h1 className="text-2xl font-bold">Заказы</h1>
+      </FadeIn>
 
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
         <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
@@ -133,9 +142,10 @@ export default function AdminOrdersPage() {
       {filteredOrders.length === 0 ? (
         <p className="text-center py-8 text-muted-foreground">Нет заказов</p>
       ) : (
-        <div className="space-y-3">
+        <ListWrapper className="space-y-3" {...listProps}>
           {filteredOrders.map((order) => (
-            <Card key={order.id}>
+            <ItemWrapper key={order.id}>
+            <Card>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -224,8 +234,9 @@ export default function AdminOrdersPage() {
                 </div>
               </CardContent>
             </Card>
+            </ItemWrapper>
           ))}
-        </div>
+        </ListWrapper>
       )}
     </div>
   );

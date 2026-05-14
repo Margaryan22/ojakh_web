@@ -5,6 +5,8 @@ import api from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/format';
+import { FadeIn } from '@/components/motion/fade-in';
+import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import { cn } from '@/lib/utils';
 
 interface DayCalendar {
@@ -40,9 +42,11 @@ export default function AdminCalendarPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Календарь нагрузки</h1>
+      <FadeIn>
+        <h1 className="text-2xl font-bold">Календарь нагрузки</h1>
+      </FadeIn>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <StaggerContainer immediate className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {capacities.map((day) => {
           const unitsAtLimit = day.unitCount >= day.maxUnits;
           const tortsAtLimit = day.tortCount >= day.maxTorts;
@@ -55,31 +59,33 @@ export default function AdminCalendarPage() {
           }
 
           return (
-            <Card key={day.date} className={cn('overflow-hidden', colorClass)}>
-              <CardContent className="p-3 text-center space-y-1">
-                <p className="font-semibold text-sm">{formatDate(day.date)}</p>
-                <div className="text-xs space-y-0.5">
-                  <p>
-                    Единиц:{' '}
-                    <span className="font-medium">
-                      {day.unitCount} / {day.maxUnits}
-                    </span>
-                  </p>
-                  <p>
-                    Торты:{' '}
-                    <span className="font-medium">
-                      {day.tortCount} / {day.maxTorts}
-                    </span>
-                  </p>
-                </div>
-                {!day.available && (
-                  <p className="text-[10px] text-red-600 font-medium">Заполнено</p>
-                )}
-              </CardContent>
-            </Card>
+            <StaggerItem key={day.date}>
+              <Card className={cn('overflow-hidden transition-[transform,box-shadow] duration-300 ease-out-soft hover:-translate-y-0.5 hover:shadow-md', colorClass)}>
+                <CardContent className="p-3 text-center space-y-1">
+                  <p className="font-semibold text-sm">{formatDate(day.date)}</p>
+                  <div className="text-xs space-y-0.5">
+                    <p>
+                      Единиц:{' '}
+                      <span className="font-medium">
+                        {day.unitCount} / {day.maxUnits}
+                      </span>
+                    </p>
+                    <p>
+                      Торты:{' '}
+                      <span className="font-medium">
+                        {day.tortCount} / {day.maxTorts}
+                      </span>
+                    </p>
+                  </div>
+                  {!day.available && (
+                    <p className="text-[10px] text-red-600 font-medium">Заполнено</p>
+                  )}
+                </CardContent>
+              </Card>
+            </StaggerItem>
           );
         })}
-      </div>
+      </StaggerContainer>
 
       <div className="flex gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">

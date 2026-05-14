@@ -9,6 +9,8 @@ import { StarRating } from './star-rating';
 import { ReviewForm } from './review-form';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
+import { AnimatePresence, motion } from 'framer-motion';
+import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
 import type { Review } from '@/types';
 
 interface ReviewListProps {
@@ -68,8 +70,17 @@ export function ReviewList({ productId }: ReviewListProps) {
         </p>
       ) : (
         <ul className="space-y-3">
+          <AnimatePresence initial={false}>
           {ownReview && (
-            <li className="rounded-xl border bg-primary/5 p-4 space-y-2">
+            <motion.li
+              key={`own-${ownReview.id}`}
+              layout
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: DUR_BASE, ease: EASE_OUT }}
+              className="rounded-xl border bg-primary/5 p-4 space-y-2 overflow-hidden"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <p className="text-sm font-semibold">{ownReview.user.name} (вы)</p>
@@ -93,11 +104,19 @@ export function ReviewList({ productId }: ReviewListProps) {
                 </Button>
               </div>
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{ownReview.text}</p>
-            </li>
+            </motion.li>
           )}
 
           {otherReviews.map((review) => (
-            <li key={review.id} className="rounded-xl border bg-card p-4 space-y-2">
+            <motion.li
+              key={review.id}
+              layout
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: DUR_BASE, ease: EASE_OUT }}
+              className="rounded-xl border bg-card p-4 space-y-2 overflow-hidden"
+            >
               <div className="space-y-1">
                 <p className="text-sm font-semibold">{review.user.name}</p>
                 <div className="flex items-center gap-2">
@@ -108,8 +127,9 @@ export function ReviewList({ productId }: ReviewListProps) {
                 </div>
               </div>
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{review.text}</p>
-            </li>
+            </motion.li>
           ))}
+          </AnimatePresence>
         </ul>
       )}
     </div>

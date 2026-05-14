@@ -1,6 +1,8 @@
 'use client';
 
 import { Star } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { DUR_FAST, EASE_OUT } from '@/components/motion/motion-presets';
 import { cn } from '@/lib/utils';
 
 interface StarRatingProps {
@@ -28,22 +30,25 @@ export function StarRating({ value, onChange, size = 'md', className }: StarRati
           <Star
             className={cn(
               sizeClass,
+              'transition-colors duration-200',
               filled ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/40',
-              interactive && 'transition-transform hover:scale-110',
             )}
           />
         );
         if (!interactive) return <span key={star}>{StarComponent}</span>;
         return (
-          <button
+          <motion.button
             key={star}
             type="button"
             onClick={() => onChange?.(star)}
+            whileHover={{ scale: 1.12 }}
+            whileTap={{ scale: 0.85 }}
+            transition={{ duration: DUR_FAST, ease: EASE_OUT }}
             className="cursor-pointer p-0.5 -m-0.5"
             aria-label={`Поставить ${star} ${star === 1 ? 'звезду' : 'звезд'}`}
           >
             {StarComponent}
-          </button>
+          </motion.button>
         );
       })}
     </div>

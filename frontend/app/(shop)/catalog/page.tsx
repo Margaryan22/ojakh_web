@@ -7,6 +7,8 @@ import { ProductCard } from '@/components/products/product-card';
 import { AddToCartDialog } from '@/components/products/add-to-cart-dialog';
 import { ProductGridSkeleton } from '@/components/products/product-grid-skeleton';
 import { CategoryNav } from '@/components/products/category-nav';
+import { FadeIn } from '@/components/motion/fade-in';
+import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import { CATEGORY_ORDER, CATEGORY_LABELS } from '@/lib/constants';
 import type { Product, ProductCategory } from '@/types';
 
@@ -39,10 +41,10 @@ export default function CatalogPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <FadeIn>
         <h1 className="text-2xl font-bold">Каталог</h1>
         <p className="text-muted-foreground mt-1">Домашние полуфабрикаты, торты и десерты</p>
-      </div>
+      </FadeIn>
 
       {isLoading ? (
         <ProductGridSkeleton />
@@ -59,25 +61,24 @@ export default function CatalogPage() {
           <CategoryNav categories={groups.map((g) => g.category)} />
 
           <div className="space-y-10">
-            {groups.map(({ category, items }) => (
-              <section
-                key={category}
-                id={category}
-                className="scroll-mt-32 space-y-3"
-              >
-                <h2 className="text-xl font-bold">
-                  {CATEGORY_LABELS[category]}
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {items.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onAdd={handleAddClick}
-                    />
-                  ))}
-                </div>
-              </section>
+            {groups.map(({ category, items }, i) => (
+              <FadeIn key={category} delay={i * 0.05}>
+                <section id={category} className="scroll-mt-32 space-y-3">
+                  <h2 className="text-xl font-bold">
+                    {CATEGORY_LABELS[category]}
+                  </h2>
+                  <StaggerContainer className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {items.map((product) => (
+                      <StaggerItem key={product.id}>
+                        <ProductCard
+                          product={product}
+                          onAdd={handleAddClick}
+                        />
+                      </StaggerItem>
+                    ))}
+                  </StaggerContainer>
+                </section>
+              </FadeIn>
             ))}
           </div>
         </>

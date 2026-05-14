@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/select';
 import { formatPrice } from '@/lib/format';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '@/lib/constants';
+import { FadeIn } from '@/components/motion/fade-in';
+import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import type { Product, ProductCategory } from '@/types';
 import { AxiosError } from 'axios';
 
@@ -220,19 +222,27 @@ export default function AdminProductsPage() {
     );
   }
 
+  const useStagger = products.length <= 30;
+  const ListWrapper: React.ElementType = useStagger ? StaggerContainer : 'div';
+  const ItemWrapper: React.ElementType = useStagger ? StaggerItem : 'div';
+  const listProps = useStagger ? { immediate: true } : {};
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Товары</h1>
-        <Button onClick={openCreate} className="gap-1">
-          <Plus className="h-4 w-4" />
-          Добавить
-        </Button>
-      </div>
+      <FadeIn>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Товары</h1>
+          <Button onClick={openCreate} className="gap-1">
+            <Plus className="h-4 w-4" />
+            Добавить
+          </Button>
+        </div>
+      </FadeIn>
 
-      <div className="space-y-2">
+      <ListWrapper className="space-y-2" {...listProps}>
         {products.map((product) => (
-          <Card key={product.id}>
+          <ItemWrapper key={product.id}>
+          <Card>
             <CardContent className="p-3 flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -269,8 +279,9 @@ export default function AdminProductsPage() {
               </div>
             </CardContent>
           </Card>
+          </ItemWrapper>
         ))}
-      </div>
+      </ListWrapper>
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

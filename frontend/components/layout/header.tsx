@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Menu,
   X,
@@ -17,6 +18,7 @@ import {
   CheckCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DUR_BASE, DUR_FAST, EASE_OUT } from '@/components/motion/motion-presets';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -142,9 +144,15 @@ export function Header() {
         {/* Logo */}
         <Link
           href='/catalog'
-          className='flex items-center gap-2 font-bold text-2xl text-primary hover:opacity-80 transition-opacity'
+          className='flex items-center gap-2 font-bold text-2xl text-primary transition-opacity duration-200 hover:opacity-80'
         >
-          <span style={{ fontFamily: "'Comic Relief', system-ui, sans-serif", fontWeight: '700' }}>Ojakh</span>
+          <motion.span
+            whileHover={{ scale: 1.03 }}
+            transition={{ duration: DUR_FAST, ease: EASE_OUT }}
+            style={{ fontFamily: "'Comic Relief', system-ui, sans-serif", fontWeight: '700' }}
+          >
+            Ojakh
+          </motion.span>
         </Link>
 
         {/* Desktop nav */}
@@ -154,14 +162,26 @@ export function Header() {
               key={link.href}
               href={link.href}
               className={cn(
-                'text-sm font-medium transition-colors hover:text-primary',
+                'group relative text-sm font-medium transition-colors duration-200 hover:text-primary py-1',
                 pathname === link.href ? 'text-primary' : 'text-muted-foreground',
               )}
             >
               {link.label}
               {link.href === '/cart' && cartCount > 0 && (
-                <span className='ml-1.5 inline-block h-2 w-2 rounded-full bg-primary align-middle' />
+                <motion.span
+                  key={cartCount}
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: DUR_FAST, ease: EASE_OUT }}
+                  className='ml-1.5 inline-block h-2 w-2 rounded-full bg-primary align-middle'
+                />
               )}
+              <span
+                className={cn(
+                  'pointer-events-none absolute left-0 right-0 -bottom-0.5 h-0.5 origin-left rounded-full bg-primary transition-transform duration-200 ease-out-soft',
+                  pathname === link.href ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100',
+                )}
+              />
             </Link>
           ))}
         </nav>
@@ -173,11 +193,20 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant='ghost' size='icon' className='relative'>
                   <Bell className='h-5 w-5' />
-                  {unreadCount > 0 && (
-                    <span className='absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'>
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
+                  <AnimatePresence>
+                    {unreadCount > 0 && (
+                      <motion.span
+                        key={unreadCount}
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ duration: DUR_FAST, ease: EASE_OUT }}
+                        className='absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground'
+                      >
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align='end' className='w-80 p-0'>
@@ -260,9 +289,18 @@ export function Header() {
           <Button variant='ghost' size='icon' asChild>
             <Link href='/cart' className='relative'>
               <ShoppingCart className='h-5 w-5' />
-              {cartCount > 0 && (
-                <span className='absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary' />
-              )}
+              <AnimatePresence>
+                {cartCount > 0 && (
+                  <motion.span
+                    key={cartCount}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ duration: DUR_FAST, ease: EASE_OUT }}
+                    className='absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary'
+                  />
+                )}
+              </AnimatePresence>
             </Link>
           </Button>
           <Button
@@ -288,8 +326,16 @@ export function Header() {
       )}
 
       {/* Mobile menu */}
+      <AnimatePresence initial={false}>
       {mobileOpen && (
-        <div className='md:hidden border-t bg-background'>
+        <motion.div
+          key='mobile-menu'
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: DUR_BASE, ease: EASE_OUT }}
+          className='md:hidden border-t bg-background overflow-hidden'
+        >
           <nav className='max-w-7xl mx-auto px-4 py-4 flex flex-col gap-2'>
             {navLinks.map((link) => (
               <Link
@@ -363,8 +409,9 @@ export function Header() {
               </>
             )}
           </nav>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </header>
   );
 }

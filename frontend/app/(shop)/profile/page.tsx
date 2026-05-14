@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/auth.store';
+import { FadeIn } from '@/components/motion/fade-in';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AxiosError } from 'axios';
 import api from '@/lib/api';
@@ -97,6 +98,7 @@ export default function ProfilePage() {
   };
 
   return (
+    <FadeIn>
     <div className="max-w-lg mx-auto space-y-6">
       <h1 className="text-2xl font-bold">Профиль</h1>
 
@@ -158,5 +160,6 @@ export default function ProfilePage() {
         Выйти из аккаунта
       </Button>
     </div>
+    </FadeIn>
   );
 }
