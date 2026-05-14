@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/auth.store';
+import { FadeIn } from '@/components/motion/fade-in';
+import { Y_HERO } from '@/components/motion/motion-presets';
 import { SocialLoginButtons } from '@/components/auth/social-login-buttons';
 import { finalizeAuthSuccess, readNextFromQuery } from '@/lib/post-auth';
 import {
@@ -98,6 +100,7 @@ export default function RegisterPage() {
   };
 
   return (
+    <FadeIn y={Y_HERO}>
     <Card className="shadow-lg border-border/60 rounded-2xl">
       <CardHeader className="pb-4">
         <CardTitle className="text-center text-2xl" style={{ fontFamily: 'Nunito, system-ui, sans-serif' }}>
@@ -223,5 +226,6 @@ export default function RegisterPage() {
         </CardFooter>
       </form>
     </Card>
+    </FadeIn>
   );
 }

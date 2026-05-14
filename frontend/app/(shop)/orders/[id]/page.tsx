@@ -13,6 +13,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice, formatDateFull } from '@/lib/format';
 import { STATUS_LABELS, STATUS_COLORS, WAREHOUSE_ADDRESS } from '@/lib/constants';
 import { useAuthStore } from '@/stores/auth.store';
+import { FadeIn } from '@/components/motion/fade-in';
+import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
+import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { Order, OrderStatus, DeliveryQuote, DeliveryClaimResponse } from '@/types';
 import { useState } from 'react';
 import { AxiosError } from 'axios';
@@ -177,6 +181,7 @@ export default function OrderDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      <FadeIn>
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => router.push('/orders')}>
           <ArrowLeft className="h-4 w-4" />
@@ -186,7 +191,10 @@ export default function OrderDetailPage() {
           {STATUS_LABELS[order.status as OrderStatus]}
         </Badge>
       </div>
+      </FadeIn>
 
+      <StaggerContainer immediate className="space-y-6">
+      <StaggerItem>
       {/* Items */}
       <Card>
         <CardHeader>
@@ -223,7 +231,9 @@ export default function OrderDetailPage() {
           </div>
         </CardContent>
       </Card>
+      </StaggerItem>
 
+      <StaggerItem>
       {/* Delivery info */}
       <Card>
         <CardHeader>
@@ -279,6 +289,8 @@ export default function OrderDetailPage() {
           )}
         </CardContent>
       </Card>
+      </StaggerItem>
+      </StaggerContainer>
 
       {/* Pay button for new orders */}
       {order.status === 'new' && order.paymentId && (
@@ -305,8 +317,17 @@ export default function OrderDetailPage() {
         </Button>
       )}
 
+      <AnimatePresence mode="wait">
       {/* Dispatch button — only when ready, delivery, not yet dispatched */}
       {canCallCourier && !quote && (
+        <motion.div
+          key="dispatch-cta"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: DUR_BASE, ease: EASE_OUT }}
+          className="overflow-hidden"
+        >
         <Button
           className="w-full gap-2"
           size="lg"
@@ -316,10 +337,19 @@ export default function OrderDetailPage() {
           <Truck className="h-4 w-4" />
           {isQuoting ? 'Считаем стоимость...' : 'Оформить доставку'}
         </Button>
+        </motion.div>
       )}
 
       {/* Quote confirmation card */}
       {canCallCourier && quote && (
+        <motion.div
+          key="dispatch-quote"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: DUR_BASE, ease: EASE_OUT }}
+          className="overflow-hidden"
+        >
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Подтверждение доставки</CardTitle>
@@ -367,7 +397,9 @@ export default function OrderDetailPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

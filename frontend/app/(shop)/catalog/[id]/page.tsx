@@ -18,6 +18,9 @@ import { NutritionInfo } from '@/components/products/nutrition-info';
 import { StarRating } from '@/components/reviews/star-rating';
 import { ReviewList } from '@/components/reviews/review-list';
 import api from '@/lib/api';
+import { FadeIn } from '@/components/motion/fade-in';
+import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
+import { Y_HERO } from '@/components/motion/motion-presets';
 import type { Product, ProductCategory, ReviewSummary } from '@/types';
 
 export default function ProductDetailPage({
@@ -90,7 +93,8 @@ export default function ProductDetailPage({
       </div>
 
       {/* Hero image */}
-      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-br from-muted to-accent mb-6 shadow-md">
+      <FadeIn y={Y_HERO} className="mb-6">
+      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-linear-to-br from-muted to-accent shadow-md">
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -111,8 +115,10 @@ export default function ProductDetailPage({
           </div>
         )}
       </div>
+      </FadeIn>
 
       {/* Product header */}
+      <FadeIn delay={0.08}>
       <div className="space-y-3 mb-6">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
@@ -160,45 +166,50 @@ export default function ProductDetailPage({
           )}
         </div>
       </div>
+      </FadeIn>
 
-      {/* Description block */}
-      {product.description && (
-        <>
-          <div className="rounded-xl border bg-card p-4 space-y-2 mb-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Info className="h-4 w-4 text-primary" />
-              Описание
+      <StaggerContainer immediate>
+        {/* Description block */}
+        {product.description && (
+          <StaggerItem>
+            <div className="rounded-xl border bg-card p-4 space-y-2 mb-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Info className="h-4 w-4 text-primary" />
+                Описание
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {product.description}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {product.description}
-            </p>
-          </div>
-        </>
-      )}
+          </StaggerItem>
+        )}
 
-      {/* Ingredients block */}
-      {product.ingredients && (
-        <>
-          <div className="rounded-xl border bg-card p-4 space-y-2 mb-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <ChefHat className="h-4 w-4 text-primary" />
-              Состав
+        {/* Ingredients block */}
+        {product.ingredients && (
+          <StaggerItem>
+            <div className="rounded-xl border bg-card p-4 space-y-2 mb-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <ChefHat className="h-4 w-4 text-primary" />
+                Состав
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {product.ingredients}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {product.ingredients}
-            </p>
-          </div>
-        </>
-      )}
+          </StaggerItem>
+        )}
 
-      {/* Nutrition block */}
-      <div className="rounded-xl border bg-card p-4 mb-6">
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-          <Flame className="h-4 w-4 text-primary" />
-          Пищевая ценность
-        </div>
-        <NutritionInfo product={product} />
-      </div>
+        {/* Nutrition block */}
+        <StaggerItem>
+          <div className="rounded-xl border bg-card p-4 mb-6">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+              <Flame className="h-4 w-4 text-primary" />
+              Пищевая ценность
+            </div>
+            <NutritionInfo product={product} />
+          </div>
+        </StaggerItem>
+      </StaggerContainer>
 
       <Separator className="mb-6" />
 

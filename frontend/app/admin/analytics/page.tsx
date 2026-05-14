@@ -6,6 +6,8 @@ import { TrendingUp, ShoppingBag, Receipt, XCircle } from 'lucide-react';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/format';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/constants';
+import { FadeIn } from '@/components/motion/fade-in';
+import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import type { OrderStatus } from '@/types';
 
 type Period = 'week' | 'month' | 'all';
@@ -39,6 +41,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
+      <FadeIn>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Аналитика</h1>
         <div className="flex rounded-lg border overflow-hidden">
@@ -57,43 +60,52 @@ export default function AnalyticsPage() {
           ))}
         </div>
       </div>
+      </FadeIn>
 
       {isLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl border p-5 animate-pulse bg-muted h-28" />
+            <div key={i} className="rounded-xl border p-5 animate-shimmer bg-muted h-28" />
           ))}
         </div>
       ) : (
         <>
           {/* Metric cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <MetricCard
-              icon={<TrendingUp className="h-5 w-5 text-green-600" />}
-              label="Выручка"
-              value={formatPrice(data?.totalRevenue ?? 0)}
-              bg="bg-green-50"
-            />
-            <MetricCard
-              icon={<ShoppingBag className="h-5 w-5 text-blue-600" />}
-              label="Заказов"
-              value={String(data?.orderCount ?? 0)}
-              bg="bg-blue-50"
-            />
-            <MetricCard
-              icon={<Receipt className="h-5 w-5 text-purple-600" />}
-              label="Средний чек"
-              value={formatPrice(data?.avgCheck ?? 0)}
-              bg="bg-purple-50"
-            />
-            <MetricCard
-              icon={<XCircle className="h-5 w-5 text-red-500" />}
-              label="Отменено"
-              value={String(data?.cancelledCount ?? 0)}
-              sub={`из ${data?.orderCount ?? 0}`}
-              bg="bg-red-50"
-            />
-          </div>
+          <StaggerContainer immediate className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StaggerItem>
+              <MetricCard
+                icon={<TrendingUp className="h-5 w-5 text-green-600" />}
+                label="Выручка"
+                value={formatPrice(data?.totalRevenue ?? 0)}
+                bg="bg-green-50"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <MetricCard
+                icon={<ShoppingBag className="h-5 w-5 text-blue-600" />}
+                label="Заказов"
+                value={String(data?.orderCount ?? 0)}
+                bg="bg-blue-50"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <MetricCard
+                icon={<Receipt className="h-5 w-5 text-purple-600" />}
+                label="Средний чек"
+                value={formatPrice(data?.avgCheck ?? 0)}
+                bg="bg-purple-50"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <MetricCard
+                icon={<XCircle className="h-5 w-5 text-red-500" />}
+                label="Отменено"
+                value={String(data?.cancelledCount ?? 0)}
+                sub={`из ${data?.orderCount ?? 0}`}
+                bg="bg-red-50"
+              />
+            </StaggerItem>
+          </StaggerContainer>
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Top products */}
@@ -111,7 +123,7 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="h-2 rounded-full bg-muted overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-primary transition-all"
+                          className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out-soft"
                           style={{ width: `${Math.round((p.qty / maxQty) * 100)}%` }}
                         />
                       </div>

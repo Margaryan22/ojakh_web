@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { CATEGORY_LABELS } from '@/lib/constants';
+import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
 import { cn } from '@/lib/utils';
 import type { ProductCategory } from '@/types';
 
@@ -83,13 +85,20 @@ export function CategoryNav({ categories }: CategoryNavProps) {
               type="button"
               onClick={() => handleClick(cat)}
               className={cn(
-                'shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                'relative shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-200',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'text-primary-foreground'
                   : 'bg-muted text-foreground hover:bg-muted/70',
               )}
             >
-              {CATEGORY_LABELS[cat]}
+              {isActive && (
+                <motion.span
+                  layoutId="category-pill"
+                  className="absolute inset-0 rounded-full bg-primary z-0"
+                  transition={{ type: 'tween', duration: DUR_BASE, ease: EASE_OUT }}
+                />
+              )}
+              <span className="relative z-10">{CATEGORY_LABELS[cat]}</span>
             </button>
           );
         })}

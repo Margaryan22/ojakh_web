@@ -13,6 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice, formatDate } from '@/lib/format';
 import { STATUS_LABELS, STATUS_COLORS, POLLING_INTERVAL_MS } from '@/lib/constants';
 import { useAuthStore } from '@/stores/auth.store';
+import { FadeIn } from '@/components/motion/fade-in';
+import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import type { Order, OrderStatus } from '@/types';
 
 export default function OrdersPage() {
@@ -70,49 +72,54 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold">Мои заказы</h1>
+      <FadeIn>
+        <h1 className="text-2xl font-bold">Мои заказы</h1>
+      </FadeIn>
 
       {orders.length === 0 ? (
-        <div className="text-center py-12 space-y-3">
-          <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/50" />
-          <p className="text-muted-foreground">У вас пока нет заказов</p>
-          <Button variant="outline" onClick={() => router.push('/catalog')}>
-            Перейти в каталог
-          </Button>
-        </div>
+        <FadeIn delay={0.05}>
+          <div className="text-center py-12 space-y-3">
+            <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/50" />
+            <p className="text-muted-foreground">У вас пока нет заказов</p>
+            <Button variant="outline" onClick={() => router.push('/catalog')}>
+              Перейти в каталог
+            </Button>
+          </div>
+        </FadeIn>
       ) : (
-        <div className="space-y-3">
+        <StaggerContainer immediate className="space-y-3">
           {orders.map((order) => (
-            <Card
-              key={order.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => router.push(`/orders/${order.id}`)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">Заказ #{order.orderNumber ?? order.id}</span>
-                      <Badge className={STATUS_COLORS[order.status as OrderStatus]}>
-                        {STATUS_LABELS[order.status as OrderStatus]}
-                      </Badge>
+            <StaggerItem key={order.id}>
+              <Card
+                className="cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-[transform,box-shadow] duration-300 ease-out-soft"
+                onClick={() => router.push(`/orders/${order.id}`)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">Заказ #{order.orderNumber ?? order.id}</span>
+                        <Badge className={STATUS_COLORS[order.status as OrderStatus]}>
+                          {STATUS_LABELS[order.status as OrderStatus]}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {formatDate(order.deliveryDate)} &middot;{' '}
+                        {order.isPickup ? 'Самовывоз' : 'Доставка'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {order.items.map((i) => i.name).join(', ')}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {formatDate(order.deliveryDate)} &middot;{' '}
-                      {order.isPickup ? 'Самовывоз' : 'Доставка'}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {order.items.map((i) => i.name).join(', ')}
-                    </p>
+                    <span className="font-bold whitespace-nowrap">
+                      {formatPrice(order.total)}
+                    </span>
                   </div>
-                  <span className="font-bold whitespace-nowrap">
-                    {formatPrice(order.total)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { formatPrice } from '@/lib/format';
 import { CATEGORY_EMOJI } from '@/lib/constants';
 import { useFavoritesStore } from '@/stores/favorites.store';
 import { useCartStore } from '@/stores/cart.store';
+import { DUR_FAST, EASE_OUT } from '@/components/motion/motion-presets';
 import type { Product, ProductCategory } from '@/types';
 
 
@@ -32,45 +34,70 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
     : product.imageUrl;
 
   return (
-    <Card className="group relative overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+    <Card className="group relative overflow-hidden transition-[transform,box-shadow] duration-300 ease-out-soft hover:shadow-lg hover:-translate-y-1">
       {/* Favorite button */}
-      <button
+      <motion.button
         onClick={(e) => {
           e.stopPropagation();
           toggleFavorite(product);
         }}
-        className="absolute top-2 right-2 z-10 rounded-full overflow-hidden w-10 h-10 shadow-md transition-transform hover:scale-110 cursor-pointer"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.88 }}
+        transition={{ duration: DUR_FAST, ease: EASE_OUT }}
+        className="absolute top-2 right-2 z-10 rounded-full overflow-hidden w-10 h-10 shadow-md cursor-pointer"
         aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
       >
-        <Image
-          src={isFavorite ? '/ornament-fav-off.jpg' : '/ornament-fav-on.jpg'}
-          alt=""
-          width={40}
-          height={40}
-          className="object-cover w-full h-full"
-        />
-      </button>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={isFavorite ? 'on' : 'off'}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: DUR_FAST, ease: EASE_OUT }}
+            className="block w-full h-full"
+          >
+            <Image
+              src={isFavorite ? '/ornament-fav-off.jpg' : '/ornament-fav-on.jpg'}
+              alt=""
+              width={40}
+              height={40}
+              className="object-cover w-full h-full"
+            />
+          </motion.span>
+        </AnimatePresence>
+      </motion.button>
 
       {/* Cart badge */}
-      {inCartQty > 0 && (
-        <Badge className="absolute top-2 left-2 z-10 bg-primary text-primary-foreground">
-          {inCartQty} шт
-        </Badge>
-      )}
+      <AnimatePresence>
+        {inCartQty > 0 && (
+          <motion.div
+            key={inCartQty}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: EASE_OUT }}
+            className="absolute top-2 left-2 z-10"
+          >
+            <Badge className="bg-primary text-primary-foreground">
+              {inCartQty} шт
+            </Badge>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Image / Emoji — links to product detail page */}
       <Link href={`/catalog/${product.id}`} className="block">
-        <div className="relative aspect-square bg-gradient-to-br from-muted to-accent flex items-center justify-center overflow-hidden">
+        <div className="relative aspect-square bg-linear-to-br from-muted to-accent flex items-center justify-center overflow-hidden">
           {imageUrl ? (
             <Image
               src={imageUrl}
               alt={product.name}
               fill
-              className="object-cover transition-transform group-hover:scale-110"
+              className="object-cover transition-transform duration-600 ease-out-soft group-hover:scale-110"
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             />
           ) : (
-            <span className="text-6xl">{emoji}</span>
+            <span className="text-6xl transition-transform duration-500 ease-out-soft group-hover:scale-110">{emoji}</span>
           )}
         </div>
       </Link>
@@ -78,7 +105,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
       <CardContent className="p-4 space-y-2">
         <div>
           <Link href={`/catalog/${product.id}`}>
-            <h3 className="font-bold text-base leading-tight line-clamp-2 text-foreground hover:text-primary transition-colors">{product.name}</h3>
+            <h3 className="font-bold text-base leading-tight line-clamp-2 text-foreground hover:text-primary transition-colors duration-200">{product.name}</h3>
           </Link>
           <div className="flex flex-wrap gap-1 mt-1">
             {product.flavor && (
@@ -104,7 +131,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
           </div>
           <Button
             size="sm"
-            className="h-9 w-9 p-0 rounded-full shadow-md hover:shadow-lg transition-all"
+            className="h-9 w-9 p-0 rounded-full shadow-md hover:shadow-lg"
             onClick={() => onAdd(product)}
             disabled={!product.available}
           >

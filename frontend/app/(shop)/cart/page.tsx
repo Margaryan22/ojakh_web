@@ -39,6 +39,9 @@ import {
 } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
+import { FadeIn } from '@/components/motion/fade-in';
+import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { DateAvailability, DeliveryTimeSlot, AddressSuggestion } from '@/types';
 import { AxiosError } from 'axios';
 
@@ -323,37 +326,59 @@ export default function CartPage() {
   }
 
   return (
+    <FadeIn>
     <div className='space-y-6 max-w-3xl mx-auto'>
       {/* Step indicator */}
       <div className='flex items-center gap-2 text-sm'>
         <span
           className={cn(
-            'font-medium cursor-pointer',
+            'relative font-medium cursor-pointer pb-1 transition-colors duration-200',
             step === 'cart' ? 'text-primary' : 'text-muted-foreground',
           )}
           onClick={() => setStep('cart')}
         >
           Корзина
+          {step === 'cart' && (
+            <motion.span
+              layoutId='cart-step-active'
+              className='absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-primary'
+              transition={{ type: 'tween', duration: DUR_BASE, ease: EASE_OUT }}
+            />
+          )}
         </span>
         <ArrowRight className='h-3 w-3 text-muted-foreground' />
         <span
           className={cn(
-            'font-medium',
+            'relative font-medium pb-1 transition-colors duration-200',
             step === 'delivery' ? 'text-primary' : 'text-muted-foreground',
             step !== 'cart' ? 'cursor-pointer' : '',
           )}
           onClick={() => step !== 'cart' && setStep('delivery')}
         >
           Доставка
+          {step === 'delivery' && (
+            <motion.span
+              layoutId='cart-step-active'
+              className='absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-primary'
+              transition={{ type: 'tween', duration: DUR_BASE, ease: EASE_OUT }}
+            />
+          )}
         </span>
         <ArrowRight className='h-3 w-3 text-muted-foreground' />
         <span
           className={cn(
-            'font-medium',
+            'relative font-medium pb-1 transition-colors duration-200',
             step === 'confirm' ? 'text-primary' : 'text-muted-foreground',
           )}
         >
           Подтверждение
+          {step === 'confirm' && (
+            <motion.span
+              layoutId='cart-step-active'
+              className='absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-primary'
+              transition={{ type: 'tween', duration: DUR_BASE, ease: EASE_OUT }}
+            />
+          )}
         </span>
       </div>
 
@@ -372,6 +397,7 @@ export default function CartPage() {
           ) : (
             <>
               <div className='space-y-3'>
+                <AnimatePresence initial={false}>
                 {items.map((item) => {
                   const isTort = isTortItem(item.category);
                   const stepVal = isTort ? 0.5 : 1;
@@ -380,9 +406,16 @@ export default function CartPage() {
                   const maxQty = item.maxPerCart ?? (isTort ? 2 : MAX_ITEM_QTY_PER_ORDER);
 
                   return (
-                    <Card
+                    <motion.div
                       key={`${item.product_id}-${item.flavor}-${item.size}`}
+                      layout
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                      transition={{ duration: DUR_BASE, ease: EASE_OUT }}
+                      className='overflow-hidden'
                     >
+                    <Card>
                       <CardContent className='p-4 flex items-center gap-4'>
                         <div className='flex-1 min-w-0'>
                           <p className='font-medium text-sm truncate'>
@@ -483,8 +516,10 @@ export default function CartPage() {
                         </div>
                       </CardContent>
                     </Card>
+                    </motion.div>
                   );
                 })}
+                </AnimatePresence>
               </div>
 
               <Separator />
@@ -582,7 +617,7 @@ export default function CartPage() {
                     </p>
                     <div className='h-1.5 w-full rounded-full bg-border overflow-hidden'>
                       <div
-                        className='h-full bg-primary transition-all'
+                        className='h-full bg-primary transition-[width] duration-500 ease-out-soft'
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -595,9 +630,18 @@ export default function CartPage() {
                   <p className='text-sm text-muted-foreground'>
                     {totalItems()} {totalItems() === 1 ? 'товар' : 'товаров'}
                   </p>
-                  <p className='text-xl font-bold'>
-                    {formatPrice(totalPrice())}
-                  </p>
+                  <AnimatePresence mode='wait'>
+                    <motion.p
+                      key={totalPrice()}
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.2, ease: EASE_OUT }}
+                      className='text-xl font-bold'
+                    >
+                      {formatPrice(totalPrice())}
+                    </motion.p>
+                  </AnimatePresence>
                 </div>
                 <div className='flex gap-2'>
                   <Button variant='outline' onClick={() => clearCart()}>
@@ -988,5 +1032,6 @@ export default function CartPage() {
         </>
       )}
     </div>
+    </FadeIn>
   );
 }
