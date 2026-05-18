@@ -66,6 +66,7 @@ const validDto = {
   delivery_time: '10:00-14:00' as const,
   is_pickup: false,
   address: 'ул. Тестовая, д. 1',
+  contact_phone: '+79001112233',
 };
 
 describe('OrdersService', () => {

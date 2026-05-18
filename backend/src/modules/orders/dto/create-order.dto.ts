@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   ValidateIf,
 } from 'class-validator';
@@ -56,6 +57,11 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   recipient_name?: string;
+
+  @ApiProperty({ example: '+79001234567' })
+  @IsString()
+  @Matches(/^\+7\d{10}$/, { message: 'Неверный формат номера телефона' })
+  contact_phone: string;
 
   @ApiPropertyOptional({ example: '12' })
   @IsOptional()

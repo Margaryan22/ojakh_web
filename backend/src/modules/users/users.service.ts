@@ -29,7 +29,6 @@ export class UsersService {
   async update(id: number, dto: UpdateUserDto) {
     const data: any = {};
     if (dto.name !== undefined) data.name = dto.name.trim();
-    if (dto.phone !== undefined) data.phone = dto.phone?.trim() ?? null;
 
     const user = await this.prisma.user.update({
       where: { id },
@@ -45,20 +44,5 @@ export class UsersService {
     });
 
     return user;
-  }
-
-  async updatePhone(id: number, phone: string) {
-    return this.prisma.user.update({
-      where: { id },
-      data: { phone },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-      },
-    });
   }
 }

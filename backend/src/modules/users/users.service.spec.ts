@@ -82,15 +82,6 @@ describe('UsersService', () => {
       );
     });
 
-    it('должен обновить телефон пользователя', async () => {
-      const updated = { ...userProfile, phone: '+7 900 111 2233' };
-      mockPrisma.user.update.mockResolvedValue(updated);
-
-      const result = await service.update(1, { phone: '+7 900 111 2233' });
-
-      expect(result.phone).toBe('+7 900 111 2233');
-    });
-
     it('должен обрезать пробелы в имени', async () => {
       mockPrisma.user.update.mockResolvedValue(userProfile);
 

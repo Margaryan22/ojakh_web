@@ -12,7 +12,13 @@ import { PaymentsService } from '../payments/payments.service';
 import { AddressesService } from '../addresses/addresses.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import axios from 'axios';
-import { TORT_CATEGORY, MAX_TORTS, MIN_DAYS_AHEAD, MAX_DAYS_AHEAD } from '../../common/constants';
+import {
+  TORT_CATEGORY,
+  MAX_TORTS,
+  MIN_DAYS_AHEAD,
+  MAX_DAYS_AHEAD,
+  MIN_ORDER_KOPECKS,
+} from '../../common/constants';
 
 @Injectable()
 export class OrdersService {
@@ -30,6 +36,14 @@ export class OrdersService {
     const cart = await this.cartService.getCart(userId);
     if (!cart.items.length) {
       throw new BadRequestException('Корзина пуста');
+    }
+
+    // 1b. Min order amount (subtotal only, без доставки)
+    const subtotal = cart.items.reduce((sum, item) => sum + item.subtotal, 0);
+    if (subtotal < MIN_ORDER_KOPECKS) {
+      throw new BadRequestException(
+        `Минимальная сумма заказа — ${(MIN_ORDER_KOPECKS / 100).toFixed(0)} ₽`,
+      );
     }
 
     // 2. Validate delivery date window
@@ -122,9 +136,7 @@ export class OrdersService {
       }
     }
 
-    // 6. Calculate subtotal and delivery cost
-    const subtotal = cart.items.reduce((sum, item) => sum + item.subtotal, 0);
-
+    // 6. Calculate delivery cost (subtotal уже посчитан выше, шаг 1b)
     let deliveryCost = 0;
     if (!dto.is_pickup) {
       const costResult = this.deliveryService.getDeliveryCost({
@@ -177,6 +189,7 @@ export class OrdersService {
           ? null
           : dto.delivery_notes?.trim() || null,
         recipientName: dto.recipient_name?.trim() || null,
+        contactPhone: dto.contact_phone.trim(),
         status: 'new',
       },
     });

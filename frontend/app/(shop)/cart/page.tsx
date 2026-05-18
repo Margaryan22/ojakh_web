@@ -12,6 +12,8 @@ import {
   MapPin,
   Truck,
   Store,
+  CheckCircle2,
+  Phone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
@@ -36,8 +38,16 @@ import {
   CAKE_CATEGORY,
   FALLBACK_DELIVERY_COST,
   FREE_DELIVERY_THRESHOLD_KOPECKS,
+  MIN_ORDER_KOPECKS,
+  MIN_DAYS_AHEAD,
+  MAX_DAYS_AHEAD,
   WAREHOUSE_ADDRESS,
 } from '@/lib/constants';
+import {
+  formatPhone,
+  extractPhoneDigits,
+  PHONE_DIGITS_COUNT,
+} from '@/lib/validation';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { FadeIn } from '@/components/motion/fade-in';
@@ -77,6 +87,8 @@ export default function CartPage() {
     lon: null,
   });
   const [recipientName, setRecipientName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactPhoneTouched, setContactPhoneTouched] = useState(false);
   const [addressApartment, setAddressApartment] = useState('');
   const [addressEntrance, setAddressEntrance] = useState('');
   const [addressFloor, setAddressFloor] = useState('');
@@ -135,6 +147,13 @@ export default function CartPage() {
     // Для гостя fetchCart — no-op (persist уже восстановил), для юзера тянет с сервера.
     fetchCart();
   }, [user, fetchCart]);
+
+  // Префилл контактного телефона из профиля (если пользователь его подтвердил).
+  useEffect(() => {
+    if (!user?.phone) return;
+    if (contactPhone) return;
+    setContactPhone(formatPhone(extractPhoneDigits(user.phone)));
+  }, [user, contactPhone]);
 
   // DaData address suggestions via backend proxy (DaData key stays server-side)
   useEffect(() => {
@@ -330,9 +349,17 @@ export default function CartPage() {
     setStep('delivery');
   };
 
+  const contactPhoneDigits = extractPhoneDigits(contactPhone);
+  const isContactPhoneValid = contactPhoneDigits.length === PHONE_DIGITS_COUNT;
+
   const handleConfirmStep = async () => {
     if (!selectedDate) {
       toast.error('Выберите дату доставки');
+      return;
+    }
+    setContactPhoneTouched(true);
+    if (!isContactPhoneValid) {
+      toast.error('Укажите контактный номер для связи');
       return;
     }
     if (!isPickup && !address.trim()) {
@@ -399,6 +426,7 @@ export default function CartPage() {
         address: isPickup ? undefined : address,
         address_lat: isPickup ? undefined : addressCoords.lat ?? undefined,
         address_lon: isPickup ? undefined : addressCoords.lon ?? undefined,
+        contact_phone: `+7${contactPhoneDigits}`,
         recipient_name: isPickup ? undefined : recipientName.trim() || undefined,
         address_apartment: isPickup
           ? undefined
@@ -660,11 +688,23 @@ export default function CartPage() {
                             : 'Нет подходящих дат для вашего заказа'}
                       </p>
                       <p className='text-xs mt-1 opacity-90'>
-                        {blockReason === 'torts'
-                          ? `На ближайшие ${calendarData.length} дней все слоты для тортов уже заняты. Уменьшите количество тортов в корзине или попробуйте позже.`
-                          : blockReason === 'units'
-                            ? `На ближайшие ${calendarData.length} дней нет места под такой объём. Уменьшите количество единиц в корзине.`
-                            : `Уменьшите количество тортов или единиц — на ближайшие ${calendarData.length} дней нет места под такой объём.`}
+                        {(() => {
+                          const maxAvailableUnits = Math.max(
+                            ...calendarData.map((d) => d.unitsAvailable),
+                            0,
+                          );
+                          const maxAvailableTorts = Math.max(
+                            ...calendarData.map((d) => d.tortsAvailable),
+                            0,
+                          );
+                          if (blockReason === 'torts') {
+                            return `На ближайшие ${calendarData.length} дней свободно тортов на дату: максимум ${maxAvailableTorts}. У вас в корзине ${cartTorts}. Уменьшите количество тортов или попробуйте позже.`;
+                          }
+                          if (blockReason === 'units') {
+                            return `На ближайшие ${calendarData.length} дней свободно единиц на дату: максимум ${maxAvailableUnits}. У вас в корзине ${cartUnits}. Уменьшите количество товаров.`;
+                          }
+                          return `Уменьшите количество тортов (макс ${maxAvailableTorts}/день) или единиц (макс ${maxAvailableUnits}/день) — на ближайшие ${calendarData.length} дней нет места под такой объём.`;
+                        })()}
                       </p>
                     </>
                   ) : (
@@ -704,6 +744,20 @@ export default function CartPage() {
                       Регистрация
                     </Button>
                   </div>
+                </div>
+              )}
+
+              {/* Минимальная сумма заказа */}
+              {totalPrice() < MIN_ORDER_KOPECKS && (
+                <div className='rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300'>
+                  <p>
+                    Минимальная сумма заказа — {formatPrice(MIN_ORDER_KOPECKS)}.{' '}
+                    Добавьте ещё на{' '}
+                    <span className='font-semibold'>
+                      {formatPrice(MIN_ORDER_KOPECKS - totalPrice())}
+                    </span>
+                    , чтобы оформить.
+                  </p>
                 </div>
               )}
 
@@ -763,7 +817,10 @@ export default function CartPage() {
                   <Button variant='outline' onClick={() => clearCart()}>
                     Очистить
                   </Button>
-                  <Button onClick={handleCheckout} disabled={noDatesFit}>
+                  <Button
+                    onClick={handleCheckout}
+                    disabled={noDatesFit || totalPrice() < MIN_ORDER_KOPECKS}
+                  >
                     Оформить
                   </Button>
                 </div>
@@ -784,6 +841,45 @@ export default function CartPage() {
           </div>
 
           <div className='space-y-6'>
+            {/* Контактный телефон — обязательно, для связи с курьером */}
+            <div className='space-y-1.5'>
+              <Label htmlFor='contact-phone' className='flex items-center gap-1.5'>
+                <Phone className='h-3.5 w-3.5' />
+                Телефон для связи
+                <span className='text-destructive'>*</span>
+              </Label>
+              <Input
+                id='contact-phone'
+                type='tel'
+                value={contactPhone}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const withoutPrefix = raw.startsWith('+7') ? raw.slice(2) : raw;
+                  const digits = withoutPrefix
+                    .replace(/\D/g, '')
+                    .slice(0, PHONE_DIGITS_COUNT);
+                  setContactPhone(digits ? formatPhone(digits) : '');
+                }}
+                onBlur={() => setContactPhoneTouched(true)}
+                placeholder='+7 (000) (000) 00 00'
+                className={
+                  contactPhoneTouched && !isContactPhoneValid
+                    ? 'border-destructive focus-visible:ring-destructive'
+                    : ''
+                }
+              />
+              {contactPhoneTouched && !isContactPhoneValid && (
+                <p className='text-xs text-destructive'>
+                  Укажите 10 цифр после +7
+                </p>
+              )}
+              <p className='text-xs text-muted-foreground'>
+                {user?.phone
+                  ? 'Курьер позвонит на этот номер, чтобы уточнить детали.'
+                  : 'Курьер позвонит, чтобы уточнить детали. Сохраните номер в профиле, чтобы он подставлялся автоматически.'}
+              </p>
+            </div>
+
             {/* Delivery type toggle */}
             <div className='flex gap-3'>
               <Button
@@ -888,8 +984,17 @@ export default function CartPage() {
                     </ul>
                   )}
                 </div>
+                {addressValidated ? (
+                  <p className='text-xs text-green-700 dark:text-green-400 inline-flex items-center gap-1'>
+                    <CheckCircle2 className='h-3.5 w-3.5' />
+                    Адрес подтверждён
+                  </p>
+                ) : (
+                  <p className='text-xs text-muted-foreground'>
+                    Выберите адрес из выпадающего списка — мы доставляем только по Нижнему Новгороду.
+                  </p>
+                )}
                 <p className='text-xs text-muted-foreground'>
-                  Доставка осуществляется только по Нижнему Новгороду.
                   Бесплатно при заказе от {formatPrice(FREE_DELIVERY_THRESHOLD_KOPECKS)}.{' '}
                   <Link
                     href='/profile/addresses'
@@ -955,13 +1060,13 @@ export default function CartPage() {
                   <Label htmlFor='recipient'>Получатель (необязательно)</Label>
                   <Input
                     id='recipient'
-                    placeholder={user?.name ?? 'Имя получателя'}
+                    placeholder='Имя получателя — если торт принимаете не вы'
                     value={recipientName}
                     onChange={(e) => setRecipientName(e.target.value)}
                     autoComplete='name'
                   />
                   <p className='text-xs text-muted-foreground'>
-                    Если оставить пустым, передадим курьеру ваше имя из профиля.
+                    Заполните, если заказ принимает другой человек (например, подарок). Иначе передадим имя из профиля.
                   </p>
                 </div>
 
@@ -989,6 +1094,9 @@ export default function CartPage() {
             {/* Date selection - Calendar */}
             <div className='space-y-2'>
               <Label>Дата доставки</Label>
+              <p className='text-xs text-muted-foreground'>
+                Доставка возможна не раньше чем через {MIN_DAYS_AHEAD} дня и не позже чем через {MAX_DAYS_AHEAD} дней — это связано с графиком ручного производства.
+              </p>
 
               {/* Month navigation */}
               <div className='flex items-center justify-between'>
@@ -1271,6 +1379,10 @@ export default function CartPage() {
                 <span className='text-muted-foreground'>Время:</span>{' '}
                 {selectedTime}
               </p>
+              <p>
+                <span className='text-muted-foreground'>Телефон:</span>{' '}
+                {contactPhone || '—'}
+              </p>
             </CardContent>
           </Card>
 
@@ -1282,6 +1394,9 @@ export default function CartPage() {
           >
             {isSubmitting ? 'Оформление...' : 'Оформить заказ'}
           </Button>
+          <p className='text-xs text-muted-foreground text-center'>
+            Нажимая «Оформить заказ», вы создаёте заказ — оплата на следующем шаге.
+          </p>
         </>
       )}
     </div>
