@@ -8,7 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { TelegramGatewayService } from './telegram-gateway.service';
+import { EmailDeliveryService } from './email-delivery.service';
 
 const CODE_TTL_MS = 5 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
@@ -23,7 +23,7 @@ export class PhoneVerificationService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-    private readonly telegramGateway: TelegramGatewayService,
+    private readonly emailDelivery: EmailDeliveryService,
   ) {}
 
   onModuleInit() {
@@ -82,7 +82,7 @@ export class PhoneVerificationService implements OnModuleInit {
     const expiresAt = new Date(now + CODE_TTL_MS);
     const resendAvailableAt = new Date(now + RESEND_COOLDOWN_MS);
 
-    const result = await this.telegramGateway.sendCode(phone, code);
+    const result = await this.emailDelivery.sendCode(user.email, code, phone);
 
     await this.prisma.phoneVerification.create({
       data: {
@@ -91,21 +91,28 @@ export class PhoneVerificationService implements OnModuleInit {
         codeHash,
         expiresAt,
         resendAvailableAt,
-        requestId: result.requestId,
       },
     });
 
-    const tgConfigured = !!this.config.get<string>('TELEGRAM_GATEWAY_TOKEN');
-    if (tgConfigured && !result.delivered) {
+    const smtpConfigured = !!this.config.get<string>('SMTP_HOST');
+    if (smtpConfigured && !result.delivered) {
       throw new ServiceUnavailableException(
-        'Не удалось отправить код. Попробуйте позже.',
+        'Не удалось отправить письмо с кодом. Попробуйте позже.',
       );
     }
 
     return {
       expiresAt: expiresAt.toISOString(),
       resendAvailableAt: resendAvailableAt.toISOString(),
+      email: this.maskEmail(user.email),
     };
+  }
+
+  private maskEmail(email: string): string {
+    const [name, domain] = email.split('@');
+    if (!domain) return email;
+    const visible = name.slice(0, Math.min(2, name.length));
+    return `${visible}${'*'.repeat(Math.max(0, name.length - visible.length))}@${domain}`;
   }
 
   async confirm(userId: number, code: string) {

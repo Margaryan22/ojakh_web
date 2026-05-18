@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { PhoneVerificationController } from './phone-verification.controller';
 import { PhoneVerificationService } from './phone-verification.service';
-import { TelegramGatewayService } from './telegram-gateway.service';
+import { EmailDeliveryService } from './email-delivery.service';
 import { PerUserThrottlerGuard } from './per-user-throttler.guard';
 
 @Module({
@@ -10,7 +10,7 @@ import { PerUserThrottlerGuard } from './per-user-throttler.guard';
   controllers: [PhoneVerificationController],
   providers: [
     PhoneVerificationService,
-    TelegramGatewayService,
+    EmailDeliveryService,
     PerUserThrottlerGuard,
   ],
 })
