@@ -45,6 +45,7 @@ export default function ProfilePage() {
   const [isRequestingCode, setIsRequestingCode] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(null);
+  const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -140,9 +141,10 @@ export default function ProfilePage() {
         phone: normalized,
       });
       setResendAvailableAt(new Date(data.resendAvailableAt).getTime());
+      setMaskedEmail(data.email ?? null);
       setCode('');
       setPhoneStep('enter-code');
-      toast.success('Код отправлен в Telegram');
+      toast.success('Код отправлен на почту');
     } catch (error) {
       if (error instanceof AxiosError) {
         const status = error.response?.status;
@@ -189,6 +191,7 @@ export default function ProfilePage() {
     setCode('');
     setPhoneTouched(false);
     setResendAvailableAt(null);
+    setMaskedEmail(null);
     setPhoneStep('enter-phone');
   };
 
@@ -198,11 +201,13 @@ export default function ProfilePage() {
     setCode('');
     setPhoneTouched(false);
     setResendAvailableAt(null);
+    setMaskedEmail(null);
   };
 
   const handleBackToPhoneEntry = () => {
     setCode('');
     setResendAvailableAt(null);
+    setMaskedEmail(null);
     setPhoneStep('enter-phone');
   };
 
@@ -276,7 +281,7 @@ export default function ProfilePage() {
                   </div>
                 )}
                 <p className='text-xs text-muted-foreground'>
-                  Номер используется курьером для связи и подтверждается кодом из Telegram.
+                  Номер используется курьером для связи и подтверждается кодом по почте.
                 </p>
               </>
             )}
@@ -297,12 +302,13 @@ export default function ProfilePage() {
                   />
                   {phoneError && <p className='text-xs text-destructive'>{phoneError}</p>}
                   <p className='text-xs text-muted-foreground'>
-                    Мы отправим код подтверждения в приложение Telegram на указанный номер.
+                    Мы отправим код подтверждения на вашу почту{' '}
+                    <span className='font-medium text-foreground'>{user.email}</span>.
                   </p>
                 </div>
                 <div className='flex gap-2'>
                   <Button onClick={handleRequestCode} disabled={isRequestingCode || !isPhoneValid}>
-                    {isRequestingCode ? 'Отправка...' : 'Получить код в Telegram'}
+                    {isRequestingCode ? 'Отправка...' : 'Получить код по почте'}
                   </Button>
                   <Button variant='ghost' onClick={handleCancelPhoneChange}>
                     Отмена
@@ -314,11 +320,15 @@ export default function ProfilePage() {
             {phoneStep === 'enter-code' && (
               <div className='space-y-3'>
                 <p className='text-sm text-muted-foreground'>
-                  Код отправлен в Telegram на номер{' '}
+                  Код отправлен на почту{' '}
+                  <span className='font-medium text-foreground'>
+                    {maskedEmail ?? user.email}
+                  </span>{' '}
+                  для подтверждения номера{' '}
                   <span className='font-medium text-foreground'>{newPhone}</span>.
                 </p>
                 <div className='space-y-1.5'>
-                  <Label htmlFor='code'>Код из Telegram</Label>
+                  <Label htmlFor='code'>Код из письма</Label>
                   <Input
                     id='code'
                     inputMode='numeric'
