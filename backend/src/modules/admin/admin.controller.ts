@@ -1,17 +1,21 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
   ParseIntPipe,
   Patch,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AdminGuard } from '../auth/admin.guard';
 import { AdminService } from './admin.service';
+import { UpsertDailyLimitDto } from './dto/upsert-daily-limit.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -72,5 +76,26 @@ export class AdminController {
   getCalendar(@Query('days') days?: string) {
     const daysNum = days ? parseInt(days, 10) : 14;
     return this.adminService.getCalendar(daysNum);
+  }
+
+  @Put('daily-limits/:date')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Upsert daily limit / blackout / slot capacity (admin only)',
+  })
+  upsertDailyLimit(
+    @Param('date') date: string,
+    @Body() dto: UpsertDailyLimitDto,
+  ) {
+    return this.adminService.upsertDailyLimit(date, dto);
+  }
+
+  @Delete('daily-limits/:date')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reset daily limit to defaults (admin only)',
+  })
+  resetDailyLimit(@Param('date') date: string) {
+    return this.adminService.resetDailyLimit(date);
   }
 }

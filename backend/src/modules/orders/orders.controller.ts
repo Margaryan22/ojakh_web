@@ -46,12 +46,6 @@ export class OrdersController {
     );
   }
 
-  @Get('last-address')
-  @ApiOperation({ summary: 'Get address from user last delivery order' })
-  getLastAddress(@Req() req: any) {
-    return this.ordersService.getLastAddress(req.user.id);
-  }
-
   @Get(':id')
   @ApiOperation({ summary: 'Get a single order by id' })
   getOrder(@Req() req: any, @Param('id', ParseIntPipe) id: number) {

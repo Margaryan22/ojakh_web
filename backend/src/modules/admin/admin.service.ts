@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ACTIVE_STATUSES, TORT_CATEGORY, DEFAULT_MAX_UNITS, MAX_TORTS } from '../../common/constants';
+import { UpsertDailyLimitDto } from './dto/upsert-daily-limit.dto';
 
 @Injectable()
 export class AdminService {
@@ -196,7 +197,17 @@ export class AdminService {
     );
 
 
-    const result: Array<{ date: string; unitCount: number; tortCount: number; maxUnits: number; maxTorts: number; available: boolean }> = [];
+    const result: Array<{
+      date: string;
+      unitCount: number;
+      tortCount: number;
+      maxUnits: number;
+      maxTorts: number;
+      available: boolean;
+      blackedOut: boolean;
+      blackoutReason: string | null;
+      slotCapacities: Record<string, number> | null;
+    }> = [];
     const cursor = new Date(today);
 
     while (cursor <= endDate) {
@@ -205,16 +216,79 @@ export class AdminService {
       const limit = limitsMap.get(key);
       const maxUnits = limit?.maxUnits ?? DEFAULT_MAX_UNITS;
       const maxTorts = limit?.maxTorts ?? MAX_TORTS;
+      const blackedOut = limit?.isBlackedOut ?? false;
       result.push({
         date: key,
         ...entry,
         maxUnits,
         maxTorts,
-        available: entry.unitCount < maxUnits && entry.tortCount < maxTorts,
+        available:
+          !blackedOut &&
+          entry.unitCount < maxUnits &&
+          entry.tortCount < maxTorts,
+        blackedOut,
+        blackoutReason: limit?.blackoutReason ?? null,
+        slotCapacities:
+          (limit?.slotCapacities as Record<string, number> | null) ?? null,
       });
       cursor.setDate(cursor.getDate() + 1);
     }
 
     return result;
+  }
+
+  async upsertDailyLimit(dateStr: string, dto: UpsertDailyLimitDto) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      throw new BadRequestException('Дата должна быть в формате ГГГГ-ММ-ДД');
+    }
+    const d = new Date(dateStr);
+    const dateOnly = new Date(
+      Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()),
+    );
+
+    const data: Record<string, unknown> = {};
+    if (dto.max_units !== undefined) data.maxUnits = dto.max_units;
+    if (dto.max_torts !== undefined) data.maxTorts = dto.max_torts;
+    if (dto.slot_capacities !== undefined) {
+      // null / {} → стираем override
+      const empty =
+        dto.slot_capacities === null ||
+        Object.keys(dto.slot_capacities ?? {}).length === 0;
+      data.slotCapacities = empty ? null : dto.slot_capacities;
+    }
+    if (dto.is_blacked_out !== undefined) data.isBlackedOut = dto.is_blacked_out;
+    if (dto.blackout_reason !== undefined) {
+      data.blackoutReason = dto.blackout_reason?.trim() || null;
+    }
+
+    return this.prisma.dailyLimit.upsert({
+      where: { deliveryDate: dateOnly },
+      update: data,
+      create: {
+        deliveryDate: dateOnly,
+        maxUnits: dto.max_units ?? DEFAULT_MAX_UNITS,
+        maxTorts: dto.max_torts ?? MAX_TORTS,
+        slotCapacities:
+          dto.slot_capacities && Object.keys(dto.slot_capacities).length > 0
+            ? dto.slot_capacities
+            : undefined,
+        isBlackedOut: dto.is_blacked_out ?? false,
+        blackoutReason: dto.blackout_reason?.trim() || null,
+      },
+    });
+  }
+
+  async resetDailyLimit(dateStr: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      throw new BadRequestException('Дата должна быть в формате ГГГГ-ММ-ДД');
+    }
+    const d = new Date(dateStr);
+    const dateOnly = new Date(
+      Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()),
+    );
+    await this.prisma.dailyLimit
+      .delete({ where: { deliveryDate: dateOnly } })
+      .catch(() => null); // idempotent
+    return { ok: true };
   }
 }

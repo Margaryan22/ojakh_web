@@ -70,6 +70,8 @@ export const ADMIN_ROLE = 'admin';
 export const MAX_TORTS_PER_ORDER = 2;
 export const MAX_ITEM_QTY_PER_ORDER = 50;
 
+export const DEFAULT_SLOT_CAPACITY = 6;
+
 export const MIN_DAYS_AHEAD = 2;
 export const MAX_DAYS_AHEAD = 15;
 

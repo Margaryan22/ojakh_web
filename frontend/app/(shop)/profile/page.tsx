@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -153,6 +155,13 @@ export default function ProfilePage() {
           </form>
         </CardContent>
       </Card>
+
+      <Link href='/profile/addresses' className='block'>
+        <Button variant='outline' className='w-full gap-2 justify-start'>
+          <MapPin className='h-4 w-4' />
+          Мои адреса доставки
+        </Button>
+      </Link>
 
       <Separator />
 

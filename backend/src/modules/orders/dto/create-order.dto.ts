@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -55,4 +56,34 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   recipient_name?: string;
+
+  @ApiPropertyOptional({ example: '12' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  address_apartment?: string;
+
+  @ApiPropertyOptional({ example: '2' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  address_entrance?: string;
+
+  @ApiPropertyOptional({ example: '5' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  address_floor?: string;
+
+  @ApiPropertyOptional({ example: '*1234' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  address_intercom?: string;
+
+  @ApiPropertyOptional({ example: 'Позвоните за 10 минут' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  delivery_notes?: string;
 }

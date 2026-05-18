@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { PaymentsService } from '../payments/payments.service';
+import { AddressesService } from '../addresses/addresses.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import axios from 'axios';
 import { TORT_CATEGORY, MAX_TORTS, MIN_DAYS_AHEAD, MAX_DAYS_AHEAD } from '../../common/constants';
@@ -20,6 +21,7 @@ export class OrdersService {
     private readonly cartService: CartService,
     private readonly deliveryService: DeliveryService,
     private readonly paymentsService: PaymentsService,
+    private readonly addressesService: AddressesService,
     private readonly config: ConfigService,
   ) {}
 
@@ -109,6 +111,17 @@ export class OrdersService {
       );
     }
 
+    // Slot capacity guard: только для курьера и только если указано время.
+    // Защищает от гонки двух одновременных оформлений в один слот.
+    if (!dto.is_pickup && dto.delivery_time) {
+      const slot = availability.slots[dto.delivery_time];
+      if (slot && !slot.available) {
+        throw new BadRequestException(
+          'Этот интервал доставки только что заняли. Выберите другое время.',
+        );
+      }
+    }
+
     // 6. Calculate subtotal and delivery cost
     const subtotal = cart.items.reduce((sum, item) => sum + item.subtotal, 0);
 
@@ -150,10 +163,38 @@ export class OrdersService {
         address: dto.address?.trim() ?? null,
         addressLat: dto.is_pickup ? null : dto.address_lat ?? null,
         addressLon: dto.is_pickup ? null : dto.address_lon ?? null,
+        addressApartment: dto.is_pickup
+          ? null
+          : dto.address_apartment?.trim() || null,
+        addressEntrance: dto.is_pickup
+          ? null
+          : dto.address_entrance?.trim() || null,
+        addressFloor: dto.is_pickup ? null : dto.address_floor?.trim() || null,
+        addressIntercom: dto.is_pickup
+          ? null
+          : dto.address_intercom?.trim() || null,
+        deliveryNotes: dto.is_pickup
+          ? null
+          : dto.delivery_notes?.trim() || null,
         recipientName: dto.recipient_name?.trim() || null,
         status: 'new',
       },
     });
+
+    // 7b. Auto-save address (best-effort; не блокирует и не падает)
+    if (!dto.is_pickup && dto.address?.trim()) {
+      await this.addressesService.autoSaveFromOrder({
+        userId,
+        address: dto.address.trim(),
+        lat: dto.address_lat ?? null,
+        lon: dto.address_lon ?? null,
+        apartment: dto.address_apartment ?? null,
+        entrance: dto.address_entrance ?? null,
+        floor: dto.address_floor ?? null,
+        intercom: dto.address_intercom ?? null,
+        notes: dto.delivery_notes ?? null,
+      });
+    }
 
     // 8. Clear cart
     await this.cartService.clearCart(userId);
@@ -177,19 +218,6 @@ export class OrdersService {
     ]);
 
     return { orders, total, page, limit };
-  }
-
-  async getLastAddress(userId: number): Promise<{ address: string | null }> {
-    const lastOrder = await this.prisma.order.findFirst({
-      where: {
-        userId,
-        isPickup: false,
-        address: { not: null },
-      },
-      orderBy: { createdAt: 'desc' },
-      select: { address: true },
-    });
-    return { address: lastOrder?.address ?? null };
   }
 
   async getOrder(userId: number, orderId: number) {

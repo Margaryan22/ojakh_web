@@ -124,6 +124,44 @@ export interface ReviewSummary {
   count: number;
 }
 
+export interface SlotAvailability {
+  count: number;
+  max: number;
+  available: boolean;
+}
+
+export type DeliveryCostBreakdown =
+  | { type: 'free_threshold'; thresholdKopecks: number }
+  | {
+      type: 'distance';
+      baseKopecks: number;
+      freeKm: number;
+      perKmKopecks: number;
+      extraKm: number;
+    }
+  | { type: 'fallback'; baseKopecks: number };
+
+export interface UserAddress {
+  id: number;
+  label: string | null;
+  address: string;
+  lat: number | null;
+  lon: number | null;
+  apartment: string | null;
+  entrance: string | null;
+  floor: string | null;
+  intercom: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface DeliveryCostResponse {
+  cost: number;
+  distanceKm: number | null;
+  freeDelivery: boolean;
+  breakdown: DeliveryCostBreakdown;
+}
+
 export interface DateAvailability {
   available: boolean;
   tortCount: number;
@@ -132,5 +170,7 @@ export interface DateAvailability {
   maxUnits: number;
   unitsAvailable: number;
   tortsAvailable: number;
+  slots: Record<string, SlotAvailability>;
+  blackedOut: boolean;
   reason?: string;
 }

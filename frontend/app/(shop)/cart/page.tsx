@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Minus,
   Plus,
@@ -42,7 +43,13 @@ import api from '@/lib/api';
 import { FadeIn } from '@/components/motion/fade-in';
 import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
 import { AnimatePresence, motion } from 'framer-motion';
-import type { DateAvailability, DeliveryTimeSlot, AddressSuggestion } from '@/types';
+import type {
+  DateAvailability,
+  DeliveryTimeSlot,
+  AddressSuggestion,
+  DeliveryCostBreakdown,
+  UserAddress,
+} from '@/types';
 import { AxiosError } from 'axios';
 
 type Step = 'cart' | 'delivery' | 'confirm';
@@ -70,6 +77,14 @@ export default function CartPage() {
     lon: null,
   });
   const [recipientName, setRecipientName] = useState('');
+  const [addressApartment, setAddressApartment] = useState('');
+  const [addressEntrance, setAddressEntrance] = useState('');
+  const [addressFloor, setAddressFloor] = useState('');
+  const [addressIntercom, setAddressIntercom] = useState('');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [costBreakdown, setCostBreakdown] = useState<DeliveryCostBreakdown | null>(
+    null,
+  );
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [addressValidated, setAddressValidated] = useState(false);
   const [addressFocused, setAddressFocused] = useState(false);
@@ -217,17 +232,90 @@ export default function CartPage() {
     enabled: !!selectedDate,
   });
 
-  // Last delivery address (for re-suggesting on next order)
-  const { data: lastAddressData } = useQuery<{ address: string | null }>({
-    queryKey: ['lastAddress'],
+  // Если выбранный слот закрылся (за время раздумий, или из-за смены даты),
+  // подменяем на первый доступный — иначе кнопка «Далее» молча упрётся в 400.
+  useEffect(() => {
+    if (isPickup) return;
+    const slots = dateAvailability?.slots;
+    if (!slots) return;
+    const current = slots[selectedTime];
+    if (current && current.available) return;
+    const firstFree = DELIVERY_TIME_SLOTS.find((s) => slots[s]?.available);
+    if (firstFree && firstFree !== selectedTime) {
+      setSelectedTime(firstFree);
+    }
+  }, [dateAvailability, isPickup, selectedTime]);
+
+  // Live-расчёт стоимости доставки на delivery-шаге — чтобы клиент видел цену
+  // ещё до клика «Далее». Триггерится при подтверждённом адресе и валидной дате.
+  const liveCostEnabled =
+    step === 'delivery' &&
+    !isPickup &&
+    addressValidated &&
+    address.trim().length > 0;
+
+  const { data: liveCostData } = useQuery<{
+    cost: number;
+    distanceKm: number | null;
+    freeDelivery: boolean;
+    breakdown: DeliveryCostBreakdown;
+  }>({
+    queryKey: [
+      'deliveryCost',
+      address,
+      addressCoords.lat,
+      addressCoords.lon,
+      totalPrice(),
+    ],
     queryFn: async () => {
-      const { data } = await api.get('/orders/last-address');
+      const params = new URLSearchParams({ address });
+      if (addressCoords.lat != null) params.set('lat', String(addressCoords.lat));
+      if (addressCoords.lon != null) params.set('lon', String(addressCoords.lon));
+      params.set('subtotal', String(totalPrice()));
+      const { data } = await api.get(`/delivery/cost?${params.toString()}`);
+      return data;
+    },
+    enabled: liveCostEnabled,
+    staleTime: 30_000,
+  });
+
+  // Saved delivery addresses (для chip-списка над инпутом адреса).
+  const { data: savedAddresses } = useQuery<UserAddress[]>({
+    queryKey: ['savedAddresses'],
+    queryFn: async () => {
+      const { data } = await api.get('/addresses');
       return data;
     },
     enabled: !!user && step === 'delivery',
     staleTime: 5 * 60 * 1000,
   });
-  const lastAddress = lastAddressData?.address ?? null;
+
+  function applySavedAddress(a: UserAddress) {
+    setAddress(a.address);
+    setAddressCoords({ lat: a.lat, lon: a.lon });
+    setAddressSuggestions([]);
+    setAddressValidated(true);
+    setAddressApartment(a.apartment ?? '');
+    setAddressEntrance(a.entrance ?? '');
+    setAddressFloor(a.floor ?? '');
+    setAddressIntercom(a.intercom ?? '');
+    setDeliveryNotes(a.notes ?? '');
+  }
+
+  function describeBreakdown(b: DeliveryCostBreakdown | null): string | null {
+    if (!b) return null;
+    if (b.type === 'free_threshold') {
+      return `Бесплатно при заказе от ${formatPrice(b.thresholdKopecks)}`;
+    }
+    if (b.type === 'fallback') {
+      return 'Базовый тариф — уточнится после проверки адреса';
+    }
+    // distance
+    if (b.extraKm === 0) {
+      return `${formatPrice(b.baseKopecks)} за первые ${b.freeKm} км`;
+    }
+    return `${formatPrice(b.baseKopecks)} за первые ${b.freeKm} км + ${b.extraKm} км × ${formatPrice(b.perKmKopecks)}`;
+  }
 
   const handleCheckout = () => {
     if (items.length === 0) {
@@ -259,28 +347,43 @@ export default function CartPage() {
       toast.error(dateAvailability.reason ?? 'Дата недоступна');
       return;
     }
-
-    // Fetch delivery cost
     if (!isPickup) {
-      setIsLoadingCost(true);
-      try {
-        const params = new URLSearchParams({ address });
-        if (addressCoords.lat != null) params.set('lat', String(addressCoords.lat));
-        if (addressCoords.lon != null) params.set('lon', String(addressCoords.lon));
-        params.set('subtotal', String(totalPrice()));
-        const { data } = await api.get(`/delivery/cost?${params.toString()}`);
-        setDeliveryCost(data.cost);
-      } catch {
-        setDeliveryCost(
-          totalPrice() >= FREE_DELIVERY_THRESHOLD_KOPECKS
-            ? 0
-            : FALLBACK_DELIVERY_COST,
-        );
-      } finally {
-        setIsLoadingCost(false);
+      const slot = dateAvailability?.slots?.[selectedTime];
+      if (slot && !slot.available) {
+        toast.error('Этот интервал уже занят, выберите другой');
+        return;
+      }
+    }
+
+    // Fetch delivery cost (используем закэшированный liveCostData, если есть)
+    if (!isPickup) {
+      if (liveCostData) {
+        setDeliveryCost(liveCostData.cost);
+        setCostBreakdown(liveCostData.breakdown ?? null);
+      } else {
+        setIsLoadingCost(true);
+        try {
+          const params = new URLSearchParams({ address });
+          if (addressCoords.lat != null) params.set('lat', String(addressCoords.lat));
+          if (addressCoords.lon != null) params.set('lon', String(addressCoords.lon));
+          params.set('subtotal', String(totalPrice()));
+          const { data } = await api.get(`/delivery/cost?${params.toString()}`);
+          setDeliveryCost(data.cost);
+          setCostBreakdown(data.breakdown ?? null);
+        } catch {
+          setDeliveryCost(
+            totalPrice() >= FREE_DELIVERY_THRESHOLD_KOPECKS
+              ? 0
+              : FALLBACK_DELIVERY_COST,
+          );
+          setCostBreakdown(null);
+        } finally {
+          setIsLoadingCost(false);
+        }
       }
     } else {
       setDeliveryCost(0);
+      setCostBreakdown(null);
     }
 
     setStep('confirm');
@@ -297,6 +400,19 @@ export default function CartPage() {
         address_lat: isPickup ? undefined : addressCoords.lat ?? undefined,
         address_lon: isPickup ? undefined : addressCoords.lon ?? undefined,
         recipient_name: isPickup ? undefined : recipientName.trim() || undefined,
+        address_apartment: isPickup
+          ? undefined
+          : addressApartment.trim() || undefined,
+        address_entrance: isPickup
+          ? undefined
+          : addressEntrance.trim() || undefined,
+        address_floor: isPickup ? undefined : addressFloor.trim() || undefined,
+        address_intercom: isPickup
+          ? undefined
+          : addressIntercom.trim() || undefined,
+        delivery_notes: isPickup
+          ? undefined
+          : deliveryNotes.trim() || undefined,
       });
       toast.success(`Заказ создан`);
       await clearCart();
@@ -707,6 +823,35 @@ export default function CartPage() {
             {!isPickup && (
               <div className='space-y-2'>
                 <Label htmlFor='address'>Адрес доставки</Label>
+
+                {/* Сохранённые адреса — chip-список */}
+                {savedAddresses && savedAddresses.length > 0 && (
+                  <div className='flex flex-wrap gap-1.5'>
+                    {savedAddresses.map((a) => {
+                      const isActive = address === a.address;
+                      return (
+                        <button
+                          key={a.id}
+                          type='button'
+                          onClick={() => applySavedAddress(a)}
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs transition-colors',
+                            isActive
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border hover:bg-accent',
+                          )}
+                          title={a.address}
+                        >
+                          <MapPin className='h-3 w-3' />
+                          <span className='truncate max-w-45'>
+                            {a.label ?? a.address}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className='relative'>
                   <MapPin className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
                   <Input
@@ -723,29 +868,6 @@ export default function CartPage() {
                     className='pl-10'
                     autoComplete='off'
                   />
-                  {addressSuggestions.length === 0 &&
-                    addressFocused &&
-                    address.trim() === '' &&
-                    lastAddress && (
-                      <ul className='absolute z-30 top-full left-0 right-0 bg-background border border-border rounded-lg shadow-lg mt-1 overflow-hidden'>
-                        <li
-                          className='px-3 py-2 text-sm cursor-pointer hover:bg-accent flex items-start gap-2'
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            setAddress(lastAddress);
-                            setAddressCoords({ lat: null, lon: null });
-                            setAddressSuggestions([]);
-                            setAddressValidated(true);
-                          }}
-                        >
-                          <MapPin className='h-4 w-4 shrink-0 mt-0.5 text-muted-foreground' />
-                          <div className='min-w-0'>
-                            <div className='text-xs text-muted-foreground'>Прошлый адрес</div>
-                            <div className='truncate'>{lastAddress}</div>
-                          </div>
-                        </li>
-                      </ul>
-                    )}
                   {addressSuggestions.length > 0 && (
                     <ul className='absolute z-30 top-full left-0 right-0 bg-background border border-border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto'>
                       {addressSuggestions.map((s, i) => (
@@ -768,8 +890,67 @@ export default function CartPage() {
                 </div>
                 <p className='text-xs text-muted-foreground'>
                   Доставка осуществляется только по Нижнему Новгороду.
-                  Бесплатно при заказе от {formatPrice(FREE_DELIVERY_THRESHOLD_KOPECKS)}.
+                  Бесплатно при заказе от {formatPrice(FREE_DELIVERY_THRESHOLD_KOPECKS)}.{' '}
+                  <Link
+                    href='/profile/addresses'
+                    className='underline hover:text-foreground'
+                  >
+                    Управление адресами
+                  </Link>
                 </p>
+
+                {/* Address details: optional fields to help the courier */}
+                <div className='grid grid-cols-2 gap-3 pt-2'>
+                  <div className='space-y-1'>
+                    <Label htmlFor='apt'>Квартира / офис</Label>
+                    <Input
+                      id='apt'
+                      value={addressApartment}
+                      onChange={(e) => setAddressApartment(e.target.value)}
+                      maxLength={20}
+                    />
+                  </div>
+                  <div className='space-y-1'>
+                    <Label htmlFor='entrance'>Подъезд</Label>
+                    <Input
+                      id='entrance'
+                      value={addressEntrance}
+                      onChange={(e) => setAddressEntrance(e.target.value)}
+                      maxLength={20}
+                    />
+                  </div>
+                  <div className='space-y-1'>
+                    <Label htmlFor='floor'>Этаж</Label>
+                    <Input
+                      id='floor'
+                      value={addressFloor}
+                      onChange={(e) => setAddressFloor(e.target.value)}
+                      maxLength={20}
+                    />
+                  </div>
+                  <div className='space-y-1'>
+                    <Label htmlFor='intercom'>Домофон</Label>
+                    <Input
+                      id='intercom'
+                      value={addressIntercom}
+                      onChange={(e) => setAddressIntercom(e.target.value)}
+                      maxLength={50}
+                    />
+                  </div>
+                </div>
+                <div className='space-y-1 pt-2'>
+                  <Label htmlFor='notes'>Комментарий курьеру (необязательно)</Label>
+                  <textarea
+                    id='notes'
+                    rows={2}
+                    maxLength={500}
+                    placeholder='Например: позвоните за 10 минут'
+                    value={deliveryNotes}
+                    onChange={(e) => setDeliveryNotes(e.target.value)}
+                    className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none'
+                  />
+                </div>
+
                 <div className='space-y-1 pt-2'>
                   <Label htmlFor='recipient'>Получатель (необязательно)</Label>
                   <Input
@@ -783,6 +964,25 @@ export default function CartPage() {
                     Если оставить пустым, передадим курьеру ваше имя из профиля.
                   </p>
                 </div>
+
+                {/* Live стоимость доставки + разбивка */}
+                {liveCostData && (
+                  <div className='rounded-lg border border-border bg-muted/30 p-3 text-sm space-y-1 mt-2'>
+                    <div className='flex items-center justify-between'>
+                      <span className='text-muted-foreground'>Стоимость доставки:</span>
+                      <span className='font-semibold'>
+                        {liveCostData.freeDelivery
+                          ? 'Бесплатно'
+                          : formatPrice(liveCostData.cost)}
+                      </span>
+                    </div>
+                    {describeBreakdown(liveCostData.breakdown) && (
+                      <p className='text-xs text-muted-foreground'>
+                        {describeBreakdown(liveCostData.breakdown)}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -907,18 +1107,42 @@ export default function CartPage() {
             <div className='space-y-2'>
               <Label>Время доставки</Label>
               <div className='grid grid-cols-3 gap-2'>
-                {DELIVERY_TIME_SLOTS.map((slot) => (
-                  <Button
-                    key={slot}
-                    variant={selectedTime === slot ? 'default' : 'outline'}
-                    size='sm'
-                    onClick={() => setSelectedTime(slot)}
-                    className='flex-1'
-                  >
-                    {slot}
-                  </Button>
-                ))}
+                {DELIVERY_TIME_SLOTS.map((slot) => {
+                  // Slot capacity ограничивает только курьерскую доставку.
+                  // Для самовывоза любой слот доступен (нагрузка через дневной лимит).
+                  const slotInfo = !isPickup
+                    ? dateAvailability?.slots?.[slot]
+                    : undefined;
+                  const isFull = slotInfo ? !slotInfo.available : false;
+                  const remaining = slotInfo
+                    ? Math.max(0, slotInfo.max - slotInfo.count)
+                    : null;
+                  return (
+                    <div key={slot} className='flex flex-col'>
+                      <Button
+                        variant={selectedTime === slot ? 'default' : 'outline'}
+                        size='sm'
+                        disabled={isFull}
+                        onClick={() => setSelectedTime(slot)}
+                      >
+                        {slot}
+                      </Button>
+                      {remaining !== null && remaining > 0 && remaining <= 2 && (
+                        <span className='text-[10px] text-muted-foreground text-center mt-0.5'>
+                          осталось {remaining}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+              {!isPickup &&
+                dateAvailability?.slots &&
+                Object.values(dateAvailability.slots).every((s) => !s.available) && (
+                  <p className='text-sm text-destructive mt-1'>
+                    Все интервалы доставки на эту дату заняты — выберите другую дату.
+                  </p>
+                )}
             </div>
 
             <Button className='w-full' onClick={handleConfirmStep}>
@@ -969,9 +1193,16 @@ export default function CartPage() {
                 <span>{formatPrice(totalPrice())}</span>
               </div>
               {!isPickup && deliveryCost > 0 && (
-                <div className='flex justify-between text-sm'>
-                  <span className='text-muted-foreground'>Доставка:</span>
-                  <span>{isLoadingCost ? '...' : formatPrice(deliveryCost)}</span>
+                <div className='space-y-0.5'>
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-muted-foreground'>Доставка:</span>
+                    <span>{isLoadingCost ? '...' : formatPrice(deliveryCost)}</span>
+                  </div>
+                  {describeBreakdown(costBreakdown) && (
+                    <p className='text-[11px] text-muted-foreground text-right'>
+                      {describeBreakdown(costBreakdown)}
+                    </p>
+                  )}
                 </div>
               )}
               {!isPickup && deliveryCost === 0 && !isLoadingCost && (
@@ -1005,10 +1236,32 @@ export default function CartPage() {
                 {isPickup ? 'Самовывоз' : 'Доставка'}
               </p>
               {!isPickup && (
-                <p>
-                  <span className='text-muted-foreground'>Адрес:</span>{' '}
-                  {address}
-                </p>
+                <>
+                  <p>
+                    <span className='text-muted-foreground'>Адрес:</span>{' '}
+                    {address}
+                  </p>
+                  {(addressApartment ||
+                    addressEntrance ||
+                    addressFloor ||
+                    addressIntercom) && (
+                    <p className='text-xs text-muted-foreground'>
+                      {[
+                        addressApartment && `кв./офис ${addressApartment}`,
+                        addressEntrance && `подъезд ${addressEntrance}`,
+                        addressFloor && `этаж ${addressFloor}`,
+                        addressIntercom && `домофон ${addressIntercom}`,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  )}
+                  {deliveryNotes.trim() && (
+                    <p className='text-xs text-muted-foreground'>
+                      Комментарий: {deliveryNotes.trim()}
+                    </p>
+                  )}
+                </>
               )}
               <p>
                 <span className='text-muted-foreground'>Дата:</span>{' '}
