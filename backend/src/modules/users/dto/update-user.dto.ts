@@ -11,10 +11,4 @@ export class UpdateUserDto {
     message: 'Имя не должно содержать цифры или спецсимволы',
   })
   name?: string;
-
-  @ApiPropertyOptional({ example: '+79001234567' })
-  @IsOptional()
-  @IsString()
-  @Matches(/^\+7\d{10}$/, { message: 'Неверный формат номера телефона' })
-  phone?: string;
 }

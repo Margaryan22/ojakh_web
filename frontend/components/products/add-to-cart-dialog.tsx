@@ -192,6 +192,12 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
                 </p>
               )}
 
+              {isTort && (
+                <p className="text-xs text-muted-foreground rounded-md bg-muted/40 px-3 py-2">
+                  Торт можно заказать половинками (0.5) — удобно, если хочется попробовать сразу несколько вкусов.
+                </p>
+              )}
+
               {/* Quantity stepper */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">

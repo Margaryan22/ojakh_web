@@ -10,21 +10,22 @@ datasource db {
 // ─── Users ───────────────────────────────────────────────────────────────────
 
 model User {
-  id               Int            @id @default(autoincrement())
-  email            String         @unique
-  password         String?
-  name             String
-  phone            String?
-  googleId         String?        @unique
-  appleId          String?        @unique
-  yandexId         String?        @unique
-  role             String         @default("user")
-  createdAt        DateTime       @default(now())
-  cart             Cart?
-  orders           Order[]
-  notifications    Notification[]
-  reviews          Review[]
-  addresses        UserAddress[]
+  id                  Int                  @id @default(autoincrement())
+  email               String               @unique
+  password            String?
+  name                String
+  phone               String?              @unique
+  googleId            String?              @unique
+  appleId             String?              @unique
+  yandexId            String?              @unique
+  role                String               @default("user")
+  createdAt           DateTime             @default(now())
+  cart                Cart?
+  orders              Order[]
+  notifications       Notification[]
+  reviews             Review[]
+  addresses           UserAddress[]
+  phoneVerifications  PhoneVerification[]
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -101,6 +102,7 @@ model Order {
   addressLat               Float?
   addressLon               Float?
   recipientName            String?
+  contactPhone             String?
   deliveryDate             DateTime  @db.Date
   deliveryTime             String?
   isPickup                 Boolean   @default(false)
@@ -155,6 +157,24 @@ model UserAddress {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// ─── PhoneVerification ────────────────────────────────────────────────────────
+
+model PhoneVerification {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone             String
+  codeHash          String
+  attempts          Int      @default(0)
+  requestId         String?
+  expiresAt         DateTime
+  resendAvailableAt DateTime
+  createdAt         DateTime @default(now())
+
+  @@index([userId])
+  @@index([phone, createdAt])
 }
 
 // ─── DailyLimit ───────────────────────────────────────────────────────────────

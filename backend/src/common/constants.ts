@@ -50,6 +50,9 @@ export const FALLBACK_DELIVERY_COST = DELIVERY_BASE_KOPECKS;
 // Бесплатная доставка при заказе от 4000₽.
 export const FREE_DELIVERY_THRESHOLD_KOPECKS = 400_000;
 
+// Минимальная сумма заказа (subtotal, без доставки) — 1000₽.
+export const MIN_ORDER_KOPECKS = 100_000;
+
 export const RECALC_TTL_SECONDS_DEFAULT = 300;
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB

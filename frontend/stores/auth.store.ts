@@ -13,12 +13,13 @@ interface AuthState {
 
 interface AuthActions {
   setAccessToken: (token: string) => void;
+  setUser: (user: User) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (data: { email: string; name: string; password: string; phone?: string }) => Promise<void>;
   socialLogin: (provider: 'google' | 'apple' | 'yandex', payload: any) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
-  updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
+  updateProfile: (data: { name?: string }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
@@ -29,6 +30,10 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
 
   setAccessToken: (token: string) => {
     set({ accessToken: token });
+  },
+
+  setUser: (user: User) => {
+    set({ user });
   },
 
   login: async (email: string, password: string) => {
