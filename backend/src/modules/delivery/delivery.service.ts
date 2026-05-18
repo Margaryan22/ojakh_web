@@ -10,6 +10,8 @@ import {
   DELIVERY_FREE_KM,
   DELIVERY_PER_KM_KOPECKS,
   DEFAULT_MAX_UNITS,
+  DEFAULT_SLOT_CAPACITY,
+  DELIVERY_TIME_SLOTS,
   MAX_TORTS,
   MIN_DAYS_AHEAD,
   MAX_DAYS_AHEAD,
@@ -24,6 +26,12 @@ export interface AddressSuggestion {
   geoLon: number | null;
 }
 
+export interface SlotAvailability {
+  count: number;
+  max: number;
+  available: boolean;
+}
+
 export interface DateAvailability {
   available: boolean;
   tortCount: number;
@@ -32,6 +40,8 @@ export interface DateAvailability {
   maxUnits: number;
   unitsAvailable: number;
   tortsAvailable: number;
+  slots: Record<string, SlotAvailability>;
+  blackedOut: boolean;
   reason?: string;
 }
 
@@ -46,6 +56,24 @@ export interface DeliveryCostInput {
   lat?: number | null;
   lon?: number | null;
   subtotalKopecks?: number | null;
+}
+
+export type DeliveryCostBreakdown =
+  | { type: 'free_threshold'; thresholdKopecks: number }
+  | {
+      type: 'distance';
+      baseKopecks: number;
+      freeKm: number;
+      perKmKopecks: number;
+      extraKm: number;
+    }
+  | { type: 'fallback'; baseKopecks: number };
+
+export interface DeliveryCostResult {
+  cost: number;
+  distanceKm: number | null;
+  freeDelivery: boolean;
+  breakdown: DeliveryCostBreakdown;
 }
 
 @Injectable()
@@ -73,17 +101,19 @@ export class DeliveryService {
 
     const maxUnits = limit?.maxUnits ?? DEFAULT_MAX_UNITS;
     const maxTorts = limit?.maxTorts ?? MAX_TORTS;
+    const blackedOut = limit?.isBlackedOut ?? false;
 
     const activeOrders = await this.prisma.order.findMany({
       where: {
         deliveryDate: dateOnly,
         status: { in: ACTIVE_STATUSES },
       },
-      select: { items: true },
+      select: { items: true, deliveryTime: true, isPickup: true },
     });
 
     let unitCount = 0;
     let tortCount = 0;
+    const slotCounts = new Map<string, number>();
     for (const order of activeOrders) {
       const items = order.items as Array<{ category: string; quantity: number }>;
       for (const item of items) {
@@ -92,6 +122,32 @@ export class DeliveryService {
           tortCount += 1;
         }
       }
+      // Slot capacity ограничивает только курьерские заказы (нагрузка на курьеров).
+      // Самовывоз использует слот как «приходите между HH и HH+1»,
+      // его лимитирует maxUnits/maxTorts через производство.
+      if (!order.isPickup && order.deliveryTime) {
+        slotCounts.set(
+          order.deliveryTime,
+          (slotCounts.get(order.deliveryTime) ?? 0) + 1,
+        );
+      }
+    }
+
+    const slotOverrides = (limit?.slotCapacities ?? null) as
+      | Record<string, number>
+      | null;
+    const slots: Record<string, SlotAvailability> = {};
+    for (const slot of DELIVERY_TIME_SLOTS) {
+      const max =
+        slotOverrides && typeof slotOverrides[slot] === 'number'
+          ? slotOverrides[slot]
+          : DEFAULT_SLOT_CAPACITY;
+      const count = slotCounts.get(slot) ?? 0;
+      slots[slot] = {
+        count,
+        max,
+        available: !blackedOut && count < max,
+      };
     }
 
     const unitsAvailable = Math.max(0, maxUnits - unitCount);
@@ -104,7 +160,17 @@ export class DeliveryService {
       maxUnits,
       unitsAvailable,
       tortsAvailable,
+      slots,
+      blackedOut,
     };
+
+    if (blackedOut) {
+      return {
+        available: false,
+        ...base,
+        reason: limit?.blackoutReason ?? 'Доставка в этот день недоступна',
+      };
+    }
 
     if (unitCount + extraUnits > maxUnits) {
       return {
@@ -197,11 +263,7 @@ export class DeliveryService {
    * Если координаты неизвестны (например, при предварительном расчёте
    * до выбора адреса), возвращаем базовый тариф.
    */
-  getDeliveryCost(input: DeliveryCostInput | string = {}): {
-    cost: number;
-    distanceKm: number | null;
-    freeDelivery: boolean;
-  } {
+  getDeliveryCost(input: DeliveryCostInput | string = {}): DeliveryCostResult {
     const params: DeliveryCostInput =
       typeof input === 'string' ? { address: input } : input;
 
@@ -209,11 +271,28 @@ export class DeliveryService {
       params.subtotalKopecks != null &&
       params.subtotalKopecks >= FREE_DELIVERY_THRESHOLD_KOPECKS;
 
+    if (freeByThreshold) {
+      const distanceKm =
+        params.lat != null && params.lon != null
+          ? this.haversineKm(WAREHOUSE_LAT, WAREHOUSE_LON, params.lat, params.lon)
+          : null;
+      return {
+        cost: 0,
+        distanceKm,
+        freeDelivery: true,
+        breakdown: {
+          type: 'free_threshold',
+          thresholdKopecks: FREE_DELIVERY_THRESHOLD_KOPECKS,
+        },
+      };
+    }
+
     if (params.lat == null || params.lon == null) {
       return {
-        cost: freeByThreshold ? 0 : DELIVERY_BASE_KOPECKS,
+        cost: DELIVERY_BASE_KOPECKS,
         distanceKm: null,
-        freeDelivery: freeByThreshold,
+        freeDelivery: false,
+        breakdown: { type: 'fallback', baseKopecks: DELIVERY_BASE_KOPECKS },
       };
     }
 
@@ -223,11 +302,19 @@ export class DeliveryService {
       params.lat,
       params.lon,
     );
+    const extraKm = Math.max(0, Math.ceil(distanceKm) - DELIVERY_FREE_KM);
 
     return {
-      cost: freeByThreshold ? 0 : this.priceForDistanceKm(distanceKm),
+      cost: this.priceForDistanceKm(distanceKm),
       distanceKm,
-      freeDelivery: freeByThreshold,
+      freeDelivery: false,
+      breakdown: {
+        type: 'distance',
+        baseKopecks: DELIVERY_BASE_KOPECKS,
+        freeKm: DELIVERY_FREE_KM,
+        perKmKopecks: DELIVERY_PER_KM_KOPECKS,
+        extraKm,
+      },
     };
   }
 

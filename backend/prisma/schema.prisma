@@ -24,6 +24,7 @@ model User {
   orders           Order[]
   notifications    Notification[]
   reviews          Review[]
+  addresses        UserAddress[]
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -92,6 +93,11 @@ model Order {
   total                    Int
   status                   String    @default("new")
   address                  String?
+  addressApartment         String?
+  addressEntrance          String?
+  addressFloor             String?
+  addressIntercom          String?
+  deliveryNotes            String?   @db.VarChar(500)
   addressLat               Float?
   addressLon               Float?
   recipientName            String?
@@ -131,11 +137,36 @@ model Notification {
   @@index([userId])
 }
 
+// ─── UserAddress ──────────────────────────────────────────────────────────────
+
+model UserAddress {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String?  // "Дом", "Работа" — необязательная метка
+  address   String
+  lat       Float?
+  lon       Float?
+  apartment String?
+  entrance  String?
+  floor     String?
+  intercom  String?
+  notes     String?  @db.VarChar(500)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 // ─── DailyLimit ───────────────────────────────────────────────────────────────
 
 model DailyLimit {
-  deliveryDate DateTime @id @db.Date
-  maxUnits     Int      @default(100)
-  maxTorts     Int      @default(2)
+  deliveryDate   DateTime @id @db.Date
+  maxUnits       Int      @default(100)
+  maxTorts       Int      @default(2)
+  // Override per-slot capacity. Keys are slot labels из DELIVERY_TIME_SLOTS
+  // (например "18:00-19:00"); отсутствующие ключи → DEFAULT_SLOT_CAPACITY.
+  slotCapacities Json?
+  isBlackedOut   Boolean  @default(false)
+  blackoutReason String?
 }
 

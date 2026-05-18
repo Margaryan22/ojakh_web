@@ -10,6 +10,7 @@ import { CartModule } from './modules/cart/cart.module';
 import { DeliveryModule } from './modules/delivery/delivery.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { AddressesModule } from './modules/addresses/addresses.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { HealthModule } from './modules/health/health.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
@@ -30,6 +31,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     DeliveryModule,
     PaymentsModule,
     OrdersModule,
+    AddressesModule,
     AdminModule,
     HealthModule,
     UploadsModule,

@@ -3,6 +3,27 @@ export const TORT_CATEGORY = 'торты';
 export const MAX_TORTS = 2;
 export const DEFAULT_MAX_UNITS = 100;
 
+// Сколько заказов помещается в один интервал доставки по умолчанию.
+// Может быть переопределено на конкретную дату через DailyLimit.slotCapacities.
+export const DEFAULT_SLOT_CAPACITY = 6;
+
+// Список окон доставки. Дублируется на фронте (frontend/lib/constants.ts).
+// Слот-лейблы используются как ключи в DailyLimit.slotCapacities.
+export const DELIVERY_TIME_SLOTS = [
+  '10:00-11:00',
+  '11:00-12:00',
+  '12:00-13:00',
+  '13:00-14:00',
+  '14:00-15:00',
+  '15:00-16:00',
+  '16:00-17:00',
+  '17:00-18:00',
+  '18:00-19:00',
+  '19:00-20:00',
+  '20:00-21:00',
+  '21:00-22:00',
+] as const;
+
 export const MIN_DAYS_AHEAD = 2;
 export const MAX_DAYS_AHEAD = 15;
 
