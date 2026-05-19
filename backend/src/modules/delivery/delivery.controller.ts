@@ -11,6 +11,7 @@ import { JwtGuard } from '../auth/jwt.guard';
 import { OptionalJwtGuard } from '../auth/optional-jwt.guard';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService, CheckDateOpts } from './delivery.service';
+import { TwoGisService } from './two-gis.service';
 import { TORT_CATEGORY } from '../../common/constants';
 
 @ApiTags('delivery')
@@ -21,6 +22,7 @@ export class DeliveryController {
   constructor(
     private readonly deliveryService: DeliveryService,
     private readonly cartService: CartService,
+    private readonly twoGis: TwoGisService,
   ) {}
 
   @Get('check-date')
@@ -94,6 +96,35 @@ export class DeliveryController {
   @ApiQuery({ name: 'q', required: true })
   suggestAddress(@Query('q') q?: string) {
     return this.deliveryService.suggestAddress(q ?? '');
+  }
+
+  @Get('building-info')
+  @UseGuards(JwtGuard)
+  @ApiOperation({ summary: 'Building passport from 2GIS (entrances, floors, apartment ranges)' })
+  @ApiQuery({ name: 'address', required: false })
+  @ApiQuery({ name: 'lat', required: false, type: Number })
+  @ApiQuery({ name: 'lon', required: false, type: Number })
+  async buildingInfo(
+    @Query('address') address?: string,
+    @Query('lat') lat?: string,
+    @Query('lon') lon?: string,
+  ) {
+    const latNum = lat != null && lat !== '' ? parseFloat(lat) : null;
+    const lonNum = lon != null && lon !== '' ? parseFloat(lon) : null;
+    const info = await this.twoGis.getBuildingInfo({
+      address: address?.trim() || null,
+      lat: Number.isFinite(latNum as number) ? latNum : null,
+      lon: Number.isFinite(lonNum as number) ? lonNum : null,
+    });
+    return (
+      info ?? {
+        knownBuilding: false,
+        floorsCount: null,
+        floorsUnderground: null,
+        entranceCount: null,
+        apartmentRanges: null,
+      }
+    );
   }
 
   /**

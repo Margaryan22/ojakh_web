@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
@@ -215,6 +215,49 @@ export class DeliveryService {
       }),
     );
     return results;
+  }
+
+  /**
+   * Проверяет, что адрес находится в Нижнем Новгороде, через DaData.
+   * fail-open: если ключа нет или DaData недоступна — пропускаем без блокировки.
+   */
+  async validateNnAddress(address: string): Promise<void> {
+    const apiKey = this.config.get<string>('DADATA_API_KEY');
+    if (!apiKey) return;
+
+    try {
+      const response = await axios.post(
+        'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
+        {
+          query: address,
+          count: 1,
+          locations: [{ region: 'нижегородская', city: 'нижний новгород' }],
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Token ${apiKey}`,
+          },
+          timeout: 5000,
+        },
+      );
+
+      const suggestions: any[] = response.data?.suggestions ?? [];
+      if (suggestions.length === 0) {
+        throw new BadRequestException(
+          'Адрес не найден в Нижнем Новгороде. Проверьте корректность адреса.',
+        );
+      }
+      const city: string | undefined = suggestions[0]?.data?.city;
+      if (city !== 'Нижний Новгород') {
+        throw new BadRequestException(
+          'Доставка осуществляется только по Нижнему Новгороду.',
+        );
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      // network/API errors — fail-open
+    }
   }
 
   async suggestAddress(query: string): Promise<{ suggestions: AddressSuggestion[] }> {

@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MapPin, Pencil, Trash2, Plus } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  MapPin,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { AxiosError } from 'axios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,13 +22,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthStore } from '@/stores/auth.store';
 import { FadeIn } from '@/components/motion/fade-in';
 import api from '@/lib/api';
-import type { UserAddress } from '@/types';
+import type { AddressSuggestion, BuildingInfo, UserAddress } from '@/types';
 
 const MAX_ADDRESSES = 5;
 
 type FormState = {
   label: string;
   address: string;
+  lat: number | null;
+  lon: number | null;
   apartment: string;
   entrance: string;
   floor: string;
@@ -32,12 +41,48 @@ type FormState = {
 const emptyForm: FormState = {
   label: '',
   address: '',
+  lat: null,
+  lon: null,
   apartment: '',
   entrance: '',
   floor: '',
   intercom: '',
   notes: '',
 };
+
+const sanitizeDigits = (v: string, max = 3) => v.replace(/\D/g, '').slice(0, max);
+const sanitizeFloor = (v: string) => {
+  const m = v.match(/^-?\d{0,3}/);
+  return m ? m[0] : '';
+};
+const sanitizeApartment = (v: string) =>
+  v.replace(/[^0-9A-Za-zА-Яа-я\s\-\/]/g, '').slice(0, 20);
+const sanitizeIntercom = (v: string) =>
+  v.replace(/[^0-9A-Za-zА-Яа-я*#\-\s]/g, '').slice(0, 50);
+
+function describeApartmentRanges(info: BuildingInfo | null): string | null {
+  if (!info?.apartmentRanges?.length) return null;
+  const compact = info.apartmentRanges
+    .slice(0, 3)
+    .map((r) => `${r.from}–${r.to}`)
+    .join(', ');
+  const more =
+    info.apartmentRanges.length > 3
+      ? ` и ещё ${info.apartmentRanges.length - 3}`
+      : '';
+  return `Квартиры: ${compact}${more}`;
+}
+
+function isApartmentInBuilding(
+  apt: string,
+  info: BuildingInfo | null,
+): boolean {
+  if (!info?.apartmentRanges?.length) return true;
+  const digits = apt.replace(/\D/g, '');
+  if (!digits) return true;
+  const n = parseInt(digits, 10);
+  return info.apartmentRanges.some((r) => n >= r.from && n <= r.to);
+}
 
 export default function AddressesPage() {
   const router = useRouter();
@@ -50,6 +95,11 @@ export default function AddressesPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [addressValidated, setAddressValidated] = useState(false);
+  const [buildingInfo, setBuildingInfo] = useState<BuildingInfo | null>(null);
+  const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const { data: addresses, isLoading } = useQuery<UserAddress[]>({
     queryKey: ['savedAddresses'],
     queryFn: async () => {
@@ -58,6 +108,47 @@ export default function AddressesPage() {
     },
     enabled: !!user,
   });
+
+  // DaData suggestions (via backend proxy, key stays on the server)
+  useEffect(() => {
+    if (!isAdding && editingId == null) return;
+    if (addressValidated) return;
+    if (form.address.trim().length < 5) {
+      setSuggestions([]);
+      return;
+    }
+    if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    suggestDebounceRef.current = setTimeout(async () => {
+      try {
+        const { data } = await api.get('/delivery/suggest-address', {
+          params: { q: form.address },
+        });
+        setSuggestions(data.suggestions ?? []);
+      } catch {
+        // ignore suggestion errors
+      }
+    }, 400);
+    return () => {
+      if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    };
+  }, [form.address, addressValidated, isAdding, editingId]);
+
+  // Fetch building-info from 2GIS as soon as address is validated.
+  const fetchBuildingInfo = async (
+    address: string,
+    lat: number | null,
+    lon: number | null,
+  ) => {
+    try {
+      const params: Record<string, string> = { address };
+      if (lat != null) params.lat = String(lat);
+      if (lon != null) params.lon = String(lon);
+      const { data } = await api.get('/delivery/building-info', { params });
+      setBuildingInfo(data ?? null);
+    } catch {
+      setBuildingInfo(null);
+    }
+  };
 
   if (!isInitialized) {
     return (
@@ -76,6 +167,9 @@ export default function AddressesPage() {
   const startAdd = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setAddressValidated(false);
+    setBuildingInfo(null);
+    setSuggestions([]);
     setIsAdding(true);
   };
 
@@ -85,18 +179,35 @@ export default function AddressesPage() {
     setForm({
       label: a.label ?? '',
       address: a.address,
+      lat: a.lat,
+      lon: a.lon,
       apartment: a.apartment ?? '',
       entrance: a.entrance ?? '',
       floor: a.floor ?? '',
       intercom: a.intercom ?? '',
       notes: a.notes ?? '',
     });
+    setSuggestions([]);
+    const validated = a.lat != null && a.lon != null;
+    setAddressValidated(validated);
+    setBuildingInfo(null);
+    if (validated) fetchBuildingInfo(a.address, a.lat, a.lon);
   };
 
   const cancel = () => {
     setEditingId(null);
     setIsAdding(false);
     setForm(emptyForm);
+    setAddressValidated(false);
+    setBuildingInfo(null);
+    setSuggestions([]);
+  };
+
+  const pickSuggestion = (s: AddressSuggestion) => {
+    setForm((f) => ({ ...f, address: s.value, lat: s.geoLat, lon: s.geoLon }));
+    setSuggestions([]);
+    setAddressValidated(true);
+    fetchBuildingInfo(s.value, s.geoLat, s.geoLon);
   };
 
   const handleSave = async () => {
@@ -104,11 +215,17 @@ export default function AddressesPage() {
       toast.error('Введите адрес');
       return;
     }
+    if (!addressValidated) {
+      toast.error('Выберите адрес из выпадающих подсказок');
+      return;
+    }
     setIsSaving(true);
     try {
       const payload = {
         label: form.label.trim() || undefined,
         address: form.address.trim(),
+        lat: form.lat ?? undefined,
+        lon: form.lon ?? undefined,
         apartment: form.apartment.trim() || undefined,
         entrance: form.entrance.trim() || undefined,
         floor: form.floor.trim() || undefined,
@@ -126,7 +243,8 @@ export default function AddressesPage() {
       cancel();
     } catch (error) {
       if (error instanceof AxiosError) {
-        toast.error(error.response?.data?.message ?? 'Ошибка сохранения');
+        const msg = error.response?.data?.message;
+        toast.error(Array.isArray(msg) ? msg.join('. ') : msg ?? 'Ошибка сохранения');
       } else {
         toast.error('Ошибка сохранения');
       }
@@ -148,6 +266,26 @@ export default function AddressesPage() {
 
   const limitReached = (addresses?.length ?? 0) >= MAX_ADDRESSES;
   const isEditing = editingId != null || isAdding;
+
+  const maxEntrance = buildingInfo?.entranceCount ?? null;
+  const maxFloor = buildingInfo?.floorsCount ?? null;
+  const minFloor =
+    buildingInfo?.floorsUnderground && buildingInfo.floorsUnderground > 0
+      ? -buildingInfo.floorsUnderground
+      : 1;
+
+  const entranceNum = form.entrance ? parseInt(form.entrance, 10) : null;
+  const entranceInvalid =
+    maxEntrance != null && entranceNum != null && (entranceNum < 1 || entranceNum > maxEntrance);
+
+  const floorNum = form.floor ? parseInt(form.floor, 10) : null;
+  const floorInvalid =
+    maxFloor != null &&
+    floorNum != null &&
+    (floorNum < minFloor || floorNum > maxFloor);
+
+  const apartmentInvalid =
+    !!form.apartment && !isApartmentInBuilding(form.apartment, buildingInfo);
 
   return (
     <FadeIn>
@@ -248,59 +386,135 @@ export default function AddressesPage() {
               </div>
               <div className='space-y-1.5'>
                 <Label htmlFor='form-address'>Адрес</Label>
-                <Input
-                  id='form-address'
-                  value={form.address}
-                  onChange={(e) =>
-                    setForm({ ...form, address: e.target.value })
-                  }
-                  placeholder='Улица, дом'
-                  maxLength={300}
-                />
+                <div className='relative'>
+                  <Input
+                    id='form-address'
+                    value={form.address}
+                    onChange={(e) => {
+                      setForm({
+                        ...form,
+                        address: e.target.value,
+                        lat: null,
+                        lon: null,
+                      });
+                      setAddressValidated(false);
+                      setBuildingInfo(null);
+                    }}
+                    placeholder='Начните вводить улицу, затем выберите из списка'
+                    maxLength={300}
+                    autoComplete='off'
+                  />
+                  {suggestions.length > 0 && (
+                    <ul className='absolute z-30 top-full left-0 right-0 bg-background border border-border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto'>
+                      {suggestions.map((s, i) => (
+                        <li
+                          key={i}
+                          className='px-3 py-2 text-sm cursor-pointer hover:bg-accent'
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            pickSuggestion(s);
+                          }}
+                        >
+                          {s.value}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {addressValidated ? (
+                  <p className='text-xs text-green-700 dark:text-green-400 inline-flex items-center gap-1'>
+                    <CheckCircle2 className='h-3.5 w-3.5' />
+                    Адрес подтверждён
+                  </p>
+                ) : (
+                  <p className='text-xs text-muted-foreground'>
+                    Выберите адрес из выпадающего списка — мы доставляем только по Нижнему Новгороду.
+                  </p>
+                )}
               </div>
               <div className='grid grid-cols-2 gap-3'>
-                <div className='space-y-1.5'>
+                <div className='space-y-1'>
                   <Label htmlFor='form-apt'>Квартира / офис</Label>
                   <Input
                     id='form-apt'
                     value={form.apartment}
                     onChange={(e) =>
-                      setForm({ ...form, apartment: e.target.value })
+                      setForm({
+                        ...form,
+                        apartment: sanitizeApartment(e.target.value),
+                      })
                     }
-                    maxLength={20}
+                    aria-invalid={apartmentInvalid}
+                    className={apartmentInvalid ? 'border-destructive' : ''}
                   />
+                  {apartmentInvalid ? (
+                    <p className='text-[11px] text-destructive'>
+                      Квартира вне диапазона дома
+                    </p>
+                  ) : buildingInfo?.apartmentRanges?.length ? (
+                    <p className='text-[11px] text-muted-foreground'>
+                      {describeApartmentRanges(buildingInfo)}
+                    </p>
+                  ) : null}
                 </div>
-                <div className='space-y-1.5'>
+                <div className='space-y-1'>
                   <Label htmlFor='form-entrance'>Подъезд</Label>
                   <Input
                     id='form-entrance'
+                    inputMode='numeric'
                     value={form.entrance}
                     onChange={(e) =>
-                      setForm({ ...form, entrance: e.target.value })
+                      setForm({ ...form, entrance: sanitizeDigits(e.target.value) })
                     }
-                    maxLength={20}
+                    aria-invalid={entranceInvalid}
+                    className={entranceInvalid ? 'border-destructive' : ''}
                   />
+                  {entranceInvalid ? (
+                    <p className='text-[11px] text-destructive'>
+                      В доме {maxEntrance} подъезд(ов)
+                    </p>
+                  ) : maxEntrance != null ? (
+                    <p className='text-[11px] text-muted-foreground'>
+                      В доме {maxEntrance} подъезд(ов)
+                    </p>
+                  ) : null}
                 </div>
-                <div className='space-y-1.5'>
+                <div className='space-y-1'>
                   <Label htmlFor='form-floor'>Этаж</Label>
                   <Input
                     id='form-floor'
+                    inputMode='numeric'
                     value={form.floor}
                     onChange={(e) =>
-                      setForm({ ...form, floor: e.target.value })
+                      setForm({ ...form, floor: sanitizeFloor(e.target.value) })
                     }
-                    maxLength={20}
+                    aria-invalid={floorInvalid}
+                    className={floorInvalid ? 'border-destructive' : ''}
                   />
+                  {floorInvalid ? (
+                    <p className='text-[11px] text-destructive'>
+                      Этажность дома: {minFloor}…{maxFloor}
+                    </p>
+                  ) : maxFloor != null ? (
+                    <p className='text-[11px] text-muted-foreground'>
+                      Этажность дома: до {maxFloor}
+                      {buildingInfo?.floorsUnderground
+                        ? ` (есть ${buildingInfo.floorsUnderground} подз.)`
+                        : ''}
+                    </p>
+                  ) : null}
                 </div>
-                <div className='space-y-1.5'>
+                <div className='space-y-1'>
                   <Label htmlFor='form-intercom'>Домофон</Label>
                   <Input
                     id='form-intercom'
                     value={form.intercom}
                     onChange={(e) =>
-                      setForm({ ...form, intercom: e.target.value })
+                      setForm({
+                        ...form,
+                        intercom: sanitizeIntercom(e.target.value),
+                      })
                     }
-                    maxLength={50}
                   />
                 </div>
               </div>
@@ -318,7 +532,16 @@ export default function AddressesPage() {
                 />
               </div>
               <div className='flex gap-2 pt-1'>
-                <Button onClick={handleSave} disabled={isSaving}>
+                <Button
+                  onClick={handleSave}
+                  disabled={
+                    isSaving ||
+                    !addressValidated ||
+                    entranceInvalid ||
+                    floorInvalid ||
+                    apartmentInvalid
+                  }
+                >
                   {isSaving ? 'Сохранение…' : 'Сохранить'}
                 </Button>
                 <Button variant='outline' onClick={cancel} disabled={isSaving}>

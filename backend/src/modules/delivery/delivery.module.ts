@@ -6,11 +6,23 @@ import { CartModule } from '../cart/cart.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { DeliveryClaimsService } from './claims/delivery-claims.service';
 import { DeliveryClaimsController } from './claims/delivery-claims.controller';
+import { TwoGisService } from './two-gis.service';
+import { AddressVerifierService } from './address-verifier.service';
 
 @Module({
   imports: [AuthModule, CartModule, NotificationsModule],
   controllers: [DeliveryController, DeliveryClaimsController],
-  providers: [DeliveryService, DeliveryClaimsService],
-  exports: [DeliveryService, DeliveryClaimsService],
+  providers: [
+    DeliveryService,
+    DeliveryClaimsService,
+    TwoGisService,
+    AddressVerifierService,
+  ],
+  exports: [
+    DeliveryService,
+    DeliveryClaimsService,
+    TwoGisService,
+    AddressVerifierService,
+  ],
 })
 export class DeliveryModule {}

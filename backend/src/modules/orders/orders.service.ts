@@ -8,10 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService } from '../delivery/delivery.service';
+import { AddressVerifierService } from '../delivery/address-verifier.service';
 import { PaymentsService } from '../payments/payments.service';
 import { AddressesService } from '../addresses/addresses.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import axios from 'axios';
 import {
   TORT_CATEGORY,
   MAX_TORTS,
@@ -28,6 +28,7 @@ export class OrdersService {
     private readonly deliveryService: DeliveryService,
     private readonly paymentsService: PaymentsService,
     private readonly addressesService: AddressesService,
+    private readonly addressVerifier: AddressVerifierService,
     private readonly config: ConfigService,
   ) {}
 
@@ -75,7 +76,19 @@ export class OrdersService {
 
     // 3b. Validate address is in Nizhny Novgorod via DaData
     if (!dto.is_pickup && dto.address?.trim()) {
-      await this.validateNnAddress(dto.address.trim());
+      await this.deliveryService.validateNnAddress(dto.address.trim());
+    }
+
+    // 3c. Verify entrance/floor/apartment against 2GIS building info (fail-open)
+    if (!dto.is_pickup && dto.address?.trim()) {
+      await this.addressVerifier.verify({
+        address: dto.address.trim(),
+        lat: dto.address_lat ?? null,
+        lon: dto.address_lon ?? null,
+        entrance: dto.address_entrance ?? null,
+        floor: dto.address_floor ?? null,
+        apartment: dto.address_apartment ?? null,
+      });
     }
 
     // 4. Check tort count in cart
@@ -279,44 +292,4 @@ export class OrdersService {
     throw new Error('Не удалось сгенерировать уникальный номер заказа');
   }
 
-  private async validateNnAddress(address: string): Promise<void> {
-    const apiKey = this.config.get<string>('DADATA_API_KEY');
-    if (!apiKey) return; // skip validation if key not configured
-
-    try {
-      const response = await axios.post(
-        'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
-        {
-          query: address,
-          count: 1,
-          locations: [
-            { region: 'нижегородская', city: 'нижний новгород' },
-          ],
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Token ${apiKey}`,
-          },
-        },
-      );
-
-      const suggestions: any[] = response.data?.suggestions ?? [];
-      if (suggestions.length === 0) {
-        throw new BadRequestException(
-          'Адрес не найден в Нижнем Новгороде. Проверьте корректность адреса.',
-        );
-      }
-
-      const city: string | undefined = suggestions[0]?.data?.city;
-      if (city !== 'Нижний Новгород') {
-        throw new BadRequestException(
-          'Доставка осуществляется только по Нижнему Новгороду.',
-        );
-      }
-    } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      // Network/API errors — fail-open to not block order creation
-    }
-  }
 }
