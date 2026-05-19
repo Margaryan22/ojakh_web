@@ -218,20 +218,26 @@ export class DeliveryService {
   }
 
   /**
-   * Проверяет, что адрес находится в Нижнем Новгороде, через DaData.
+   * Проверяет, что адрес находится в Нижнем Новгороде И существует в ФИАС
+   * (есть house_fias_id, qc_house ∈ {0,2}, fias_level ≥ 8). DaData в suggest-режиме
+   * охотно дополняет произвольные номера домов, поэтому без явной фильтрации
+   * по ФИАС можно получить «несуществующую» улицу+дом.
    * fail-open: если ключа нет или DaData недоступна — пропускаем без блокировки.
    */
   async validateNnAddress(address: string): Promise<void> {
     const apiKey = this.config.get<string>('DADATA_API_KEY');
     if (!apiKey) return;
 
+    let suggestions: any[];
     try {
       const response = await axios.post(
         'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
         {
           query: address,
-          count: 1,
+          count: 5,
           locations: [{ region: 'нижегородская', city: 'нижний новгород' }],
+          from_bound: { value: 'house' },
+          to_bound: { value: 'flat' },
         },
         {
           headers: {
@@ -241,22 +247,28 @@ export class DeliveryService {
           timeout: 5000,
         },
       );
+      suggestions = response.data?.suggestions ?? [];
+    } catch {
+      return; // network/API error — fail-open
+    }
 
-      const suggestions: any[] = response.data?.suggestions ?? [];
-      if (suggestions.length === 0) {
-        throw new BadRequestException(
-          'Адрес не найден в Нижнем Новгороде. Проверьте корректность адреса.',
-        );
-      }
-      const city: string | undefined = suggestions[0]?.data?.city;
-      if (city !== 'Нижний Новгород') {
-        throw new BadRequestException(
-          'Доставка осуществляется только по Нижнему Новгороду.',
-        );
-      }
-    } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      // network/API errors — fail-open
+    if (suggestions.length === 0) {
+      throw new BadRequestException(
+        'Адрес не найден. Проверьте улицу и номер дома.',
+      );
+    }
+    const matchingCity = suggestions.find(
+      (s) => s?.data?.city === 'Нижний Новгород',
+    );
+    if (!matchingCity) {
+      throw new BadRequestException(
+        'Доставка осуществляется только по Нижнему Новгороду.',
+      );
+    }
+    if (!this.isFiasHouse(matchingCity)) {
+      throw new BadRequestException(
+        'Дом не найден в базе ФИАС. Проверьте номер дома.',
+      );
     }
   }
 
@@ -272,7 +284,7 @@ export class DeliveryService {
         'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
         {
           query: q,
-          count: 5,
+          count: 10,
           locations: [{ region: 'нижегородская', city: 'нижний новгород' }],
           restrict_value: true,
         },
@@ -284,18 +296,45 @@ export class DeliveryService {
           timeout: 5000,
         },
       );
-      const suggestions: AddressSuggestion[] = (data?.suggestions ?? []).map(
-        (s: { value: string; data?: { geo_lat?: string; geo_lon?: string } }) => ({
+      // Оставляем только подсказки уровня улицы (для удобного автодополнения)
+      // и уровня дома, причём дом обязан существовать в ФИАС.
+      // Подсказки «дом» без ФИАС-id (DaData их синтезирует из любого числа
+      // в вводе) убираем — иначе UI показывает заведомо мёртвый адрес.
+      const filtered: any[] = (data?.suggestions ?? []).filter((s: any) => {
+        const level = s?.data?.fias_level;
+        if (level == null) return false;
+        const lvl = String(level);
+        // 7 = street → пропускаем, чтобы юзер мог сначала выбрать улицу
+        if (lvl === '7') return true;
+        // 8 = house, 9 = flat → требуем ФИАС
+        if (lvl === '8' || lvl === '9') return this.isFiasHouse(s);
+        return false;
+      });
+      const suggestions: AddressSuggestion[] = filtered
+        .slice(0, 5)
+        .map((s: any) => ({
           value: s.value,
           geoLat: s.data?.geo_lat ? parseFloat(s.data.geo_lat) : null,
           geoLon: s.data?.geo_lon ? parseFloat(s.data.geo_lon) : null,
-        }),
-      );
+        }));
       return { suggestions };
     } catch (e) {
       this.logger.warn(`DaData suggest failed: ${(e as Error)?.message ?? e}`);
       return { suggestions: [] };
     }
+  }
+
+  /**
+   * Дом существует в ФИАС, если есть house_fias_id и качество распознавания
+   * дома (qc_house) равно 0 (точное совпадение) или 2 (распознан с правками).
+   * qc_house = 1 → дом отсутствует в ФИАС, 10 → не найден.
+   */
+  private isFiasHouse(s: any): boolean {
+    const d = s?.data ?? {};
+    if (!d.house_fias_id) return false;
+    const qc = d.qc_house != null ? String(d.qc_house) : null;
+    if (qc !== '0' && qc !== '2') return false;
+    return true;
   }
 
   /**
