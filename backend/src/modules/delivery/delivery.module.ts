@@ -7,6 +7,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { DeliveryClaimsService } from './claims/delivery-claims.service';
 import { DeliveryClaimsController } from './claims/delivery-claims.controller';
 import { TwoGisService } from './two-gis.service';
+import { DaDataCleanerService } from './dadata-cleaner.service';
+import { BuildingInfoService } from './building-info.service';
 import { AddressVerifierService } from './address-verifier.service';
 
 @Module({
@@ -16,12 +18,16 @@ import { AddressVerifierService } from './address-verifier.service';
     DeliveryService,
     DeliveryClaimsService,
     TwoGisService,
+    DaDataCleanerService,
+    BuildingInfoService,
     AddressVerifierService,
   ],
   exports: [
     DeliveryService,
     DeliveryClaimsService,
     TwoGisService,
+    DaDataCleanerService,
+    BuildingInfoService,
     AddressVerifierService,
   ],
 })
