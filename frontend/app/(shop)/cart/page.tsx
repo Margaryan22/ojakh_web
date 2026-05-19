@@ -948,26 +948,38 @@ export default function CartPage() {
                     <Input
                       id='apt'
                       value={addressApartment}
-                      onChange={(e) => setAddressApartment(e.target.value)}
-                      maxLength={20}
+                      onChange={(e) =>
+                        setAddressApartment(
+                          e.target.value
+                            .replace(/[^0-9A-Za-zА-Яа-я\s\-\/]/g, '')
+                            .slice(0, 20),
+                        )
+                      }
                     />
                   </div>
                   <div className='space-y-1'>
                     <Label htmlFor='entrance'>Подъезд</Label>
                     <Input
                       id='entrance'
+                      inputMode='numeric'
                       value={addressEntrance}
-                      onChange={(e) => setAddressEntrance(e.target.value)}
-                      maxLength={20}
+                      onChange={(e) =>
+                        setAddressEntrance(
+                          e.target.value.replace(/\D/g, '').slice(0, 3),
+                        )
+                      }
                     />
                   </div>
                   <div className='space-y-1'>
                     <Label htmlFor='floor'>Этаж</Label>
                     <Input
                       id='floor'
+                      inputMode='numeric'
                       value={addressFloor}
-                      onChange={(e) => setAddressFloor(e.target.value)}
-                      maxLength={20}
+                      onChange={(e) => {
+                        const m = e.target.value.match(/^-?\d{0,3}/);
+                        setAddressFloor(m ? m[0] : '');
+                      }}
                     />
                   </div>
                   <div className='space-y-1'>
@@ -975,8 +987,13 @@ export default function CartPage() {
                     <Input
                       id='intercom'
                       value={addressIntercom}
-                      onChange={(e) => setAddressIntercom(e.target.value)}
-                      maxLength={50}
+                      onChange={(e) =>
+                        setAddressIntercom(
+                          e.target.value
+                            .replace(/[^0-9A-Za-zА-Яа-я*#\-\s]/g, '')
+                            .slice(0, 50),
+                        )
+                      }
                     />
                   </div>
                 </div>

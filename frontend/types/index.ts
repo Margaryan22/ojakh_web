@@ -114,6 +114,21 @@ export interface AddressSuggestion {
   geoLon: number | null;
 }
 
+export interface ApartmentRange {
+  entrance: number | null;
+  floors: [number, number] | null;
+  from: number;
+  to: number;
+}
+
+export interface BuildingInfo {
+  knownBuilding: boolean;
+  floorsCount: number | null;
+  floorsUnderground: number | null;
+  entranceCount: number | null;
+  apartmentRanges: ApartmentRange[] | null;
+}
+
 export interface Review {
   id: number;
   rating: number;

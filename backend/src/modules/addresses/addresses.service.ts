@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { DeliveryService } from '../delivery/delivery.service';
+import { AddressVerifierService } from '../delivery/address-verifier.service';
 import { UpsertAddressDto } from './dto/upsert-address.dto';
 
 export const MAX_ADDRESSES_PER_USER = 5;
@@ -23,7 +25,11 @@ export interface AutoSaveAddressInput {
 
 @Injectable()
 export class AddressesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly deliveryService: DeliveryService,
+    private readonly addressVerifier: AddressVerifierService,
+  ) {}
 
   list(userId: number) {
     return this.prisma.userAddress.findMany({
@@ -39,6 +45,7 @@ export class AddressesService {
         `Можно сохранить не более ${MAX_ADDRESSES_PER_USER} адресов`,
       );
     }
+    await this.validateAddress(dto);
     return this.prisma.userAddress.create({
       data: { userId, ...this.normalize(dto) },
     });
@@ -48,9 +55,24 @@ export class AddressesService {
     const existing = await this.prisma.userAddress.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Адрес не найден');
     if (existing.userId !== userId) throw new ForbiddenException();
+    await this.validateAddress(dto);
     return this.prisma.userAddress.update({
       where: { id },
       data: this.normalize(dto),
+    });
+  }
+
+  private async validateAddress(dto: UpsertAddressDto) {
+    const address = dto.address.trim();
+    if (!address) throw new BadRequestException('Адрес обязателен');
+    await this.deliveryService.validateNnAddress(address);
+    await this.addressVerifier.verify({
+      address,
+      lat: dto.lat ?? null,
+      lon: dto.lon ?? null,
+      entrance: dto.entrance ?? null,
+      floor: dto.floor ?? null,
+      apartment: dto.apartment ?? null,
     });
   }
 
