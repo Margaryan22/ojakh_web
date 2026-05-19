@@ -65,14 +65,3 @@ export function validateName(value: string, touched: boolean): string | null {
   return null;
 }
 
-/**
- * Returns an error message or null.
- * @param value    current email string
- * @param touched  whether the field has been interacted with
- */
-export function validateEmail(value: string, touched: boolean): string | null {
-  if (!touched) return null;
-  if (!value) return 'Email обязателен';
-  if (!EMAIL_REGEX.test(value)) return 'Введите корректный email';
-  return null;
-}

@@ -61,21 +61,23 @@ function getFutureDate(daysAhead: number): string {
   return `${y}-${m}-${dd}`;
 }
 
+// Subtotal должен быть >= MIN_ORDER_KOPECKS (1000₽ = 100 000 коп).
+// 15 × 8000 = 120 000 коп = 1200₽. maxPerDay = 50, quantity 15 ≤ 50.
 const cartItems = [
   {
     product_id: 1,
     name: 'Хинкали говядина',
     category: 'хинкали',
-    quantity: 5,
+    quantity: 15,
     unit: 'шт',
     price: 8000,
-    subtotal: 40000,
+    subtotal: 120000,
   },
 ];
 
 const validDto = {
   delivery_date: getFutureDate(3),
-  delivery_time: '10:00-14:00' as const,
+  delivery_time: '10:00-11:00' as const,
   is_pickup: false,
   address: 'ул. Тестовая, д. 1',
   contact_phone: '+79001112233',
@@ -101,9 +103,19 @@ describe('OrdersService', () => {
     jest.clearAllMocks();
 
     // Дефолтные моки для успешного сценария
-    mockCartService.getCart.mockResolvedValue({ userId: 1, items: cartItems, subtotal: 40000 });
+    mockCartService.getCart.mockResolvedValue({ userId: 1, items: cartItems, subtotal: 120000 });
     mockPrisma.product.findMany.mockResolvedValue([{ id: 1, maxPerDay: 50, name: 'Хинкали', unit: 'шт' }]);
-    mockDeliveryService.checkDate.mockResolvedValue({ available: true, tortCount: 0, maxTorts: 2, orderCount: 0, maxOrders: 15, slots: {} });
+    mockDeliveryService.checkDate.mockResolvedValue({
+      available: true,
+      tortCount: 0,
+      maxTorts: 2,
+      unitCount: 0,
+      maxUnits: 100,
+      unitsAvailable: 100,
+      tortsAvailable: 2,
+      slots: { '10:00-11:00': { count: 0, max: 3, available: true } },
+      blackedOut: false,
+    });
     mockDeliveryService.validateNnAddress.mockResolvedValue(undefined);
     mockDeliveryService.getDeliveryCost.mockReturnValue({ cost: 0, distanceKm: null, freeDelivery: true, breakdown: { type: 'fallback', baseKopecks: 0 } });
     mockAddressVerifier.verify.mockResolvedValue(undefined);
@@ -205,25 +217,36 @@ describe('OrdersService', () => {
       ];
       mockCartService.getCart.mockResolvedValue({ userId: 1, items: cakeItems, subtotal: 350000 });
       mockPrisma.product.findMany.mockResolvedValue([{ id: 10, maxPerDay: 2, name: 'Торт Наполеон', unit: 'шт' }]);
-      mockDeliveryService.checkDate.mockResolvedValue({ available: true, tortCount: 1, maxTorts: 2, orderCount: 1, maxOrders: 15 });
+      mockDeliveryService.checkDate.mockResolvedValue({
+        available: true, tortCount: 1, maxTorts: 2, unitCount: 1, maxUnits: 100,
+        unitsAvailable: 99, tortsAvailable: 1,
+        slots: { '10:00-11:00': { count: 0, max: 3, available: true } },
+        blackedOut: false,
+      });
 
       await service.createOrder(1, validDto);
 
-      expect(mockDeliveryService.checkDate).toHaveBeenCalledWith(validDto.delivery_date, true);
+      expect(mockDeliveryService.checkDate).toHaveBeenCalledWith(
+        validDto.delivery_date,
+        expect.objectContaining({ withTort: true, extraTorts: 1 }),
+      );
     });
 
     it('должен проверять доступность без учёта торта если тортов нет', async () => {
       await service.createOrder(1, validDto);
 
-      expect(mockDeliveryService.checkDate).toHaveBeenCalledWith(validDto.delivery_date, false);
+      expect(mockDeliveryService.checkDate).toHaveBeenCalledWith(
+        validDto.delivery_date,
+        expect.objectContaining({ withTort: false, extraTorts: 0 }),
+      );
     });
 
     it('должен рассчитать subtotal как сумму subtotal позиций корзины', async () => {
       await service.createOrder(1, validDto);
 
       const createCall = mockPrisma.order.create.mock.calls[0][0];
-      expect(createCall.data.subtotal).toBe(40000);
-      expect(createCall.data.total).toBe(40000);
+      expect(createCall.data.subtotal).toBe(120000);
+      expect(createCall.data.total).toBe(120000);
     });
   });
 

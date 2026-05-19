@@ -10,6 +10,10 @@ const mockPrisma = {
     findUnique: jest.fn(),
     update: jest.fn(),
   },
+  dailyLimit: {
+    findMany: jest.fn(),
+    upsert: jest.fn(),
+  },
 };
 
 const mockNotifications = {
@@ -41,6 +45,8 @@ describe('AdminService', () => {
 
     service = module.get<AdminService>(AdminService);
     jest.clearAllMocks();
+    // Дефолт — без переопределений лимитов на даты.
+    mockPrisma.dailyLimit.findMany.mockResolvedValue([]);
   });
 
   describe('getOrders', () => {
@@ -186,16 +192,16 @@ describe('AdminService', () => {
       expect(result).toHaveLength(8); // 0..7 включительно = 8 дней
     });
 
-    it('каждый день должен содержать orderCount, tortCount, maxOrders, maxTorts, available', async () => {
+    it('каждый день должен содержать unitCount, tortCount, maxUnits, maxTorts, available', async () => {
       mockPrisma.order.findMany.mockResolvedValue([]);
 
       const result = await service.getCalendar(3);
 
       result.forEach((day) => {
         expect(day).toHaveProperty('date');
-        expect(day).toHaveProperty('orderCount');
+        expect(day).toHaveProperty('unitCount');
         expect(day).toHaveProperty('tortCount');
-        expect(day).toHaveProperty('maxOrders');
+        expect(day).toHaveProperty('maxUnits');
         expect(day).toHaveProperty('maxTorts');
         expect(day).toHaveProperty('available');
       });
@@ -223,11 +229,14 @@ describe('AdminService', () => {
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(0, 0, 0, 0);
 
-      const fullOrders = Array.from({ length: 15 }, () => ({
-        deliveryDate: tomorrow,
-        items: [],
-      }));
-      mockPrisma.order.findMany.mockResolvedValue(fullOrders);
+      // Один большой заказ, который сразу выбирает дневной лимит штук.
+      // DEFAULT_MAX_UNITS = 100, поэтому 120 шт перекрывает с запасом.
+      mockPrisma.order.findMany.mockResolvedValue([
+        {
+          deliveryDate: tomorrow,
+          items: [{ category: 'хинкали', quantity: 120 }],
+        },
+      ]);
 
       const result = await service.getCalendar(2);
       const tomorrowKey = tomorrow.toISOString().split('T')[0];

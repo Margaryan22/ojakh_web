@@ -104,18 +104,22 @@ describe('CartService', () => {
       expect(mockPrisma.cart.upsert).toHaveBeenCalled();
     });
 
-    it('должен обновить количество существующего товара', async () => {
+    it('должен суммировать количество с уже добавленным товаром', async () => {
+      // addOrUpdateItem(addOnly): к существующим 5 прибавляет ещё 10 → итого 15.
+      // Для полной замены количества используется отдельный setItemQuantity.
       const existingCart = { userId: 1, items: [{ ...baseItem }] };
       mockPrisma.cart.findUnique.mockResolvedValue(existingCart);
-      const updatedItems = [{ ...baseItem, quantity: 10, subtotal: 80000 }];
-      mockPrisma.cart.upsert.mockResolvedValue({ userId: 1, items: updatedItems });
+      mockPrisma.cart.upsert.mockImplementation(async ({ update }: any) => ({
+        userId: 1,
+        items: update.items,
+      }));
 
-      const result = await service.addOrUpdateItem(1, { ...dto, quantity: 10 });
+      await service.addOrUpdateItem(1, { ...dto, quantity: 10 });
 
       const upsertCall = mockPrisma.cart.upsert.mock.calls[0][0];
       const upsertedItems = upsertCall.update.items;
-      expect(upsertedItems[0].quantity).toBe(10);
-      expect(upsertedItems[0].subtotal).toBe(80000);
+      expect(upsertedItems[0].quantity).toBe(15);
+      expect(upsertedItems[0].subtotal).toBe(120000);
     });
 
     it('должен удалить товар если quantity === 0', async () => {

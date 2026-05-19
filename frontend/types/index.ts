@@ -173,13 +173,6 @@ export interface UserAddress {
   createdAt: string;
 }
 
-export interface DeliveryCostResponse {
-  cost: number;
-  distanceKm: number | null;
-  freeDelivery: boolean;
-  breakdown: DeliveryCostBreakdown;
-}
-
 export interface OrderMessage {
   id: number;
   orderId: number;
