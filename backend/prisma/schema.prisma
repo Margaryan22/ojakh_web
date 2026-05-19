@@ -49,6 +49,7 @@ model Product {
   protein     Float   @default(0)   // белки, г на 100 г
   fat         Float   @default(0)   // жиры, г на 100 г
   carbs       Float   @default(0)   // углеводы, г на 100 г
+  label       String?                // 'hit' | 'new' | 'sale' | 'recommended' | 'seasonal' | 'limited'
   reviews     Review[]
 }
 

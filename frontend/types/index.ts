@@ -1,3 +1,5 @@
+import type { ProductLabel } from '@/lib/product-labels';
+
 export type ProductCategory = 'хинкали' | 'пельмени' | 'блинчики' | 'хлеб' | 'десерты' | 'торты';
 export type OrderStatus =
   | 'new'
@@ -49,6 +51,7 @@ export interface Product {
   protein: number;
   fat: number;
   carbs: number;
+  label?: ProductLabel | null;
 }
 
 export interface CartItem {
