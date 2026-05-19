@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { TwoGisService } from './two-gis.service';
+import { BuildingInfoService } from './building-info.service';
 
 export interface VerifyAddressInput {
   address: string;
@@ -12,12 +12,12 @@ export interface VerifyAddressInput {
 
 @Injectable()
 export class AddressVerifierService {
-  constructor(private readonly twoGis: TwoGisService) {}
+  constructor(private readonly buildingInfo: BuildingInfoService) {}
 
   async verify(payload: VerifyAddressInput): Promise<void> {
-    const info = await this.twoGis.getBuildingInfo({
-      lat: payload.lat ?? undefined,
-      lon: payload.lon ?? undefined,
+    const info = await this.buildingInfo.getBuildingInfo({
+      lat: payload.lat ?? null,
+      lon: payload.lon ?? null,
       address: payload.address,
     });
     if (!info || !info.knownBuilding) return;

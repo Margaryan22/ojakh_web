@@ -11,7 +11,7 @@ import { JwtGuard } from '../auth/jwt.guard';
 import { OptionalJwtGuard } from '../auth/optional-jwt.guard';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService, CheckDateOpts } from './delivery.service';
-import { TwoGisService } from './two-gis.service';
+import { BuildingInfoService } from './building-info.service';
 import { TORT_CATEGORY } from '../../common/constants';
 
 @ApiTags('delivery')
@@ -22,7 +22,7 @@ export class DeliveryController {
   constructor(
     private readonly deliveryService: DeliveryService,
     private readonly cartService: CartService,
-    private readonly twoGis: TwoGisService,
+    private readonly buildingInfo: BuildingInfoService,
   ) {}
 
   @Get('check-date')
@@ -100,31 +100,25 @@ export class DeliveryController {
 
   @Get('building-info')
   @UseGuards(JwtGuard)
-  @ApiOperation({ summary: 'Building passport from 2GIS (entrances, floors, apartment ranges)' })
+  @ApiOperation({
+    summary:
+      'Building passport (entrances/floors/apartment ranges) merged from DaData Clean + 2GIS',
+  })
   @ApiQuery({ name: 'address', required: false })
   @ApiQuery({ name: 'lat', required: false, type: Number })
   @ApiQuery({ name: 'lon', required: false, type: Number })
-  async buildingInfo(
+  async getBuildingInfo(
     @Query('address') address?: string,
     @Query('lat') lat?: string,
     @Query('lon') lon?: string,
   ) {
     const latNum = lat != null && lat !== '' ? parseFloat(lat) : null;
     const lonNum = lon != null && lon !== '' ? parseFloat(lon) : null;
-    const info = await this.twoGis.getBuildingInfo({
+    return this.buildingInfo.getBuildingInfo({
       address: address?.trim() || null,
       lat: Number.isFinite(latNum as number) ? latNum : null,
       lon: Number.isFinite(lonNum as number) ? lonNum : null,
     });
-    return (
-      info ?? {
-        knownBuilding: false,
-        floorsCount: null,
-        floorsUnderground: null,
-        entranceCount: null,
-        apartmentRanges: null,
-      }
-    );
   }
 
   /**
