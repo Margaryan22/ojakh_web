@@ -119,9 +119,29 @@ model Order {
   doplataPaymentId         String?   @unique
   doplataPaidAt            DateTime?
 
+  messages                 OrderMessage[]
+
   @@index([userId])
   @@index([deliveryDate])
   @@index([status])
+}
+
+// ─── OrderMessages ────────────────────────────────────────────────────────────
+
+model OrderMessage {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  senderRole  String   // "user" | "admin"
+  senderId    Int      // userId автора
+  text        String   @db.VarChar(2000)
+  readByUser  Boolean  @default(false)
+  readByAdmin Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([orderId, createdAt])
+  @@index([readByAdmin])
+  @@index([readByUser])
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────

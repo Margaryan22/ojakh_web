@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,7 +14,8 @@ import { formatPrice, formatDate } from '@/lib/format';
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/constants';
 import { FadeIn } from '@/components/motion/fade-in';
 import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
-import type { Order, OrderStatus } from '@/types';
+import { OrderChat } from '@/components/order-chat';
+import type { Order, OrderStatus, AdminUnreadSummary } from '@/types';
 import { AxiosError } from 'axios';
 
 const statusFilters: { value: string; label: string }[] = [
@@ -29,6 +31,7 @@ const statusFilters: { value: string; label: string }[] = [
 
 export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
+  const [openChatOrderId, setOpenChatOrderId] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   const { data: orders = [], isLoading } = useQuery<Order[]>({
@@ -37,6 +40,16 @@ export default function AdminOrdersPage() {
       const { data } = await api.get('/admin/orders');
       return data;
     },
+  });
+
+  const { data: unreadSummary } = useQuery<AdminUnreadSummary>({
+    queryKey: ['admin-unread-summary'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/messages/unread-summary');
+      return data;
+    },
+    refetchInterval: 3000,
+    refetchIntervalInBackground: false,
   });
 
   const markReadyMutation = useMutation({
@@ -184,6 +197,27 @@ export default function AdminOrdersPage() {
                 )}
 
                 <div className="flex gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant={openChatOrderId === order.id ? 'default' : 'outline'}
+                    onClick={() =>
+                      setOpenChatOrderId((cur) =>
+                        cur === order.id ? null : order.id,
+                      )
+                    }
+                    className="gap-1.5 relative"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Чат
+                    {unreadSummary?.byOrder?.[order.id] ? (
+                      <Badge
+                        variant="destructive"
+                        className="ml-1 h-4 min-w-4 px-1 text-[10px]"
+                      >
+                        {unreadSummary.byOrder[order.id]}
+                      </Badge>
+                    ) : null}
+                  </Button>
                   {order.status === 'paid' && (
                     <Button
                       size="sm"
@@ -232,6 +266,12 @@ export default function AdminOrdersPage() {
                     </Button>
                   )}
                 </div>
+
+                {openChatOrderId === order.id && (
+                  <div className="pt-2">
+                    <OrderChat orderId={order.id} role="admin" />
+                  </div>
+                )}
               </CardContent>
             </Card>
             </ItemWrapper>

@@ -189,7 +189,7 @@ export class OrdersService {
           ? null
           : dto.delivery_notes?.trim() || null,
         recipientName: dto.recipient_name?.trim() || null,
-        contactPhone: dto.contact_phone.trim(),
+        contactPhone: dto.contact_phone?.trim() || null,
         status: 'new',
       },
     });

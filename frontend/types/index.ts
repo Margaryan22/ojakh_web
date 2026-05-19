@@ -162,6 +162,22 @@ export interface DeliveryCostResponse {
   breakdown: DeliveryCostBreakdown;
 }
 
+export interface OrderMessage {
+  id: number;
+  orderId: number;
+  senderRole: 'user' | 'admin';
+  senderId: number;
+  text: string;
+  readByUser: boolean;
+  readByAdmin: boolean;
+  createdAt: string;
+}
+
+export interface AdminUnreadSummary {
+  count: number;
+  byOrder: Record<number, number>;
+}
+
 export interface DateAvailability {
   available: boolean;
   tortCount: number;
