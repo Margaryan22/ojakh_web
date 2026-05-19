@@ -4,7 +4,6 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService } from '../delivery/delivery.service';
@@ -29,7 +28,6 @@ export class OrdersService {
     private readonly paymentsService: PaymentsService,
     private readonly addressesService: AddressesService,
     private readonly addressVerifier: AddressVerifierService,
-    private readonly config: ConfigService,
   ) {}
 
   async createOrder(userId: number, dto: CreateOrderDto) {
