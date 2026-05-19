@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/format';
 import { CATEGORY_EMOJI } from '@/lib/constants';
+import { PRODUCT_LABELS } from '@/lib/product-labels';
+import { cn } from '@/lib/utils';
 import { useFavoritesStore } from '@/stores/favorites.store';
 import { useCartStore } from '@/stores/cart.store';
 import { DUR_FAST, EASE_OUT } from '@/components/motion/motion-presets';
@@ -67,23 +69,34 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
         </AnimatePresence>
       </motion.button>
 
-      {/* Cart badge */}
-      <AnimatePresence>
-        {inCartQty > 0 && (
-          <motion.div
-            key={inCartQty}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: EASE_OUT }}
-            className="absolute top-2 left-2 z-10"
+      {/* Top-left badge stack: label + cart count */}
+      <div className="absolute top-2 left-2 z-10 flex flex-col items-start gap-1">
+        {product.label && PRODUCT_LABELS[product.label] && (
+          <Badge
+            className={cn(
+              'font-semibold text-[10px] uppercase tracking-wide shadow-md pointer-events-none',
+              PRODUCT_LABELS[product.label].className,
+            )}
           >
-            <Badge className="bg-primary text-primary-foreground">
-              {inCartQty} шт
-            </Badge>
-          </motion.div>
+            {PRODUCT_LABELS[product.label].ru}
+          </Badge>
         )}
-      </AnimatePresence>
+        <AnimatePresence>
+          {inCartQty > 0 && (
+            <motion.div
+              key={inCartQty}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: EASE_OUT }}
+            >
+              <Badge className="bg-primary text-primary-foreground shadow-md">
+                {inCartQty} шт
+              </Badge>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Image / Emoji — links to product detail page */}
       <Link href={`/catalog/${product.id}`} className="block">

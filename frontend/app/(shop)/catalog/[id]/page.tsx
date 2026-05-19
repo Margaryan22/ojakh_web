@@ -13,6 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { formatPrice } from '@/lib/format';
 import { CATEGORY_EMOJI, CATEGORY_LABELS } from '@/lib/constants';
+import { PRODUCT_LABELS } from '@/lib/product-labels';
+import { cn } from '@/lib/utils';
 import { AddToCartDialog } from '@/components/products/add-to-cart-dialog';
 import { NutritionInfo } from '@/components/products/nutrition-info';
 import { StarRating } from '@/components/reviews/star-rating';
@@ -148,6 +150,16 @@ export default function ProductDetailPage({
 
         {/* Badges */}
         <div className="flex flex-wrap gap-2">
+          {product.label && PRODUCT_LABELS[product.label] && (
+            <Badge
+              className={cn(
+                'text-sm px-3 py-1 font-semibold uppercase tracking-wide',
+                PRODUCT_LABELS[product.label].className,
+              )}
+            >
+              {PRODUCT_LABELS[product.label].ru}
+            </Badge>
+          )}
           {product.flavor && (
             <Badge variant="secondary" className="text-sm px-3 py-1">
               {product.flavor}

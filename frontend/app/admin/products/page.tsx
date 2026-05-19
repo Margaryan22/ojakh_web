@@ -28,6 +28,12 @@ import {
 } from '@/components/ui/select';
 import { formatPrice } from '@/lib/format';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '@/lib/constants';
+import {
+  PRODUCT_LABELS,
+  PRODUCT_LABEL_VALUES,
+  type ProductLabel,
+} from '@/lib/product-labels';
+import { cn } from '@/lib/utils';
 import { FadeIn } from '@/components/motion/fade-in';
 import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import type { Product, ProductCategory } from '@/types';
@@ -49,6 +55,7 @@ interface ProductFormData {
   protein: string;
   fat: string;
   carbs: string;
+  label: ProductLabel | null;
 }
 
 const emptyForm: ProductFormData = {
@@ -67,6 +74,7 @@ const emptyForm: ProductFormData = {
   protein: '',
   fat: '',
   carbs: '',
+  label: null,
 };
 
 export default function AdminProductsPage() {
@@ -110,6 +118,7 @@ export default function AdminProductsPage() {
         protein: parseFloat(form.protein),
         fat: parseFloat(form.fat),
         carbs: parseFloat(form.carbs),
+        label: form.label,
       };
       if (imageUrl) payload.imageUrl = imageUrl;
 
@@ -173,6 +182,7 @@ export default function AdminProductsPage() {
       protein: product.protein.toString(),
       fat: product.fat.toString(),
       carbs: product.carbs.toString(),
+      label: product.label ?? null,
     });
     setImageFile(null);
     setDialogOpen(true);
@@ -207,7 +217,10 @@ export default function AdminProductsPage() {
     saveMutation.mutate();
   };
 
-  const updateField = (field: keyof ProductFormData, value: string | boolean) => {
+  const updateField = <K extends keyof ProductFormData>(
+    field: K,
+    value: ProductFormData[K],
+  ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -247,6 +260,16 @@ export default function AdminProductsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-sm">{product.name}</span>
+                  {product.label && PRODUCT_LABELS[product.label] && (
+                    <Badge
+                      className={cn(
+                        'text-[10px] font-semibold uppercase',
+                        PRODUCT_LABELS[product.label].className,
+                      )}
+                    >
+                      {PRODUCT_LABELS[product.label].ru}
+                    </Badge>
+                  )}
                   {product.flavor && (
                     <Badge variant="secondary" className="text-[10px]">{product.flavor}</Badge>
                   )}
@@ -428,6 +451,40 @@ export default function AdminProductsPage() {
                   value={form.carbs}
                   onChange={(e) => updateField('carbs', e.target.value)}
                 />
+              </div>
+
+              <div className="col-span-2 pt-2 border-t space-y-2">
+                <Label>Метка</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={form.label === null ? 'default' : 'outline'}
+                    onClick={() => updateField('label', null)}
+                    className="text-xs h-7"
+                  >
+                    Без метки
+                  </Button>
+                  {PRODUCT_LABEL_VALUES.map((value) => {
+                    const meta = PRODUCT_LABELS[value];
+                    const isActive = form.label === value;
+                    return (
+                      <Button
+                        key={value}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateField('label', value)}
+                        className={cn(
+                          'text-xs h-7 font-semibold uppercase tracking-wide',
+                          isActive && meta.className + ' border-transparent',
+                        )}
+                      >
+                        {meta.ru}
+                      </Button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="col-span-2 flex items-center gap-2">

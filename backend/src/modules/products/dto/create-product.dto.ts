@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -8,6 +9,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PRODUCT_LABEL_VALUES, ProductLabel } from '../product-labels';
 
 export class CreateProductDto {
   @ApiProperty({ example: 'Хинкали' })
@@ -70,6 +72,11 @@ export class CreateProductDto {
   @IsInt()
   @Min(1)
   maxPerDay?: number;
+
+  @ApiPropertyOptional({ example: 'hit', enum: PRODUCT_LABEL_VALUES })
+  @IsOptional()
+  @IsIn(PRODUCT_LABEL_VALUES)
+  label?: ProductLabel | null;
 
   @ApiProperty({ example: 226.7, description: 'Калорийность, ккал на 100 г' })
   @IsNumber()
