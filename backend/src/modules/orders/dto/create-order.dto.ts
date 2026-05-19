@@ -58,10 +58,11 @@ export class CreateOrderDto {
   @IsString()
   recipient_name?: string;
 
-  @ApiProperty({ example: '+79001234567' })
+  @ApiPropertyOptional({ example: '+79001234567' })
+  @IsOptional()
   @IsString()
   @Matches(/^\+7\d{10}$/, { message: 'Неверный формат номера телефона' })
-  contact_phone: string;
+  contact_phone?: string;
 
   @ApiPropertyOptional({ example: '12' })
   @IsOptional()

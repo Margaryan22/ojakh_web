@@ -1,20 +1,34 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ClipboardList, Package, CalendarDays, BarChart2, ArrowLeft } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  ClipboardList,
+  Package,
+  CalendarDays,
+  BarChart2,
+  ArrowLeft,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/stores/auth.store';
 import { cn } from '@/lib/utils';
 import { ADMIN_ROLE } from '@/lib/constants';
+import api from '@/lib/api';
+import type { AdminUnreadSummary } from '@/types';
 
 const adminLinks = [
-  { href: '/admin', label: 'Заказы', icon: ClipboardList },
-  { href: '/admin/products', label: 'Товары', icon: Package },
-  { href: '/admin/calendar', label: 'Календарь', icon: CalendarDays },
-  { href: '/admin/analytics', label: 'Аналитика', icon: BarChart2 },
+  { href: '/admin', label: 'Заказы', icon: ClipboardList, badge: true },
+  { href: '/admin/products', label: 'Товары', icon: Package, badge: false },
+  { href: '/admin/calendar', label: 'Календарь', icon: CalendarDays, badge: false },
+  { href: '/admin/analytics', label: 'Аналитика', icon: BarChart2, badge: false },
 ];
+
+const MUTE_STORAGE_KEY = 'admin-chat-mute';
 
 export default function AdminLayout({
   children,
@@ -25,12 +39,87 @@ export default function AdminLayout({
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const isInitialized = useAuthStore((s) => s.isInitialized);
+  const isAdmin = !!user && user.role === ADMIN_ROLE;
+
+  const [muted, setMuted] = useState(false);
+  const prevCountRef = useRef<number | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     if (isInitialized && (!user || user.role !== ADMIN_ROLE)) {
       router.replace('/catalog');
     }
   }, [user, isInitialized, router]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(MUTE_STORAGE_KEY);
+    setMuted(stored === '1');
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(MUTE_STORAGE_KEY, muted ? '1' : '0');
+  }, [muted]);
+
+  // Prime AudioContext on first user gesture (browsers block autoplay otherwise)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => {
+      if (audioCtxRef.current) return;
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      if (!Ctx) return;
+      audioCtxRef.current = new Ctx();
+      window.removeEventListener('click', handler);
+      window.removeEventListener('keydown', handler);
+    };
+    window.addEventListener('click', handler);
+    window.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('click', handler);
+      window.removeEventListener('keydown', handler);
+    };
+  }, []);
+
+  const playBeep = () => {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(660, now + 0.18);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.4);
+  };
+
+  const { data: unread } = useQuery<AdminUnreadSummary>({
+    queryKey: ['admin-unread-summary'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/messages/unread-summary');
+      return data;
+    },
+    refetchInterval: 3000,
+    refetchIntervalInBackground: false,
+    enabled: isAdmin,
+  });
+
+  useEffect(() => {
+    const next = unread?.count ?? 0;
+    const prev = prevCountRef.current;
+    if (prev !== null && next > prev && !muted) {
+      playBeep();
+    }
+    prevCountRef.current = next;
+  }, [unread?.count, muted]);
 
   if (!isInitialized || !user || user.role !== ADMIN_ROLE) {
     return (
@@ -39,6 +128,8 @@ export default function AdminLayout({
       </div>
     );
   }
+
+  const totalUnread = unread?.count ?? 0;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -52,10 +143,11 @@ export default function AdminLayout({
             </Link>
           </Button>
           <span className="font-bold text-primary">Админ-панель</span>
-          <nav className="flex gap-1 ml-auto">
+          <nav className="flex gap-1 ml-auto items-center">
             {adminLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
+              const showBadge = link.badge && totalUnread > 0;
               return (
                 <Button
                   key={link.href}
@@ -63,13 +155,34 @@ export default function AdminLayout({
                   size="sm"
                   asChild
                 >
-                  <Link href={link.href} className={cn('gap-1.5', isActive && 'font-semibold')}>
+                  <Link href={link.href} className={cn('gap-1.5 relative', isActive && 'font-semibold')}>
                     <Icon className="h-4 w-4" />
                     <span className="hidden sm:inline">{link.label}</span>
+                    {showBadge && (
+                      <Badge
+                        variant="destructive"
+                        className="h-4 min-w-4 px-1 text-[10px]"
+                      >
+                        {totalUnread > 99 ? '99+' : totalUnread}
+                      </Badge>
+                    )}
                   </Link>
                 </Button>
               );
             })}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMuted((m) => !m)}
+              title={muted ? 'Включить звук уведомлений' : 'Выключить звук'}
+              aria-label={muted ? 'Включить звук' : 'Выключить звук'}
+            >
+              {muted ? (
+                <VolumeX className="h-4 w-4" />
+              ) : (
+                <Volume2 className="h-4 w-4" />
+              )}
+            </Button>
           </nav>
         </div>
       </header>

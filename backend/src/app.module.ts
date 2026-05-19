@@ -17,6 +17,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { PhoneVerificationModule } from './modules/phone-verification/phone-verification.module';
+import { OrderMessagesModule } from './modules/order-messages/order-messages.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { PhoneVerificationModule } from './modules/phone-verification/phone-veri
     NotificationsModule,
     ReviewsModule,
     PhoneVerificationModule,
+    OrderMessagesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

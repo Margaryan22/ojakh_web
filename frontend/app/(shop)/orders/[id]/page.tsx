@@ -17,6 +17,7 @@ import { FadeIn } from '@/components/motion/fade-in';
 import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
 import { AnimatePresence, motion } from 'framer-motion';
+import { OrderChat } from '@/components/order-chat';
 import type { Order, OrderStatus, DeliveryQuote, DeliveryClaimResponse } from '@/types';
 import { useState } from 'react';
 import { AxiosError } from 'axios';
@@ -289,6 +290,10 @@ export default function OrderDetailPage() {
           )}
         </CardContent>
       </Card>
+      </StaggerItem>
+
+      <StaggerItem>
+        <OrderChat orderId={order.id} role="user" />
       </StaggerItem>
       </StaggerContainer>
 

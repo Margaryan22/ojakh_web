@@ -13,7 +13,6 @@ import {
   Truck,
   Store,
   CheckCircle2,
-  Phone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
@@ -43,11 +42,6 @@ import {
   MAX_DAYS_AHEAD,
   WAREHOUSE_ADDRESS,
 } from '@/lib/constants';
-import {
-  formatPhone,
-  extractPhoneDigits,
-  PHONE_DIGITS_COUNT,
-} from '@/lib/validation';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { FadeIn } from '@/components/motion/fade-in';
@@ -87,8 +81,6 @@ export default function CartPage() {
     lon: null,
   });
   const [recipientName, setRecipientName] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [contactPhoneTouched, setContactPhoneTouched] = useState(false);
   const [addressApartment, setAddressApartment] = useState('');
   const [addressEntrance, setAddressEntrance] = useState('');
   const [addressFloor, setAddressFloor] = useState('');
@@ -147,13 +139,6 @@ export default function CartPage() {
     // Для гостя fetchCart — no-op (persist уже восстановил), для юзера тянет с сервера.
     fetchCart();
   }, [user, fetchCart]);
-
-  // Префилл контактного телефона из профиля (если пользователь его подтвердил).
-  useEffect(() => {
-    if (!user?.phone) return;
-    if (contactPhone) return;
-    setContactPhone(formatPhone(extractPhoneDigits(user.phone)));
-  }, [user, contactPhone]);
 
   // DaData address suggestions via backend proxy (DaData key stays server-side)
   useEffect(() => {
@@ -349,17 +334,9 @@ export default function CartPage() {
     setStep('delivery');
   };
 
-  const contactPhoneDigits = extractPhoneDigits(contactPhone);
-  const isContactPhoneValid = contactPhoneDigits.length === PHONE_DIGITS_COUNT;
-
   const handleConfirmStep = async () => {
     if (!selectedDate) {
       toast.error('Выберите дату доставки');
-      return;
-    }
-    setContactPhoneTouched(true);
-    if (!isContactPhoneValid) {
-      toast.error('Укажите контактный номер для связи');
       return;
     }
     if (!isPickup && !address.trim()) {
@@ -426,7 +403,6 @@ export default function CartPage() {
         address: isPickup ? undefined : address,
         address_lat: isPickup ? undefined : addressCoords.lat ?? undefined,
         address_lon: isPickup ? undefined : addressCoords.lon ?? undefined,
-        contact_phone: `+7${contactPhoneDigits}`,
         recipient_name: isPickup ? undefined : recipientName.trim() || undefined,
         address_apartment: isPickup
           ? undefined
@@ -841,45 +817,6 @@ export default function CartPage() {
           </div>
 
           <div className='space-y-6'>
-            {/* Контактный телефон — обязательно, для связи с курьером */}
-            <div className='space-y-1.5'>
-              <Label htmlFor='contact-phone' className='flex items-center gap-1.5'>
-                <Phone className='h-3.5 w-3.5' />
-                Телефон для связи
-                <span className='text-destructive'>*</span>
-              </Label>
-              <Input
-                id='contact-phone'
-                type='tel'
-                value={contactPhone}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  const withoutPrefix = raw.startsWith('+7') ? raw.slice(2) : raw;
-                  const digits = withoutPrefix
-                    .replace(/\D/g, '')
-                    .slice(0, PHONE_DIGITS_COUNT);
-                  setContactPhone(digits ? formatPhone(digits) : '');
-                }}
-                onBlur={() => setContactPhoneTouched(true)}
-                placeholder='+7 (000) (000) 00 00'
-                className={
-                  contactPhoneTouched && !isContactPhoneValid
-                    ? 'border-destructive focus-visible:ring-destructive'
-                    : ''
-                }
-              />
-              {contactPhoneTouched && !isContactPhoneValid && (
-                <p className='text-xs text-destructive'>
-                  Укажите 10 цифр после +7
-                </p>
-              )}
-              <p className='text-xs text-muted-foreground'>
-                {user?.phone
-                  ? 'Курьер позвонит на этот номер, чтобы уточнить детали.'
-                  : 'Курьер позвонит, чтобы уточнить детали. Сохраните номер в профиле, чтобы он подставлялся автоматически.'}
-              </p>
-            </div>
-
             {/* Delivery type toggle */}
             <div className='flex gap-3'>
               <Button
@@ -1378,10 +1315,6 @@ export default function CartPage() {
               <p>
                 <span className='text-muted-foreground'>Время:</span>{' '}
                 {selectedTime}
-              </p>
-              <p>
-                <span className='text-muted-foreground'>Телефон:</span>{' '}
-                {contactPhone || '—'}
               </p>
             </CardContent>
           </Card>
