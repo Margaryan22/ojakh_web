@@ -25,8 +25,6 @@ import { AddressVerifierService } from './address-verifier.service';
   exports: [
     DeliveryService,
     DeliveryClaimsService,
-    TwoGisService,
-    DaDataCleanerService,
     BuildingInfoService,
     AddressVerifierService,
   ],

@@ -5,6 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { PaymentsService } from '../payments/payments.service';
+import { AddressesService } from '../addresses/addresses.service';
+import { AddressVerifierService } from '../delivery/address-verifier.service';
 
 const mockPrisma = {
   product: {
@@ -27,10 +29,20 @@ const mockCartService = {
 
 const mockDeliveryService = {
   checkDate: jest.fn(),
+  validateNnAddress: jest.fn(),
+  getDeliveryCost: jest.fn(),
 };
 
 const mockPaymentsService = {
   createPayment: jest.fn(),
+};
+
+const mockAddressesService = {
+  autoSaveFromOrder: jest.fn(),
+};
+
+const mockAddressVerifier = {
+  verify: jest.fn(),
 };
 
 /**
@@ -80,6 +92,8 @@ describe('OrdersService', () => {
         { provide: CartService, useValue: mockCartService },
         { provide: DeliveryService, useValue: mockDeliveryService },
         { provide: PaymentsService, useValue: mockPaymentsService },
+        { provide: AddressesService, useValue: mockAddressesService },
+        { provide: AddressVerifierService, useValue: mockAddressVerifier },
       ],
     }).compile();
 
@@ -89,8 +103,13 @@ describe('OrdersService', () => {
     // Дефолтные моки для успешного сценария
     mockCartService.getCart.mockResolvedValue({ userId: 1, items: cartItems, subtotal: 40000 });
     mockPrisma.product.findMany.mockResolvedValue([{ id: 1, maxPerDay: 50, name: 'Хинкали', unit: 'шт' }]);
-    mockDeliveryService.checkDate.mockResolvedValue({ available: true, tortCount: 0, maxTorts: 2, orderCount: 0, maxOrders: 15 });
+    mockDeliveryService.checkDate.mockResolvedValue({ available: true, tortCount: 0, maxTorts: 2, orderCount: 0, maxOrders: 15, slots: {} });
+    mockDeliveryService.validateNnAddress.mockResolvedValue(undefined);
+    mockDeliveryService.getDeliveryCost.mockReturnValue({ cost: 0, distanceKm: null, freeDelivery: true, breakdown: { type: 'fallback', baseKopecks: 0 } });
+    mockAddressVerifier.verify.mockResolvedValue(undefined);
+    mockAddressesService.autoSaveFromOrder.mockResolvedValue(undefined);
     mockPrisma.order.create.mockResolvedValue({ id: 1, userId: 1, status: 'new', ...validDto });
+    mockPrisma.order.findUnique.mockResolvedValue(null);
     mockCartService.clearCart.mockResolvedValue({ userId: 1, items: [], subtotal: 0 });
     mockPaymentsService.createPayment.mockResolvedValue({ payment_id: 'test-uuid', status: 'pending' });
   });
