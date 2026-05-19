@@ -12,7 +12,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtGuard } from '../auth/jwt.guard';
 import { AdminGuard } from '../auth/admin.guard';
-import { PerUserThrottlerGuard } from '../phone-verification/per-user-throttler.guard';
+import { PerUserThrottlerGuard } from './per-user-throttler.guard';
 import { OrderMessagesService } from './order-messages.service';
 import { SendMessageDto } from './dto/send-message.dto';
 

@@ -16,7 +16,6 @@ import { HealthModule } from './modules/health/health.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
-import { PhoneVerificationModule } from './modules/phone-verification/phone-verification.module';
 import { OrderMessagesModule } from './modules/order-messages/order-messages.module';
 
 @Module({
@@ -39,7 +38,6 @@ import { OrderMessagesModule } from './modules/order-messages/order-messages.mod
     UploadsModule,
     NotificationsModule,
     ReviewsModule,
-    PhoneVerificationModule,
     OrderMessagesModule,
   ],
   providers: [

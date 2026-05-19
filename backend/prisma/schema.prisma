@@ -25,7 +25,6 @@ model User {
   notifications       Notification[]
   reviews             Review[]
   addresses           UserAddress[]
-  phoneVerifications  PhoneVerification[]
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -177,24 +176,6 @@ model UserAddress {
   createdAt DateTime @default(now())
 
   @@index([userId])
-}
-
-// ─── PhoneVerification ────────────────────────────────────────────────────────
-
-model PhoneVerification {
-  id                Int      @id @default(autoincrement())
-  userId            Int
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  phone             String
-  codeHash          String
-  attempts          Int      @default(0)
-  requestId         String?
-  expiresAt         DateTime
-  resendAvailableAt DateTime
-  createdAt         DateTime @default(now())
-
-  @@index([userId])
-  @@index([phone, createdAt])
 }
 
 // ─── DailyLimit ───────────────────────────────────────────────────────────────
