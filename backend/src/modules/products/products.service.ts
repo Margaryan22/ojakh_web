@@ -46,6 +46,12 @@ export class ProductsService {
 
   async remove(id: number) {
     await this.findOne(id);
-    return this.prisma.product.delete({ where: { id } });
+    // Soft delete: товар скрывается из каталога, но сохраняется в БД,
+    // чтобы не оборвать связанные отзывы (FK on Review с onDelete: Cascade)
+    // и snapshot-копии в исторических заказах.
+    return this.prisma.product.update({
+      where: { id },
+      data: { available: false },
+    });
   }
 }

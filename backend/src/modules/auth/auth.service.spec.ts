@@ -18,6 +18,8 @@ const mockPrisma = {
   user: {
     create: jest.fn(),
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    update: jest.fn(),
   },
 };
 
@@ -46,6 +48,8 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     jest.clearAllMocks();
     mockJwt.sign.mockReturnValue('token_value');
+    // По умолчанию телефон не занят (register не падает на проверке дубликата).
+    mockPrisma.user.findFirst.mockResolvedValue(null);
   });
 
   describe('register', () => {

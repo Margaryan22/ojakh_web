@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { DeliveryClaimsService } from '../delivery/claims/delivery-claims.service';
 
 const mockPrisma = {
   order: {
@@ -9,6 +10,10 @@ const mockPrisma = {
     findFirst: jest.fn(),
     update: jest.fn(),
   },
+};
+
+const mockDeliveryClaims = {
+  onDoplataConfirmed: jest.fn(),
 };
 
 describe('PaymentsService', () => {
@@ -19,6 +24,7 @@ describe('PaymentsService', () => {
       providers: [
         PaymentsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: DeliveryClaimsService, useValue: mockDeliveryClaims },
       ],
     }).compile();
 
@@ -77,7 +83,7 @@ describe('PaymentsService', () => {
 
       const result = await service.confirmPayment('some-uuid', 1);
 
-      expect(result).toEqual({ ok: true, order_id: 1 });
+      expect(result).toEqual({ ok: true, order_id: 1, kind: 'main' });
       expect(mockPrisma.order.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 1 },

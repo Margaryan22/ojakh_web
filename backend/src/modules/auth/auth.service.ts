@@ -20,13 +20,7 @@ import {
 } from './dto/social-login.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
-export interface TokenPayload {
-  sub: number;
-  email: string;
-  role: string;
-}
-
-export interface TokenPair {
+interface TokenPair {
   accessToken: string;
   refreshToken: string;
 }
