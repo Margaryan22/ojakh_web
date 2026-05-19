@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { OrderMessagesController } from './order-messages.controller';
 import { OrderMessagesService } from './order-messages.service';
-import { PerUserThrottlerGuard } from '../phone-verification/per-user-throttler.guard';
+import { PerUserThrottlerGuard } from './per-user-throttler.guard';
 
 @Module({
   imports: [AuthModule],

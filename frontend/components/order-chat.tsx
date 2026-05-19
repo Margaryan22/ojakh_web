@@ -130,12 +130,13 @@ export function OrderChat({ orderId, role }: OrderChatProps) {
             </p>
           ) : (
             messages.map((m, i) => {
-              const isMine = m.senderRole === role;
+              const fromUser = m.senderRole === 'user';
               const prev = messages[i - 1];
               const showDateSep =
                 !prev ||
                 new Date(prev.createdAt).toDateString() !==
                   new Date(m.createdAt).toDateString();
+              const senderLabel = fromUser ? 'Клиент' : 'Администратор';
               return (
                 <div key={m.id} className="space-y-1.5">
                   {showDateSep && (
@@ -145,14 +146,21 @@ export function OrderChat({ orderId, role }: OrderChatProps) {
                   )}
                   <div
                     className={cn(
-                      'flex',
-                      isMine ? 'justify-end' : 'justify-start',
+                      'flex flex-col',
+                      fromUser ? 'items-end' : 'items-start',
                     )}
                   >
                     <div
                       className={cn(
+                        'text-[10px] font-medium text-muted-foreground mb-0.5 px-1',
+                      )}
+                    >
+                      {senderLabel}
+                    </div>
+                    <div
+                      className={cn(
                         'max-w-[80%] rounded-2xl px-3 py-1.5 text-sm whitespace-pre-wrap break-words',
-                        isMine
+                        fromUser
                           ? 'bg-primary text-primary-foreground rounded-br-sm'
                           : 'bg-background border rounded-bl-sm',
                       )}
@@ -161,7 +169,7 @@ export function OrderChat({ orderId, role }: OrderChatProps) {
                       <div
                         className={cn(
                           'text-[10px] mt-0.5 text-right',
-                          isMine
+                          fromUser
                             ? 'text-primary-foreground/70'
                             : 'text-muted-foreground',
                         )}
