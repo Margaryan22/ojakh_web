@@ -17,6 +17,17 @@
   --color-accent-foreground: #d4a574;
   --color-destructive: #d4574a;
   --color-destructive-foreground: #ffffff;
+  --color-success: #5e7c62;
+  --color-success-bg: #edf2ee;
+  --color-success-border: #b8d4bb;
+  --color-info: #5a7a9b;
+  --color-info-bg: #eaeff5;
+  --color-warning: #9e7a3e;
+  --color-warning-bg: #fdf4e6;
+  --color-warning-border: #e8d5a8;
+  --color-error: #9e4a42;
+  --color-error-bg: #f7eeee;
+  --color-error-border: #e8b8b8;
   --color-card: #ffffff;
   --color-card-foreground: #3d3d3d;
   --color-popover: #ffffff;

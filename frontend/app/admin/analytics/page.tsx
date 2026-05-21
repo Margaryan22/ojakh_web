@@ -74,35 +74,35 @@ export default function AnalyticsPage() {
           <StaggerContainer immediate className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StaggerItem>
               <MetricCard
-                icon={<TrendingUp className="h-5 w-5 text-green-600" />}
+                icon={<TrendingUp className="h-5 w-5 text-success" />}
                 label="Выручка"
                 value={formatPrice(data?.totalRevenue ?? 0)}
-                bg="bg-green-50"
+                bg="bg-success-bg"
               />
             </StaggerItem>
             <StaggerItem>
               <MetricCard
-                icon={<ShoppingBag className="h-5 w-5 text-blue-600" />}
+                icon={<ShoppingBag className="h-5 w-5 text-info" />}
                 label="Заказов"
                 value={String(data?.orderCount ?? 0)}
-                bg="bg-blue-50"
+                bg="bg-info-bg"
               />
             </StaggerItem>
             <StaggerItem>
               <MetricCard
-                icon={<Receipt className="h-5 w-5 text-purple-600" />}
+                icon={<Receipt className="h-5 w-5 text-violet-400" />}
                 label="Средний чек"
                 value={formatPrice(data?.avgCheck ?? 0)}
-                bg="bg-purple-50"
+                bg="bg-violet-50"
               />
             </StaggerItem>
             <StaggerItem>
               <MetricCard
-                icon={<XCircle className="h-5 w-5 text-red-500" />}
+                icon={<XCircle className="h-5 w-5 text-error" />}
                 label="Отменено"
                 value={String(data?.cancelledCount ?? 0)}
                 sub={`из ${data?.orderCount ?? 0}`}
-                bg="bg-red-50"
+                bg="bg-error-bg"
               />
             </StaggerItem>
           </StaggerContainer>

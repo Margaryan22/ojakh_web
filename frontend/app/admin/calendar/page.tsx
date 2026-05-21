@@ -149,7 +149,7 @@ export default function AdminCalendarPage() {
           const unitsAtLimit = day.unitCount >= day.maxUnits;
           const tortsAtLimit = day.tortCount >= day.maxTorts;
 
-          let colorClass = 'border-green-200 bg-green-50';
+          let colorClass = 'border-success-border bg-success-bg';
           if (day.blackedOut) {
             colorClass = 'border-zinc-400 bg-zinc-100';
           } else if (unitsAtLimit && tortsAtLimit) {
@@ -194,7 +194,7 @@ export default function AdminCalendarPage() {
                       </p>
                     )}
                     {!day.blackedOut && !day.available && (
-                      <p className='text-[10px] text-red-600 font-medium'>
+                      <p className='text-[10px] text-error font-medium'>
                         Заполнено
                       </p>
                     )}
@@ -213,7 +213,7 @@ export default function AdminCalendarPage() {
 
       <div className='flex flex-wrap gap-4 text-xs text-muted-foreground'>
         <div className='flex items-center gap-1.5'>
-          <span className='w-3 h-3 rounded bg-green-100 border border-green-200' />
+          <span className='w-3 h-3 rounded bg-success-bg border border-success-border' />
           Доступно
         </div>
         <div className='flex items-center gap-1.5'>

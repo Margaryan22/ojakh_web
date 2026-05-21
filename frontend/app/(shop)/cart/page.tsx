@@ -725,7 +725,7 @@ export default function CartPage() {
 
               {/* Минимальная сумма заказа */}
               {totalPrice() < MIN_ORDER_KOPECKS && (
-                <div className='rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300'>
+                <div className='rounded-lg border border-warning-border bg-warning-bg p-3 text-sm text-warning'>
                   <p>
                     Минимальная сумма заказа — {formatPrice(MIN_ORDER_KOPECKS)}.{' '}
                     Добавьте ещё на{' '}
@@ -742,7 +742,7 @@ export default function CartPage() {
                 const sub = totalPrice();
                 if (sub >= FREE_DELIVERY_THRESHOLD_KOPECKS) {
                   return (
-                    <div className='rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400'>
+                    <div className='rounded-lg border border-success-border bg-success-bg p-3 text-sm text-success'>
                       Доставка по этому заказу будет бесплатной.
                     </div>
                   );
@@ -922,7 +922,7 @@ export default function CartPage() {
                   )}
                 </div>
                 {addressValidated ? (
-                  <p className='text-xs text-green-700 dark:text-green-400 inline-flex items-center gap-1'>
+                  <p className='text-xs text-success inline-flex items-center gap-1'>
                     <CheckCircle2 className='h-3.5 w-3.5' />
                     Адрес подтверждён
                   </p>
@@ -1270,7 +1270,7 @@ export default function CartPage() {
               {!isPickup && deliveryCost === 0 && !isLoadingCost && (
                 <div className='flex justify-between text-sm'>
                   <span className='text-muted-foreground'>Доставка:</span>
-                  <span className='text-green-600'>
+                  <span className='text-success'>
                     Бесплатно (от {formatPrice(FREE_DELIVERY_THRESHOLD_KOPECKS)})
                   </span>
                 </div>
@@ -1278,7 +1278,7 @@ export default function CartPage() {
               {isPickup && (
                 <div className='flex justify-between text-sm'>
                   <span className='text-muted-foreground'>Доставка:</span>
-                  <span className='text-green-600'>Бесплатно (самовывоз)</span>
+                  <span className='text-success'>Бесплатно (самовывоз)</span>
                 </div>
               )}
               <div className='flex justify-between font-bold'>

@@ -422,7 +422,7 @@ export default function AddressesPage() {
                   )}
                 </div>
                 {addressValidated ? (
-                  <p className='text-xs text-green-700 dark:text-green-400 inline-flex items-center gap-1'>
+                  <p className='text-xs text-success inline-flex items-center gap-1'>
                     <CheckCircle2 className='h-3.5 w-3.5' />
                     Адрес подтверждён
                   </p>
