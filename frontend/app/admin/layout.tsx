@@ -9,6 +9,7 @@ import {
   Package,
   CalendarDays,
   BarChart2,
+  MessageSquare,
   ArrowLeft,
   Volume2,
   VolumeX,
@@ -21,11 +22,19 @@ import { ADMIN_ROLE } from '@/lib/constants';
 import api from '@/lib/api';
 import type { AdminUnreadSummary } from '@/types';
 
-const adminLinks = [
-  { href: '/admin', label: 'Заказы', icon: ClipboardList, badge: true },
-  { href: '/admin/products', label: 'Товары', icon: Package, badge: false },
-  { href: '/admin/calendar', label: 'Календарь', icon: CalendarDays, badge: false },
-  { href: '/admin/analytics', label: 'Аналитика', icon: BarChart2, badge: false },
+type AdminBadge = 'orders' | 'feedback';
+
+const adminLinks: {
+  href: string;
+  label: string;
+  icon: typeof ClipboardList;
+  badge: AdminBadge | null;
+}[] = [
+  { href: '/admin', label: 'Заказы', icon: ClipboardList, badge: 'orders' },
+  { href: '/admin/products', label: 'Товары', icon: Package, badge: null },
+  { href: '/admin/calendar', label: 'Календарь', icon: CalendarDays, badge: null },
+  { href: '/admin/analytics', label: 'Аналитика', icon: BarChart2, badge: null },
+  { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare, badge: 'feedback' },
 ];
 
 const MUTE_STORAGE_KEY = 'admin-chat-mute';
@@ -112,6 +121,17 @@ export default function AdminLayout({
     enabled: isAdmin,
   });
 
+  const { data: feedbackUnread } = useQuery<{ count: number }>({
+    queryKey: ['admin-feedback-unread'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/feedback/unread-count');
+      return data;
+    },
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    enabled: isAdmin,
+  });
+
   useEffect(() => {
     const next = unread?.count ?? 0;
     const prev = prevCountRef.current;
@@ -130,6 +150,11 @@ export default function AdminLayout({
   }
 
   const totalUnread = unread?.count ?? 0;
+  const feedbackUnreadCount = feedbackUnread?.count ?? 0;
+  const badgeCount: Record<AdminBadge, number> = {
+    orders: totalUnread,
+    feedback: feedbackUnreadCount,
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -147,7 +172,8 @@ export default function AdminLayout({
             {adminLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
-              const showBadge = link.badge && totalUnread > 0;
+              const badgeValue = link.badge ? badgeCount[link.badge] : 0;
+              const showBadge = link.badge !== null && badgeValue > 0;
               return (
                 <Button
                   key={link.href}
@@ -163,7 +189,7 @@ export default function AdminLayout({
                         variant="destructive"
                         className="h-4 min-w-4 px-1 text-[10px]"
                       >
-                        {totalUnread > 99 ? '99+' : totalUnread}
+                        {badgeValue > 99 ? '99+' : badgeValue}
                       </Badge>
                     )}
                   </Link>
