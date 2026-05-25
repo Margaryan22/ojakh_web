@@ -45,6 +45,7 @@ import {
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { FadeIn } from '@/components/motion/fade-in';
+import { PaymentDetails } from '@/components/payment-details';
 import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
 import { AnimatePresence, motion } from 'framer-motion';
 import type {
@@ -1335,6 +1336,10 @@ export default function CartPage() {
               </p>
             </CardContent>
           </Card>
+
+          <PaymentDetails
+            intro={`После оформления заказа нужно будет перевести ${formatPrice(totalPrice() + deliveryCost)} по одному из вариантов ниже. Реквизиты также появятся на странице заказа.`}
+          />
 
           <Button
             className='w-full'

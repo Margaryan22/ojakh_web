@@ -18,6 +18,7 @@ import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
 import { AnimatePresence, motion } from 'framer-motion';
 import { OrderChat } from '@/components/order-chat';
+import { PaymentDetails } from '@/components/payment-details';
 import type { Order, OrderStatus, DeliveryQuote, DeliveryClaimResponse } from '@/types';
 import { useState } from 'react';
 import { AxiosError } from 'axios';
@@ -297,16 +298,21 @@ export default function OrderDetailPage() {
       </StaggerItem>
       </StaggerContainer>
 
-      {/* Pay button for new orders */}
+      {/* Payment details + pay button for new orders */}
       {order.status === 'new' && order.paymentId && (
-        <Button
-          className="w-full"
-          size="lg"
-          onClick={handlePay}
-          disabled={isPaying}
-        >
-          {isPaying ? 'Оплата...' : `Оплатить ${formatPrice(order.subtotal)}`}
-        </Button>
+        <>
+          <PaymentDetails
+            intro={`Сумма к оплате: ${formatPrice(order.subtotal)}. Переведите её по одному из вариантов ниже, а затем подтвердите оплату кнопкой «Оплатить».`}
+          />
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handlePay}
+            disabled={isPaying}
+          >
+            {isPaying ? 'Оплата...' : `Оплатить ${formatPrice(order.subtotal)}`}
+          </Button>
+        </>
       )}
 
       {/* Cancel button for new (unpaid) orders */}
