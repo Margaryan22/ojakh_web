@@ -189,6 +189,22 @@ export interface AdminUnreadSummary {
   byOrder: Record<number, number>;
 }
 
+export type FeedbackKind = 'idea' | 'question' | 'complaint' | 'praise';
+
+export interface Feedback {
+  id: number;
+  kind: FeedbackKind;
+  text: string;
+  readAt: string | null;
+  createdAt: string;
+  user: { id: number; name: string; email: string } | null;
+}
+
+export interface FeedbackListResponse {
+  items: Feedback[];
+  total: number;
+}
+
 export interface DateAvailability {
   available: boolean;
   tortCount: number;

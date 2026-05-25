@@ -25,6 +25,7 @@ model User {
   notifications       Notification[]
   reviews             Review[]
   addresses           UserAddress[]
+  feedback            Feedback[]
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -177,6 +178,28 @@ model UserAddress {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// ─── Feedback ─────────────────────────────────────────────────────────────────
+
+enum FeedbackKind {
+  idea
+  question
+  complaint
+  praise
+}
+
+model Feedback {
+  id        Int          @id @default(autoincrement())
+  userId    Int?
+  user      User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kind      FeedbackKind
+  text      String       @db.VarChar(2000)
+  readAt    DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([createdAt])
+  @@index([readAt])
 }
 
 // ─── DailyLimit ───────────────────────────────────────────────────────────────
