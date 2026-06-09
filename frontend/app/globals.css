@@ -42,7 +42,7 @@
 }
 
 body {
-  font-family: 'Comic Relief', 'Comfortaa', system-ui, sans-serif;
+  font-family: 'Comfortaa', 'Comic Relief', system-ui, sans-serif;
   color: var(--color-foreground);
   background: var(--color-background);
   -webkit-font-smoothing: antialiased;
@@ -50,7 +50,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Comic Relief', 'Comfortaa', system-ui, sans-serif;
+  font-family: 'Comfortaa', 'Comic Relief', system-ui, sans-serif;
   font-weight: 700;
 }
 
