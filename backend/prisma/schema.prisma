@@ -120,11 +120,34 @@ model Order {
   doplataPaymentId         String?   @unique
   doplataPaidAt            DateTime?
 
+  yandexClaimId            String?   @unique
+  yandexClaimStatus        String?
+
   messages                 OrderMessage[]
+  payments                 Payment[]
 
   @@index([userId])
   @@index([deliveryDate])
   @@index([status])
+}
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+
+model Payment {
+  id                String    @id @default(uuid())
+  orderId           Int
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kind              String    // 'main' | 'doplata'
+  provider          String    // 'yookassa' | 'manual'
+  providerPaymentId String?   @unique // id платежа в ЮKassa
+  status            String    @default("pending") // pending | succeeded | canceled
+  amountKopecks     Int
+  confirmationToken String?
+  createdAt         DateTime  @default(now())
+  paidAt            DateTime?
+  canceledAt        DateTime?
+
+  @@index([orderId, kind])
 }
 
 // ─── OrderMessages ────────────────────────────────────────────────────────────
