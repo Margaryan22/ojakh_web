@@ -95,6 +95,29 @@ export interface Order {
   deliveryRecalcKopecks?: number | null;
   deliverySurchargeKopecks?: number | null;
   doplataPaymentId?: string | null;
+  yandexClaimId?: string | null;
+  yandexClaimStatus?: string | null;
+}
+
+export type PaymentProvider = 'yookassa' | 'manual';
+
+export interface PaymentConfig {
+  provider: PaymentProvider;
+}
+
+export interface CreatePaymentResponse {
+  payment_id: string;
+  provider: PaymentProvider;
+  status: string;
+  kind: 'main' | 'doplata';
+  amount_kopecks: number;
+  confirmation_token?: string;
+}
+
+export interface SyncPaymentResponse {
+  status: 'pending' | 'succeeded' | 'canceled';
+  order_id: number;
+  kind: 'main' | 'doplata';
 }
 
 export interface DeliveryQuote {
@@ -105,7 +128,7 @@ export interface DeliveryQuote {
 }
 
 export type DeliveryClaimResponse =
-  | { status: 'awaiting_payment'; doplataPaymentId: string; surchargeKopecks: number }
+  | { status: 'awaiting_payment'; surchargeKopecks: number }
   | { status: 'delivering' };
 
 export interface AddressSuggestion {

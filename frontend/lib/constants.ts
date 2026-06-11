@@ -11,6 +11,32 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   cancelled: 'Отменён',
 };
 
+// Статусы заявки Яндекс Доставки (Claims API). Неизвестные статусы не
+// показываем — карта покрывает основные шаги жизненного цикла заявки.
+export const YANDEX_CLAIM_STATUS_LABELS: Record<string, string> = {
+  new: 'Заявка создана',
+  estimating: 'Оцениваем доставку',
+  ready_for_approval: 'Заявка ждёт подтверждения',
+  accepted: 'Заявка подтверждена',
+  performer_lookup: 'Ищем курьера',
+  performer_draft: 'Ищем курьера',
+  performer_found: 'Курьер найден',
+  pickup_arrived: 'Курьер приехал на склад',
+  ready_for_pickup_confirmation: 'Курьер забирает заказ',
+  pickuped: 'Курьер забрал заказ',
+  delivery_arrived: 'Курьер у вас',
+  ready_for_delivery_confirmation: 'Курьер передаёт заказ',
+  delivered: 'Доставлен',
+  delivered_finish: 'Доставлен',
+  returning: 'Заказ возвращается',
+  returned_finish: 'Заказ возвращён',
+  performer_not_found: 'Курьер не найден',
+  cancelled: 'Доставка отменена',
+  cancelled_with_payment: 'Доставка отменена',
+  cancelled_by_taxi: 'Доставка отменена курьером',
+  failed: 'Ошибка доставки',
+};
+
 export const STATUS_COLORS: Record<OrderStatus, string> = {
   new: 'bg-yellow-100 text-yellow-800',
   paid: 'bg-blue-100 text-blue-800',
