@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { FadeIn } from '@/components/motion/fade-in';
 import { Y_HERO } from '@/components/motion/motion-presets';
 import { SocialLoginButtons } from '@/components/auth/social-login-buttons';
+import { TermsDialog } from '@/components/terms-dialog';
 import { finalizeAuthSuccess, readNextFromQuery } from '@/lib/post-auth';
 import {
   EMAIL_REGEX,
@@ -36,11 +37,14 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   const [touched, setTouched] = useState({
     name: false,
     email: false,
     password: false,
     phone: false,
+    terms: false,
   });
 
   const touch = (field: keyof typeof touched) =>
@@ -58,6 +62,9 @@ export default function RegisterPage() {
       ? 'Минимум 8 символов'
       : null;
   const phoneError = validatePhone(phone, touched.phone);
+  const termsError = touched.terms && !acceptedTerms
+    ? 'Необходимо принять пользовательское соглашение'
+    : null;
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
@@ -70,11 +77,12 @@ export default function RegisterPage() {
     !validateName(name, true) &&
     EMAIL_REGEX.test(email) &&
     password.length >= 8 &&
-    !validatePhone(phone, true);
+    !validatePhone(phone, true) &&
+    acceptedTerms;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setTouched({ name: true, email: true, password: true, phone: true });
+    setTouched({ name: true, email: true, password: true, phone: true, terms: true });
     if (!isFormValid) return;
 
     const phoneDigits = extractPhoneDigits(phone);
@@ -194,6 +202,38 @@ export default function RegisterPage() {
               <p className="text-xs text-destructive">{phoneError}</p>
             )}
           </div>
+
+          <div className="space-y-1.5">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => {
+                  setAcceptedTerms(e.target.checked);
+                  touch('terms');
+                }}
+                className={`mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary cursor-pointer ${
+                  termsError ? 'outline outline-destructive' : ''
+                }`}
+              />
+              <span className="text-sm text-muted-foreground leading-snug">
+                Я ознакомился и согласен с{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setTermsOpen(true);
+                  }}
+                  className="text-primary hover:underline font-semibold"
+                >
+                  пользовательским соглашением
+                </button>
+              </span>
+            </label>
+            {termsError && (
+              <p className="text-xs text-destructive">{termsError}</p>
+            )}
+          </div>
         </CardContent>
 
         <CardFooter className="flex flex-col gap-3 pt-2">
@@ -213,7 +253,14 @@ export default function RegisterPage() {
               <span className="bg-card px-2 text-muted-foreground">или</span>
             </div>
           </div>
-          <SocialLoginButtons />
+          {acceptedTerms ? (
+            <SocialLoginButtons />
+          ) : (
+            <p className="text-xs text-muted-foreground text-center">
+              Отметьте согласие с пользовательским соглашением, чтобы
+              продолжить через Google, Apple или Яндекс
+            </p>
+          )}
           <p className="text-sm text-muted-foreground text-center">
             Уже есть аккаунт?{' '}
             <Link
@@ -226,6 +273,7 @@ export default function RegisterPage() {
         </CardFooter>
       </form>
     </Card>
+    <TermsDialog open={termsOpen} onOpenChange={setTermsOpen} />
     </FadeIn>
   );
 }
