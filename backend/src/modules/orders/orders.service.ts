@@ -8,7 +8,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { AddressVerifierService } from '../delivery/address-verifier.service';
-import { PaymentsService } from '../payments/payments.service';
 import { AddressesService } from '../addresses/addresses.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import {
@@ -25,7 +24,6 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly cartService: CartService,
     private readonly deliveryService: DeliveryService,
-    private readonly paymentsService: PaymentsService,
     private readonly addressesService: AddressesService,
     private readonly addressVerifier: AddressVerifierService,
   ) {}
@@ -223,10 +221,9 @@ export class OrdersService {
     // 8. Clear cart
     await this.cartService.clearCart(userId);
 
-    // 9. Create mock payment
-    const payment = await this.paymentsService.createPayment(order.id);
-
-    return { order, payment };
+    // Платёж создаётся лениво (POST /payments/create), когда пользователь
+    // жмёт «Оплатить»: confirmation_token ЮKassa живёт ~1 час.
+    return { order };
   }
 
   async getOrders(userId: number, page = 1, limit = 20) {
