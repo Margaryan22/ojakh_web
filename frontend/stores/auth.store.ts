@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import axios from 'axios';
 import api from '@/lib/api';
 import { useCartStore } from '@/stores/cart.store';
+import { useFavoritesStore } from '@/stores/favorites.store';
+import { useNotificationsStore } from '@/stores/notifications.store';
+import { queryClient } from '@/components/layout/query-provider';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -96,8 +99,12 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     }
     set({ user: null, accessToken: null });
     useCartStore.setState({ items: [] });
+    useFavoritesStore.setState({ items: [] });
+    useNotificationsStore.setState({ items: [] });
+    queryClient.clear();
     try {
       useCartStore.persist.clearStorage();
+      useFavoritesStore.persist.clearStorage();
     } catch {
       // ignore
     }
@@ -118,8 +125,9 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       }
       const { data } = await api.get('/users/me');
       set({ user: data, isLoading: false, isInitialized: true });
-      // Silent restore: подтянуть серверную корзину, не сливая локальную.
+      // Silent restore: подтянуть серверную корзину и избранное, не сливая локальные.
       useCartStore.getState().fetchCart();
+      useFavoritesStore.getState().fetchFavorites();
     } catch {
       set({ user: null, accessToken: null, isLoading: false, isInitialized: true });
     }

@@ -231,7 +231,8 @@ export const useCartStore = create<CartState & CartActions>()(
     {
       name: 'ojakh-cart-guest',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ items: state.items }),
+      // Корзина залогиненного пользователя живёт на сервере и не пишется в общий гостевой ключ
+      partialize: (state) => ({ items: isGuest() ? state.items : [] }),
     },
   ),
 );

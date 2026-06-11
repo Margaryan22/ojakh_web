@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ProductsModule } from './modules/products/products.module';
 import { CartModule } from './modules/cart/cart.module';
+import { FavoritesModule } from './modules/favorites/favorites.module';
 import { DeliveryModule } from './modules/delivery/delivery.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { OrdersModule } from './modules/orders/orders.module';
@@ -32,6 +33,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
     UsersModule,
     ProductsModule,
     CartModule,
+    FavoritesModule,
     DeliveryModule,
     PaymentsModule,
     OrdersModule,
