@@ -4,7 +4,6 @@ import { OrdersService } from './orders.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService } from '../delivery/delivery.service';
-import { PaymentsService } from '../payments/payments.service';
 import { AddressesService } from '../addresses/addresses.service';
 import { AddressVerifierService } from '../delivery/address-verifier.service';
 
@@ -31,10 +30,6 @@ const mockDeliveryService = {
   checkDate: jest.fn(),
   validateNnAddress: jest.fn(),
   getDeliveryCost: jest.fn(),
-};
-
-const mockPaymentsService = {
-  createPayment: jest.fn(),
 };
 
 const mockAddressesService = {
@@ -93,7 +88,6 @@ describe('OrdersService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: CartService, useValue: mockCartService },
         { provide: DeliveryService, useValue: mockDeliveryService },
-        { provide: PaymentsService, useValue: mockPaymentsService },
         { provide: AddressesService, useValue: mockAddressesService },
         { provide: AddressVerifierService, useValue: mockAddressVerifier },
       ],
@@ -123,7 +117,6 @@ describe('OrdersService', () => {
     mockPrisma.order.create.mockResolvedValue({ id: 1, userId: 1, status: 'new', ...validDto });
     mockPrisma.order.findUnique.mockResolvedValue(null);
     mockCartService.clearCart.mockResolvedValue({ userId: 1, items: [], subtotal: 0 });
-    mockPaymentsService.createPayment.mockResolvedValue({ payment_id: 'test-uuid', status: 'pending' });
   });
 
   describe('createOrder', () => {
@@ -131,7 +124,6 @@ describe('OrdersService', () => {
       const result = await service.createOrder(1, validDto);
 
       expect(result).toHaveProperty('order');
-      expect(result).toHaveProperty('payment');
       expect(mockPrisma.order.create).toHaveBeenCalled();
     });
 
@@ -139,12 +131,6 @@ describe('OrdersService', () => {
       await service.createOrder(1, validDto);
 
       expect(mockCartService.clearCart).toHaveBeenCalledWith(1);
-    });
-
-    it('должен создать платёж после создания заказа', async () => {
-      await service.createOrder(1, validDto);
-
-      expect(mockPaymentsService.createPayment).toHaveBeenCalledWith(1);
     });
 
     it('должен выбросить BadRequestException если корзина пуста', async () => {
