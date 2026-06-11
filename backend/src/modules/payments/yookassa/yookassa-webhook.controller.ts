@@ -43,6 +43,10 @@ export class YookassaWebhookController {
   @HttpCode(HttpStatus.OK)
   @ApiExcludeEndpoint()
   async handleWebhook(@Body() body: YookassaWebhookBody) {
+    if (!this.yookassa.isConfigured()) {
+      this.logger.warn('Вебхук получен, но ЮKassa не настроена — игнорируем');
+      return { ok: true };
+    }
     const providerPaymentId = body?.object?.id;
     if (!providerPaymentId || typeof providerPaymentId !== 'string') {
       this.logger.warn(`Вебхук без object.id: ${JSON.stringify(body)?.slice(0, 200)}`);

@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice, formatDate } from '@/lib/format';
-import { STATUS_LABELS, STATUS_COLORS } from '@/lib/constants';
+import { STATUS_LABELS, STATUS_COLORS, YANDEX_CLAIM_STATUS_LABELS } from '@/lib/constants';
 import { FadeIn } from '@/components/motion/fade-in';
 import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import { OrderChat } from '@/components/order-chat';
@@ -194,6 +194,28 @@ export default function AdminOrdersPage() {
                   <p className="text-xs text-muted-foreground">
                     Адрес: {order.address}
                   </p>
+                )}
+
+                {((order as any).payments?.length > 0 || order.yandexClaimStatus) && (
+                  <div className="flex gap-2 flex-wrap text-xs">
+                    {((order as any).payments ?? []).map((p: any) => (
+                      <Badge key={p.id} variant="outline">
+                        {p.kind === 'doplata' ? 'Доплата' : 'Оплата'}
+                        {' · '}{p.provider === 'yookassa' ? 'ЮKassa' : 'реквизиты'}
+                        {' · '}
+                        {p.status === 'succeeded'
+                          ? 'оплачен'
+                          : p.status === 'canceled'
+                            ? 'отменён'
+                            : 'ожидает'}
+                      </Badge>
+                    ))}
+                    {order.yandexClaimStatus && (
+                      <Badge variant="outline">
+                        Яндекс: {YANDEX_CLAIM_STATUS_LABELS[order.yandexClaimStatus] ?? order.yandexClaimStatus}
+                      </Badge>
+                    )}
+                  </div>
                 )}
 
                 <div className="flex gap-2 flex-wrap">

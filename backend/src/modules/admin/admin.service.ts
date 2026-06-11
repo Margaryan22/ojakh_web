@@ -32,6 +32,17 @@ export class AdminService {
         user: {
           select: { id: true, email: true, name: true, phone: true },
         },
+        payments: {
+          select: {
+            id: true,
+            kind: true,
+            provider: true,
+            status: true,
+            amountKopecks: true,
+            paidAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
