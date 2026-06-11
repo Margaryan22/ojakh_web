@@ -11,7 +11,20 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice, formatDateFull } from '@/lib/format';
-import { STATUS_LABELS, STATUS_COLORS, WAREHOUSE_ADDRESS } from '@/lib/constants';
+import {
+  STATUS_LABELS,
+  STATUS_COLORS,
+  WAREHOUSE_ADDRESS,
+  YANDEX_CLAIM_STATUS_LABELS,
+} from '@/lib/constants';
+import { usePaymentConfig, usePaymentFlow } from '@/lib/use-payment';
+import { YookassaWidget } from '@/components/yookassa-widget';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useAuthStore } from '@/stores/auth.store';
 import { FadeIn } from '@/components/motion/fade-in';
 import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
@@ -55,6 +68,34 @@ export default function OrderDetailPage() {
     },
   });
 
+  const { data: paymentConfig } = usePaymentConfig();
+  const provider = paymentConfig?.provider ?? 'manual';
+
+  const mainPayment = usePaymentFlow({
+    orderId: Number(orderId),
+    kind: 'main',
+    onSucceeded: () => {
+      toast.success('Оплата прошла успешно');
+      refetch();
+    },
+    onCanceled: () => {
+      toast.error('Платёж отменён. Попробуйте оплатить ещё раз.');
+    },
+  });
+
+  const doplataPayment = usePaymentFlow({
+    orderId: Number(orderId),
+    kind: 'doplata',
+    onSucceeded: () => {
+      toast.success('Заказ передан в доставку');
+      setQuote(null);
+      refetch();
+    },
+    onCanceled: () => {
+      toast.error('Платёж отменён. Попробуйте оплатить ещё раз.');
+    },
+  });
+
   const handleCancel = async () => {
     if (!confirm('Вы уверены, что хотите отменить заказ?')) return;
     setIsCancelling(true);
@@ -74,15 +115,17 @@ export default function OrderDetailPage() {
   };
 
   const handlePay = async () => {
-    if (!order?.paymentId) {
-      toast.error('Платёж не найден');
-      return;
-    }
     setIsPaying(true);
     try {
-      await api.post(`/payments/confirm/${order.paymentId}`);
-      toast.success('Оплата прошла успешно');
-      refetch();
+      if (provider === 'yookassa') {
+        // Платёж создан — виджет отрисуется по confirmation_token
+        await mainPayment.start();
+      } else {
+        const payment = await mainPayment.start();
+        await api.post(`/payments/confirm/${payment.payment_id}`);
+        toast.success('Оплата прошла успешно');
+        refetch();
+      }
     } catch (error) {
       if (error instanceof AxiosError) {
         toast.error(error.response?.data?.message ?? 'Ошибка оплаты');
@@ -91,6 +134,29 @@ export default function OrderDetailPage() {
       }
     } finally {
       setIsPaying(false);
+    }
+  };
+
+  // Доплата за курьера: создаёт платёж; для ЮKassa откроется диалог
+  // с виджетом, для manual — сразу подтверждаем перевод по реквизитам.
+  const handlePayDoplata = async () => {
+    setIsPayingDoplata(true);
+    try {
+      const payment = await doplataPayment.start();
+      if (provider !== 'yookassa') {
+        await api.post(`/payments/confirm/${payment.payment_id}`);
+        toast.success('Заказ передан в доставку');
+        setQuote(null);
+        refetch();
+      }
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Ошибка оплаты доплаты');
+      } else {
+        toast.error('Ошибка оплаты доплаты');
+      }
+    } finally {
+      setIsPayingDoplata(false);
     }
   };
 
@@ -119,26 +185,14 @@ export default function OrderDetailPage() {
         { recalcId: quote.recalcId },
       );
       if (data.status === 'awaiting_payment') {
-        toast.message('Подтвердите доплату за доставку');
-        setIsPayingDoplata(true);
-        try {
-          await api.post(`/payments/confirm/${data.doplataPaymentId}`);
-          toast.success('Заказ передан в доставку');
-        } catch (e) {
-          if (e instanceof AxiosError) {
-            toast.error(e.response?.data?.message ?? 'Ошибка оплаты доплаты');
-          } else {
-            toast.error('Ошибка оплаты доплаты');
-          }
-          return;
-        } finally {
-          setIsPayingDoplata(false);
-        }
+        toast.message('Оплатите доплату за доставку');
+        await handlePayDoplata();
+        refetch();
       } else {
         toast.success('Заказ передан в доставку');
+        setQuote(null);
+        refetch();
       }
-      setQuote(null);
-      refetch();
     } catch (error) {
       if (error instanceof AxiosError) {
         toast.error(error.response?.data?.message ?? 'Не удалось оформить доставку');
@@ -289,6 +343,14 @@ export default function OrderDetailPage() {
               </span>
             </p>
           )}
+          {order.yandexClaimStatus && YANDEX_CLAIM_STATUS_LABELS[order.yandexClaimStatus] && (
+            <p>
+              <span className="text-muted-foreground">Курьер:</span>{' '}
+              <span className="font-medium">
+                {YANDEX_CLAIM_STATUS_LABELS[order.yandexClaimStatus]}
+              </span>
+            </p>
+          )}
         </CardContent>
       </Card>
       </StaggerItem>
@@ -298,11 +360,41 @@ export default function OrderDetailPage() {
       </StaggerItem>
       </StaggerContainer>
 
-      {/* Payment details + pay button for new orders */}
-      {order.status === 'new' && order.paymentId && (
+      {/* Payment for new orders: YooKassa widget or manual requisites */}
+      {order.status === 'new' && provider === 'yookassa' && (
+        mainPayment.payment?.confirmation_token ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Оплата заказа</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <YookassaWidget
+                confirmationToken={mainPayment.payment.confirmation_token}
+                onSuccess={mainPayment.settleFromWidget}
+                onFail={() => {
+                  toast.error('Не удалось выполнить оплату. Попробуйте ещё раз.');
+                  mainPayment.reset();
+                }}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handlePay}
+            disabled={isPaying || mainPayment.isCreating}
+          >
+            {isPaying || mainPayment.isCreating
+              ? 'Готовим оплату...'
+              : `Оплатить ${formatPrice(order.total)}`}
+          </Button>
+        )
+      )}
+      {order.status === 'new' && provider === 'manual' && (
         <>
           <PaymentDetails
-            intro={`Сумма к оплате: ${formatPrice(order.subtotal)}. Переведите её по одному из вариантов ниже, а затем подтвердите оплату кнопкой «Оплатить».`}
+            intro={`Сумма к оплате: ${formatPrice(order.total)}. Переведите её по одному из вариантов ниже, а затем подтвердите оплату кнопкой «Оплатить».`}
           />
           <Button
             className="w-full"
@@ -310,10 +402,26 @@ export default function OrderDetailPage() {
             onClick={handlePay}
             disabled={isPaying}
           >
-            {isPaying ? 'Оплата...' : `Оплатить ${formatPrice(order.subtotal)}`}
+            {isPaying ? 'Оплата...' : `Оплатить ${formatPrice(order.total)}`}
           </Button>
         </>
       )}
+
+      {/* Doplata for courier when user returns to the page later */}
+      {order.status === 'awaiting_payment_for_courier' &&
+        (order.deliverySurchargeKopecks ?? 0) > 0 &&
+        !doplataPayment.payment && (
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handlePayDoplata}
+            disabled={isPayingDoplata || doplataPayment.isCreating}
+          >
+            {isPayingDoplata || doplataPayment.isCreating
+              ? 'Готовим оплату...'
+              : `Доплатить ${formatPrice(order.deliverySurchargeKopecks!)} за доставку`}
+          </Button>
+        )}
 
       {/* Cancel button for new (unpaid) orders */}
       {order.status === 'new' && (
@@ -411,6 +519,30 @@ export default function OrderDetailPage() {
         </motion.div>
       )}
       </AnimatePresence>
+
+      {/* YooKassa widget for courier surcharge */}
+      <Dialog
+        open={!!doplataPayment.payment?.confirmation_token}
+        onOpenChange={(open) => {
+          if (!open) doplataPayment.reset();
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Доплата за доставку</DialogTitle>
+          </DialogHeader>
+          {doplataPayment.payment?.confirmation_token && (
+            <YookassaWidget
+              confirmationToken={doplataPayment.payment.confirmation_token}
+              onSuccess={doplataPayment.settleFromWidget}
+              onFail={() => {
+                toast.error('Не удалось выполнить оплату. Попробуйте ещё раз.');
+                doplataPayment.reset();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -46,6 +46,7 @@ import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { FadeIn } from '@/components/motion/fade-in';
 import { PaymentDetails } from '@/components/payment-details';
+import { usePaymentConfig } from '@/lib/use-payment';
 import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
 import { AnimatePresence, motion } from 'framer-motion';
 import type {
@@ -62,6 +63,8 @@ type Step = 'cart' | 'delivery' | 'confirm';
 export default function CartPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const { data: paymentConfig } = usePaymentConfig();
+  const paymentProvider = paymentConfig?.provider ?? 'manual';
   const {
     items,
     isLoading,
@@ -1337,9 +1340,19 @@ export default function CartPage() {
             </CardContent>
           </Card>
 
-          <PaymentDetails
-            intro={`После оформления заказа нужно будет перевести ${formatPrice(totalPrice() + deliveryCost)} по одному из вариантов ниже. Реквизиты также появятся на странице заказа.`}
-          />
+          {paymentProvider === 'yookassa' ? (
+            <Card>
+              <CardContent className='py-4 text-sm text-muted-foreground'>
+                После оформления заказа вы сможете оплатить{' '}
+                {formatPrice(totalPrice() + deliveryCost)} картой или через СБП
+                на странице заказа.
+              </CardContent>
+            </Card>
+          ) : (
+            <PaymentDetails
+              intro={`После оформления заказа нужно будет перевести ${formatPrice(totalPrice() + deliveryCost)} по одному из вариантов ниже. Реквизиты также появятся на странице заказа.`}
+            />
+          )}
 
           <Button
             className='w-full'
