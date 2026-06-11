@@ -22,6 +22,9 @@ export function Footer() {
           Предложить идею
         </button>
       </div>
+      <p className='pb-3 text-center text-xs text-foreground/25 select-none'>
+        ИНН 524507570114
+      </p>
       <FeedbackDialog open={open} onOpenChange={setOpen} />
     </footer>
   );
