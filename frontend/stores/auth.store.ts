@@ -25,6 +25,23 @@ interface AuthActions {
   updateProfile: (data: { name?: string }) => Promise<void>;
 }
 
+// Локальное состояние (корзина, избранное, уведомления, кэш запросов) принадлежит
+// конкретному пользователю или гостю. Сбрасываем его при выходе и при входе под
+// другой аккаунт без logout — иначе finalizeAuthSuccess перенесёт данные прошлого
+// пользователя в новый аккаунт как «гостевые».
+function resetLocalUserState() {
+  useCartStore.setState({ items: [] });
+  useFavoritesStore.setState({ items: [] });
+  useNotificationsStore.setState({ items: [] });
+  queryClient.clear();
+  try {
+    useCartStore.persist.clearStorage();
+    useFavoritesStore.persist.clearStorage();
+  } catch {
+    // ignore
+  }
+}
+
 export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   user: null,
   accessToken: null,
@@ -41,8 +58,10 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
 
   login: async (email: string, password: string) => {
     set({ isLoading: true });
+    const wasAuthenticated = get().user !== null;
     try {
       const { data } = await api.post('/auth/login', { email, password });
+      if (wasAuthenticated) resetLocalUserState();
       set({
         user: data.user,
         accessToken: data.accessToken,
@@ -56,6 +75,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
 
   register: async (registerData) => {
     set({ isLoading: true });
+    const wasAuthenticated = get().user !== null;
     try {
       const payload: Record<string, unknown> = {
         email: registerData.email,
@@ -65,6 +85,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       if (registerData.phone) payload.phone = registerData.phone;
 
       const { data } = await api.post('/auth/register', payload);
+      if (wasAuthenticated) resetLocalUserState();
       set({
         user: data.user,
         accessToken: data.accessToken,
@@ -78,8 +99,10 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
 
   socialLogin: async (provider, payload) => {
     set({ isLoading: true });
+    const wasAuthenticated = get().user !== null;
     try {
       const { data } = await api.post(`/auth/${provider}`, payload);
+      if (wasAuthenticated) resetLocalUserState();
       set({
         user: data.user,
         accessToken: data.accessToken,
@@ -98,16 +121,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       // ignore errors on logout
     }
     set({ user: null, accessToken: null });
-    useCartStore.setState({ items: [] });
-    useFavoritesStore.setState({ items: [] });
-    useNotificationsStore.setState({ items: [] });
-    queryClient.clear();
-    try {
-      useCartStore.persist.clearStorage();
-      useFavoritesStore.persist.clearStorage();
-    } catch {
-      // ignore
-    }
+    resetLocalUserState();
   },
 
   loadUser: async () => {
