@@ -16,12 +16,24 @@ export interface YookassaPayment {
   metadata?: Record<string, string>;
 }
 
+// Нейтральная позиция чека: количество уже «свёрнуто» в сумму строки,
+// поэтому сумма позиций всегда сходится с платежом до копейки.
+export interface ReceiptLine {
+  description: string;
+  amountKopecks: number;
+  paymentSubject: 'commodity' | 'service';
+}
+
 export interface CreateYookassaPaymentParams {
   amountKopecks: number;
   description: string;
   idempotenceKey: string;
   metadata?: Record<string, string>;
+  customerEmail?: string;
+  receiptLines?: ReceiptLine[];
 }
+
+const RECEIPT_DESCRIPTION_MAX = 128;
 
 /**
  * Тонкий клиент API ЮKassa (https://yookassa.ru/developers/api).
@@ -58,11 +70,41 @@ export class YookassaService {
     };
   }
 
+  // Чек 54-ФЗ отправляется, когда в кабинете включены «ЮKassa Чеки».
+  // Отключение: YOOKASSA_SEND_RECEIPT=0 (например, пока фискализация не активна).
+  private get sendReceipt(): boolean {
+    return (this.config.get<string>('YOOKASSA_SEND_RECEIPT') ?? '1') !== '0';
+  }
+
+  private buildReceipt(params: CreateYookassaPaymentParams) {
+    if (!this.sendReceipt || !params.customerEmail || !params.receiptLines?.length) {
+      return undefined;
+    }
+    const vatCode = Number(this.config.get<string>('YOOKASSA_VAT_CODE')) || 1;
+    const taxSystemCode = Number(
+      this.config.get<string>('YOOKASSA_TAX_SYSTEM_CODE'),
+    );
+    return {
+      customer: { email: params.customerEmail },
+      items: params.receiptLines.map((line) => ({
+        description: line.description.slice(0, RECEIPT_DESCRIPTION_MAX),
+        quantity: '1.00',
+        amount: {
+          value: (line.amountKopecks / 100).toFixed(2),
+          currency: 'RUB',
+        },
+        vat_code: vatCode,
+        payment_subject: line.paymentSubject,
+        payment_mode: 'full_payment',
+      })),
+      ...(taxSystemCode ? { tax_system_code: taxSystemCode } : {}),
+    };
+  }
+
   async createPayment(
     params: CreateYookassaPaymentParams,
   ): Promise<YookassaPayment> {
-    // TODO: добавить объект receipt (чек 54-ФЗ) до приёма боевых платежей,
-    // если у магазина настроена онлайн-фискализация.
+    const receipt = this.buildReceipt(params);
     const body = {
       amount: {
         value: (params.amountKopecks / 100).toFixed(2),
@@ -72,6 +114,7 @@ export class YookassaService {
       confirmation: { type: 'embedded' },
       description: params.description,
       metadata: params.metadata ?? {},
+      ...(receipt ? { receipt } : {}),
     };
 
     try {

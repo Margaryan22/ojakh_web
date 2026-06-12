@@ -173,15 +173,38 @@ describe('PaymentsService', () => {
   });
 
   describe('createPayment (yookassa mode)', () => {
-    it('должен создать платёж в ЮKassa и вернуть confirmation_token', async () => {
+    const ykOrder = {
+      id: 1,
+      userId: 1,
+      status: 'new',
+      total: 150000,
+      deliveryCost: 15000,
+      orderNumber: '1234',
+      user: { email: 'buyer@test.local' },
+      items: [
+        {
+          product_id: 1,
+          name: 'Хинкали говядина',
+          category: 'хинкали',
+          quantity: 10,
+          unit: 'шт',
+          price: 9000,
+          subtotal: 90000,
+        },
+        {
+          product_id: 2,
+          name: 'Сыр Чанах',
+          category: 'сыры',
+          quantity: 0.5,
+          unit: 'кг',
+          price: 90000,
+          subtotal: 45000,
+        },
+      ],
+    };
+
+    beforeEach(() => {
       mockYookassa.isConfigured.mockReturnValue(true);
-      mockPrisma.order.findUnique.mockResolvedValue({
-        id: 1,
-        userId: 1,
-        status: 'new',
-        total: 150000,
-        orderNumber: '1234',
-      });
       mockPrisma.payment.create.mockResolvedValue({
         id: 'pay-uuid',
         orderId: 1,
@@ -195,6 +218,10 @@ describe('PaymentsService', () => {
         confirmation: { type: 'embedded', confirmation_token: 'ct-token' },
       });
       mockPrisma.payment.update.mockResolvedValue({});
+    });
+
+    it('должен создать платёж в ЮKassa и вернуть confirmation_token', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue(ykOrder);
 
       const result = await service.createPayment(1, 'main', 1);
 
@@ -203,6 +230,111 @@ describe('PaymentsService', () => {
       expect(mockYookassa.createPayment).toHaveBeenCalledWith(
         expect.objectContaining({ idempotenceKey: 'pay-uuid', amountKopecks: 150000 }),
       );
+    });
+
+    it('чек: позиции из заказа + «Доставка», email покупателя, сумма сходится', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue(ykOrder);
+
+      await service.createPayment(1, 'main', 1);
+
+      const args = mockYookassa.createPayment.mock.calls[0][0];
+      expect(args.customerEmail).toBe('buyer@test.local');
+      expect(args.receiptLines).toEqual([
+        {
+          description: 'Хинкали говядина × 10 шт',
+          amountKopecks: 90000,
+          paymentSubject: 'commodity',
+        },
+        {
+          description: 'Сыр Чанах × 0.5 кг',
+          amountKopecks: 45000,
+          paymentSubject: 'commodity',
+        },
+        {
+          description: 'Доставка',
+          amountKopecks: 15000,
+          paymentSubject: 'service',
+        },
+      ]);
+      const sum = args.receiptLines.reduce(
+        (acc: number, l: { amountKopecks: number }) => acc + l.amountKopecks,
+        0,
+      );
+      expect(sum).toBe(150000);
+    });
+
+    it('чек: разница от округлений добавляется к последней позиции', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        ...ykOrder,
+        total: 100001,
+        deliveryCost: 0,
+        items: [
+          { ...ykOrder.items[0], subtotal: 60000.4 },
+          { ...ykOrder.items[1], subtotal: 40000.2 },
+        ],
+      });
+      mockPrisma.payment.create.mockResolvedValue({
+        id: 'pay-uuid',
+        orderId: 1,
+        kind: 'main',
+        provider: 'yookassa',
+        amountKopecks: 100001,
+      });
+
+      await service.createPayment(1, 'main', 1);
+
+      const args = mockYookassa.createPayment.mock.calls[0][0];
+      const sum = args.receiptLines.reduce(
+        (acc: number, l: { amountKopecks: number }) => acc + l.amountKopecks,
+        0,
+      );
+      expect(sum).toBe(100001);
+      expect(args.receiptLines[1].amountKopecks).toBe(40001);
+    });
+
+    it('чек доплаты: одна сервисная позиция на полную сумму', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        ...ykOrder,
+        status: 'awaiting_payment_for_courier',
+        deliverySurchargeKopecks: 20000,
+      });
+      mockPrisma.payment.create.mockResolvedValue({
+        id: 'dop-uuid',
+        orderId: 1,
+        kind: 'doplata',
+        provider: 'yookassa',
+        amountKopecks: 20000,
+      });
+
+      await service.createPayment(1, 'doplata', 1);
+
+      const args = mockYookassa.createPayment.mock.calls[0][0];
+      expect(args.receiptLines).toEqual([
+        {
+          description: 'Доплата за доставку по заказу №1234',
+          amountKopecks: 20000,
+          paymentSubject: 'service',
+        },
+      ]);
+    });
+
+    it('чек: пустой состав заказа — одна агрегированная позиция', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        ...ykOrder,
+        items: [],
+        deliveryCost: 0,
+      });
+
+      await service.createPayment(1, 'main', 1);
+
+      const args = mockYookassa.createPayment.mock.calls[0][0];
+      expect(args.receiptLines).toEqual([
+        {
+          description: 'Оплата заказа №1234',
+          amountKopecks: 150000,
+          paymentSubject: 'commodity',
+        },
+      ]);
     });
   });
 
