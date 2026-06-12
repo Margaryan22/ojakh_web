@@ -8,7 +8,12 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { DeliveryClaimsService } from '../delivery/claims/delivery-claims.service';
-import { YookassaService, YookassaPayment } from './yookassa/yookassa.service';
+import {
+  YookassaService,
+  YookassaPayment,
+  ReceiptLine,
+} from './yookassa/yookassa.service';
+import type { CartItem } from '../cart/cart.service';
 
 export type PaymentKind = 'main' | 'doplata';
 export type PaymentProvider = 'yookassa' | 'manual';
@@ -45,7 +50,10 @@ export class PaymentsService {
     kind: PaymentKind = 'main',
     userId?: number,
   ): Promise<CreatePaymentResult> {
-    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { user: { select: { email: true } } },
+    });
     if (!order) {
       throw new NotFoundException(`Order #${orderId} not found`);
     }
@@ -103,18 +111,21 @@ export class PaymentsService {
 
     let confirmationToken: string | undefined;
     if (provider === 'yookassa') {
+      const orderLabel = String(order.orderNumber ?? order.id);
       const yk = await this.yookassa.createPayment({
         amountKopecks,
         description:
           kind === 'doplata'
-            ? `Доплата за доставку по заказу №${order.orderNumber ?? order.id}`
-            : `Оплата заказа №${order.orderNumber ?? order.id}`,
+            ? `Доплата за доставку по заказу №${orderLabel}`
+            : `Оплата заказа №${orderLabel}`,
         idempotenceKey: payment.id,
         metadata: {
           payment_id: payment.id,
           order_id: String(order.id),
           kind,
         },
+        customerEmail: order.user.email,
+        receiptLines: this.buildReceiptLines(order, kind, amountKopecks, orderLabel),
       });
       confirmationToken = yk.confirmation?.confirmation_token;
       await this.prisma.payment.update({
@@ -143,6 +154,64 @@ export class PaymentsService {
       amount_kopecks: amountKopecks,
       confirmation_token: confirmationToken,
     };
+  }
+
+  /**
+   * Позиции чека 54-ФЗ. Количество сворачивается в сумму строки
+   * (quantity всегда 1, вес/штуки — в описании): при дробных количествах
+   * (кг) построчное умножение цены на количество у ЮKassa может разойтись
+   * с суммой платежа на копейку, а чек обязан сходиться точно. Остаточная
+   * разница от округлений добавляется к последней позиции.
+   */
+  private buildReceiptLines(
+    order: { items: unknown; deliveryCost: number },
+    kind: PaymentKind,
+    amountKopecks: number,
+    orderLabel: string,
+  ): ReceiptLine[] {
+    if (kind === 'doplata') {
+      return [
+        {
+          description: `Доплата за доставку по заказу №${orderLabel}`,
+          amountKopecks,
+          paymentSubject: 'service',
+        },
+      ];
+    }
+
+    const items = (order.items as CartItem[] | null) ?? [];
+    const lines: ReceiptLine[] = items.map((it) => {
+      const details = [it.flavor, it.size].filter(Boolean).join(', ');
+      const name = details ? `${it.name} (${details})` : it.name;
+      return {
+        description: `${name} × ${it.quantity} ${it.unit ?? 'шт'}`,
+        amountKopecks: Math.round(it.subtotal ?? it.price * it.quantity),
+        paymentSubject: 'commodity' as const,
+      };
+    });
+    if (order.deliveryCost > 0) {
+      lines.push({
+        description: 'Доставка',
+        amountKopecks: order.deliveryCost,
+        paymentSubject: 'service',
+      });
+    }
+
+    const sum = lines.reduce((acc, l) => acc + l.amountKopecks, 0);
+    const diff = amountKopecks - sum;
+    if (diff !== 0 && lines.length > 0) {
+      lines[lines.length - 1].amountKopecks += diff;
+    }
+    if (lines.length === 0 || lines.some((l) => l.amountKopecks <= 0)) {
+      return [
+        {
+          description: `Оплата заказа №${orderLabel}`,
+          amountKopecks,
+          paymentSubject: 'commodity',
+        },
+      ];
+    }
+    return lines;
   }
 
   /**
