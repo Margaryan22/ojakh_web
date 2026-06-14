@@ -29,6 +29,7 @@ export function Footer() {
       <div className='border-t'>
         <div className='max-w-7xl mx-auto px-4 py-4 space-y-1 text-center text-xs text-muted-foreground sm:text-left'>
           <p>Самозанятый Маргарян Саргис Жирайрович · ИНН 524508763158</p>
+          <p>Адрес: 603053, г. Нижний Новгород, ул. Мельникова, 29А</p>
           <p>
             Телефон:{' '}
             <a href={`tel:+${CONTACT_PHONE_HREF}`} className='transition-colors hover:text-foreground'>
