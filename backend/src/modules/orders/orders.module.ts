@@ -6,9 +6,10 @@ import { CartModule } from '../cart/cart.module';
 import { DeliveryModule } from '../delivery/delivery.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { AddressesModule } from '../addresses/addresses.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
-  imports: [AuthModule, CartModule, DeliveryModule, PaymentsModule, AddressesModule],
+  imports: [AuthModule, CartModule, DeliveryModule, PaymentsModule, AddressesModule, SettingsModule],
   controllers: [OrdersController],
   providers: [OrdersService],
   exports: [OrdersService],

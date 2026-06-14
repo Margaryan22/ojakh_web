@@ -56,6 +56,9 @@ export interface DeliveryCostInput {
   lat?: number | null;
   lon?: number | null;
   subtotalKopecks?: number | null;
+  // Порог бесплатной доставки в копейках. По умолчанию — константа;
+  // вызывающий код передаёт сюда актуальное значение из настроек магазина.
+  freeThresholdKopecks?: number | null;
 }
 
 export type DeliveryCostBreakdown =
@@ -347,9 +350,11 @@ export class DeliveryService {
     const params: DeliveryCostInput =
       typeof input === 'string' ? { address: input } : input;
 
+    const threshold =
+      params.freeThresholdKopecks ?? FREE_DELIVERY_THRESHOLD_KOPECKS;
+
     const freeByThreshold =
-      params.subtotalKopecks != null &&
-      params.subtotalKopecks >= FREE_DELIVERY_THRESHOLD_KOPECKS;
+      params.subtotalKopecks != null && params.subtotalKopecks >= threshold;
 
     if (freeByThreshold) {
       const distanceKm =
@@ -362,7 +367,7 @@ export class DeliveryService {
         freeDelivery: true,
         breakdown: {
           type: 'free_threshold',
-          thresholdKopecks: FREE_DELIVERY_THRESHOLD_KOPECKS,
+          thresholdKopecks: threshold,
         },
       };
     }

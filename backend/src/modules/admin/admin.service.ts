@@ -3,12 +3,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ACTIVE_STATUSES, TORT_CATEGORY, DEFAULT_MAX_UNITS, MAX_TORTS } from '../../common/constants';
 import { UpsertDailyLimitDto } from './dto/upsert-daily-limit.dto';
+import { SettingsService } from '../settings/settings.service';
+import { UpdateSettingsDto } from '../settings/dto/update-settings.dto';
 
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly settings: SettingsService,
   ) {}
 
   async getOrders(filters: { status?: string; date?: string }) {
@@ -301,5 +304,13 @@ export class AdminService {
       .delete({ where: { deliveryDate: dateOnly } })
       .catch(() => null); // idempotent
     return { ok: true };
+  }
+
+  getSettings() {
+    return this.settings.get();
+  }
+
+  updateSettings(dto: UpdateSettingsDto) {
+    return this.settings.update(dto);
   }
 }

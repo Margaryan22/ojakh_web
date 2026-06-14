@@ -12,6 +12,7 @@ import { OptionalJwtGuard } from '../auth/optional-jwt.guard';
 import { CartService } from '../cart/cart.service';
 import { DeliveryService, CheckDateOpts } from './delivery.service';
 import { BuildingInfoService } from './building-info.service';
+import { SettingsService } from '../settings/settings.service';
 import { TORT_CATEGORY } from '../../common/constants';
 
 @ApiTags('delivery')
@@ -23,6 +24,7 @@ export class DeliveryController {
     private readonly deliveryService: DeliveryService,
     private readonly cartService: CartService,
     private readonly buildingInfo: BuildingInfoService,
+    private readonly settings: SettingsService,
   ) {}
 
   @Get('check-date')
@@ -72,7 +74,7 @@ export class DeliveryController {
     type: Number,
     description: 'Сумма заказа в копейках — для оценки бесплатной доставки',
   })
-  getDeliveryCost(
+  async getDeliveryCost(
     @Query('address') address?: string,
     @Query('lat') lat?: string,
     @Query('lon') lon?: string,
@@ -82,11 +84,13 @@ export class DeliveryController {
     const lonNum = lon != null && lon !== '' ? parseFloat(lon) : null;
     const subNum =
       subtotal != null && subtotal !== '' ? parseInt(subtotal, 10) : null;
+    const { freeDeliveryThresholdKopecks } = await this.settings.get();
     return this.deliveryService.getDeliveryCost({
       address,
       lat: Number.isFinite(latNum as number) ? latNum : null,
       lon: Number.isFinite(lonNum as number) ? lonNum : null,
       subtotalKopecks: Number.isFinite(subNum as number) ? subNum : null,
+      freeThresholdKopecks: freeDeliveryThresholdKopecks,
     });
   }
 

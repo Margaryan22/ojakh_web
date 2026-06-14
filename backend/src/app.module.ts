@@ -20,6 +20,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { OrderMessagesModule } from './modules/order-messages/order-messages.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
     ReviewsModule,
     OrderMessagesModule,
     FeedbackModule,
+    SettingsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

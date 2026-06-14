@@ -6,6 +6,7 @@ import { CartService } from '../cart/cart.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { AddressesService } from '../addresses/addresses.service';
 import { AddressVerifierService } from '../delivery/address-verifier.service';
+import { SettingsService } from '../settings/settings.service';
 
 const mockPrisma = {
   product: {
@@ -38,6 +39,16 @@ const mockAddressesService = {
 
 const mockAddressVerifier = {
   verify: jest.fn(),
+};
+
+// Дефолтные настройки магазина (совпадают с константами из constants.ts):
+// MIN_ORDER_KOPECKS = 100 000, FREE_DELIVERY_THRESHOLD_KOPECKS = 400 000.
+const mockSettingsService = {
+  get: jest.fn().mockResolvedValue({
+    id: 1,
+    minOrderKopecks: 100_000,
+    freeDeliveryThresholdKopecks: 400_000,
+  }),
 };
 
 /**
@@ -90,6 +101,7 @@ describe('OrdersService', () => {
         { provide: DeliveryService, useValue: mockDeliveryService },
         { provide: AddressesService, useValue: mockAddressesService },
         { provide: AddressVerifierService, useValue: mockAddressVerifier },
+        { provide: SettingsService, useValue: mockSettingsService },
       ],
     }).compile();
 
