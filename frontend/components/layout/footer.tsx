@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { MessageSquarePlus } from 'lucide-react';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 
+const CONTACT_PHONE_DISPLAY = '+7 (904) 059-23-03';
+const CONTACT_PHONE_HREF = '+79040592303';
+const CONTACT_EMAIL = 'sargismargaryan0605@gmail.com';
+
 export function Footer() {
   const [open, setOpen] = useState(false);
 
@@ -22,9 +26,23 @@ export function Footer() {
           Предложить идею
         </button>
       </div>
-      <p className='pb-3 text-center text-xs text-foreground/25 select-none'>
-        ИНН 524507570114
-      </p>
+      <div className='border-t'>
+        <div className='max-w-7xl mx-auto px-4 py-4 space-y-1 text-center text-xs text-muted-foreground sm:text-left'>
+          <p>Самозанятый Маргарян Саргис Жирайрович · ИНН 524508763158</p>
+          <p>
+            Телефон:{' '}
+            <a href={`tel:+${CONTACT_PHONE_HREF}`} className='transition-colors hover:text-foreground'>
+              {CONTACT_PHONE_DISPLAY}
+            </a>
+          </p>
+          <p>
+            E-mail:{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} className='transition-colors hover:text-foreground'>
+              {CONTACT_EMAIL}
+            </a>
+          </p>
+        </div>
+      </div>
       <FeedbackDialog open={open} onOpenChange={setOpen} />
     </footer>
   );
