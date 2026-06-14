@@ -10,12 +10,12 @@ import { DeliveryService } from '../delivery/delivery.service';
 import { AddressVerifierService } from '../delivery/address-verifier.service';
 import { AddressesService } from '../addresses/addresses.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { SettingsService } from '../settings/settings.service';
 import {
   TORT_CATEGORY,
   MAX_TORTS,
   MIN_DAYS_AHEAD,
   MAX_DAYS_AHEAD,
-  MIN_ORDER_KOPECKS,
 } from '../../common/constants';
 
 @Injectable()
@@ -26,6 +26,7 @@ export class OrdersService {
     private readonly deliveryService: DeliveryService,
     private readonly addressesService: AddressesService,
     private readonly addressVerifier: AddressVerifierService,
+    private readonly settings: SettingsService,
   ) {}
 
   async createOrder(userId: number, dto: CreateOrderDto) {
@@ -36,10 +37,11 @@ export class OrdersService {
     }
 
     // 1b. Min order amount (subtotal only, без доставки)
+    const settings = await this.settings.get();
     const subtotal = cart.items.reduce((sum, item) => sum + item.subtotal, 0);
-    if (subtotal < MIN_ORDER_KOPECKS) {
+    if (subtotal < settings.minOrderKopecks) {
       throw new BadRequestException(
-        `Минимальная сумма заказа — ${(MIN_ORDER_KOPECKS / 100).toFixed(0)} ₽`,
+        `Минимальная сумма заказа — ${(settings.minOrderKopecks / 100).toFixed(0)} ₽`,
       );
     }
 
@@ -153,6 +155,7 @@ export class OrdersService {
         lat: dto.address_lat ?? null,
         lon: dto.address_lon ?? null,
         subtotalKopecks: subtotal,
+        freeThresholdKopecks: settings.freeDeliveryThresholdKopecks,
       });
       deliveryCost = costResult.cost;
     }

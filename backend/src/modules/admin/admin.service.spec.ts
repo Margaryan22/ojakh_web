@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SettingsService } from '../settings/settings.service';
 
 const mockPrisma = {
   order: {
@@ -18,6 +19,11 @@ const mockPrisma = {
 
 const mockNotifications = {
   createForOrder: jest.fn(),
+};
+
+const mockSettingsService = {
+  get: jest.fn(),
+  update: jest.fn(),
 };
 
 const sampleOrder = {
@@ -40,6 +46,7 @@ describe('AdminService', () => {
         AdminService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: NotificationsService, useValue: mockNotifications },
+        { provide: SettingsService, useValue: mockSettingsService },
       ],
     }).compile();
 

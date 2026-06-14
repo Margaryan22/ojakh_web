@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { DeliveryService } from '../delivery.service';
+import { SettingsService } from '../../settings/settings.service';
 import { YandexDeliveryService, YandexOrderInfo } from './yandex-delivery.service';
 import { RECALC_TTL_SECONDS_DEFAULT } from '../../../common/constants';
 
@@ -43,6 +44,7 @@ export class DeliveryClaimsService {
     private readonly notifications: NotificationsService,
     private readonly yandex: YandexDeliveryService,
     private readonly config: ConfigService,
+    private readonly settings: SettingsService,
   ) {}
 
   async quoteClaim(userId: number, orderId: number): Promise<QuoteResult> {
@@ -112,11 +114,13 @@ export class DeliveryClaimsService {
         );
       }
     }
+    const { freeDeliveryThresholdKopecks } = await this.settings.get();
     const { cost } = this.delivery.getDeliveryCost({
       address: order.address ?? undefined,
       lat: order.addressLat,
       lon: order.addressLon,
       subtotalKopecks: order.subtotal,
+      freeThresholdKopecks: freeDeliveryThresholdKopecks,
     });
     return cost;
   }

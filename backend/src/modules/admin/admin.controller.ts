@@ -16,6 +16,7 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { AdminGuard } from '../auth/admin.guard';
 import { AdminService } from './admin.service';
 import { UpsertDailyLimitDto } from './dto/upsert-daily-limit.dto';
+import { UpdateSettingsDto } from '../settings/dto/update-settings.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -97,5 +98,22 @@ export class AdminController {
   })
   resetDailyLimit(@Param('date') date: string) {
     return this.adminService.resetDailyLimit(date);
+  }
+
+  @Get('settings')
+  @ApiOperation({
+    summary: 'Get store settings: min order amount & free delivery threshold (admin only)',
+  })
+  getSettings() {
+    return this.adminService.getSettings();
+  }
+
+  @Put('settings')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update store settings: min order amount & free delivery threshold (admin only)',
+  })
+  updateSettings(@Body() dto: UpdateSettingsDto) {
+    return this.adminService.updateSettings(dto);
   }
 }

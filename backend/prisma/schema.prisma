@@ -254,3 +254,16 @@ model DailyLimit {
   blackoutReason String?
 }
 
+// ─── StoreSettings ──────────────────────────────────────────────────────────
+// Глобальные настройки магазина, редактируемые из админки. Единственная строка
+// (id = 1). Значения по умолчанию совпадают с константами в common/constants.ts:
+// MIN_ORDER_KOPECKS и FREE_DELIVERY_THRESHOLD_KOPECKS — они же используются как
+// fallback в коде, если строка ещё не создана.
+
+model StoreSettings {
+  id                           Int      @id @default(1)
+  minOrderKopecks              Int      @default(100000)
+  freeDeliveryThresholdKopecks Int      @default(400000)
+  updatedAt                    DateTime @updatedAt
+}
+

@@ -10,6 +10,7 @@ import {
   CalendarDays,
   BarChart2,
   MessageSquare,
+  Settings,
   ArrowLeft,
   Volume2,
   VolumeX,
@@ -35,6 +36,7 @@ const adminLinks: {
   { href: '/admin/calendar', label: 'Календарь', icon: CalendarDays, badge: null },
   { href: '/admin/analytics', label: 'Аналитика', icon: BarChart2, badge: null },
   { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare, badge: 'feedback' },
+  { href: '/admin/settings', label: 'Настройки', icon: Settings, badge: null },
 ];
 
 const MUTE_STORAGE_KEY = 'admin-chat-mute';

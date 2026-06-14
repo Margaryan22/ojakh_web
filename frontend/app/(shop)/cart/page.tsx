@@ -36,8 +36,8 @@ import {
   MAX_ITEM_QTY_PER_ORDER,
   CAKE_CATEGORY,
   FALLBACK_DELIVERY_COST,
-  FREE_DELIVERY_THRESHOLD_KOPECKS,
-  MIN_ORDER_KOPECKS,
+  FREE_DELIVERY_THRESHOLD_KOPECKS as DEFAULT_FREE_DELIVERY_THRESHOLD_KOPECKS,
+  MIN_ORDER_KOPECKS as DEFAULT_MIN_ORDER_KOPECKS,
   MIN_DAYS_AHEAD,
   MAX_DAYS_AHEAD,
   WAREHOUSE_ADDRESS,
@@ -108,6 +108,25 @@ export default function CartPage() {
   const cartUnits = totalItems();
   const cartTorts = tortCount();
   const hasTorts = cartTorts > 0;
+
+  // Настройки магазина (мин. сумма заказа и порог бесплатной доставки)
+  // редактируются в админке. Пока грузятся / при ошибке — дефолты из constants.ts.
+  const { data: storeSettings } = useQuery({
+    queryKey: ['store-settings'],
+    queryFn: async () => {
+      const { data } = await api.get('/settings');
+      return data as {
+        minOrderKopecks: number;
+        freeDeliveryThresholdKopecks: number;
+      };
+    },
+    staleTime: 5 * 60_000,
+  });
+  const MIN_ORDER_KOPECKS =
+    storeSettings?.minOrderKopecks ?? DEFAULT_MIN_ORDER_KOPECKS;
+  const FREE_DELIVERY_THRESHOLD_KOPECKS =
+    storeSettings?.freeDeliveryThresholdKopecks ??
+    DEFAULT_FREE_DELIVERY_THRESHOLD_KOPECKS;
 
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
