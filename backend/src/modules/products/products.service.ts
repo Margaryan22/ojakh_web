@@ -19,10 +19,31 @@ export class ProductsService {
       where.available = query.available;
     }
 
-    return this.prisma.product.findMany({
-      where,
-      orderBy: [{ category: 'asc' }, { name: 'asc' }],
-    });
+    const search = query.search?.trim();
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { flavor: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (query.minPrice !== undefined || query.maxPrice !== undefined) {
+      where.price = {};
+      if (query.minPrice !== undefined) where.price.gte = query.minPrice;
+      if (query.maxPrice !== undefined) where.price.lte = query.maxPrice;
+    }
+
+    const orderBy: any =
+      query.sort === 'price_asc'
+        ? { price: 'asc' }
+        : query.sort === 'price_desc'
+          ? { price: 'desc' }
+          : query.sort === 'name'
+            ? { name: 'asc' }
+            : [{ category: 'asc' }, { name: 'asc' }];
+
+    return this.prisma.product.findMany({ where, orderBy });
   }
 
   async findOne(id: number) {
