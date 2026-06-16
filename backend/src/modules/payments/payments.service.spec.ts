@@ -4,6 +4,7 @@ import { PaymentsService } from './payments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DeliveryClaimsService } from '../delivery/claims/delivery-claims.service';
 import { YookassaService } from './yookassa/yookassa.service';
+import { PromoService } from '../promo/promo.service';
 
 const mockPrisma = {
   order: {
@@ -31,6 +32,10 @@ const mockYookassa = {
   getPayment: jest.fn(),
 };
 
+const mockPromo = {
+  markUsed: jest.fn(),
+};
+
 describe('PaymentsService', () => {
   let service: PaymentsService;
 
@@ -41,6 +46,7 @@ describe('PaymentsService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: DeliveryClaimsService, useValue: mockDeliveryClaims },
         { provide: YookassaService, useValue: mockYookassa },
+        { provide: PromoService, useValue: mockPromo },
       ],
     }).compile();
 

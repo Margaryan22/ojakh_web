@@ -14,6 +14,7 @@ import {
   ReceiptLine,
 } from './yookassa/yookassa.service';
 import type { CartItem } from '../cart/cart.service';
+import { PromoService } from '../promo/promo.service';
 
 export type PaymentKind = 'main' | 'doplata';
 export type PaymentProvider = 'yookassa' | 'manual';
@@ -39,6 +40,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly deliveryClaims: DeliveryClaimsService,
     private readonly yookassa: YookassaService,
+    private readonly promo: PromoService,
   ) {}
 
   getConfig(): { provider: PaymentProvider } {
@@ -357,10 +359,20 @@ export class PaymentsService {
     if (moved.count !== 1) return; // уже обработан
 
     if (kind === 'main') {
-      await this.prisma.order.updateMany({
+      const orderMoved = await this.prisma.order.updateMany({
         where: { id: orderId, status: 'new' },
         data: { status: 'paid', paidAt: new Date() },
       });
+      // Промокод засчитываем ровно один раз — на переходе заказа new → paid.
+      if (orderMoved.count === 1) {
+        const order = await this.prisma.order.findUnique({
+          where: { id: orderId },
+          select: { promoCode: true },
+        });
+        if (order?.promoCode) {
+          await this.promo.markUsed(order.promoCode);
+        }
+      }
     } else {
       await this.deliveryClaims.onDoplataConfirmed(orderId);
     }
