@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
+import * as Sentry from '@sentry/nestjs';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -26,6 +27,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (exception instanceof Error) {
       // Log but don't expose internal errors
       console.error('Unhandled exception:', exception.message);
+    }
+
+    // В Sentry отправляем только серверные ошибки (5xx) и неизвестные
+    // исключения; 4xx (валидация / 403 / 404) — шум. No-op без SENTRY_DSN.
+    if (!(exception instanceof HttpException) || status >= 500) {
+      Sentry.captureException(exception);
     }
 
     reply.status(status).send({

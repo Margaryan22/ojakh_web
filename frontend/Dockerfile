@@ -20,6 +20,10 @@ ENV NEXT_PUBLIC_APPLE_CLIENT_ID=$NEXT_PUBLIC_APPLE_CLIENT_ID
 ARG NEXT_PUBLIC_YANDEX_CLIENT_ID
 ENV NEXT_PUBLIC_YANDEX_CLIENT_ID=$NEXT_PUBLIC_YANDEX_CLIENT_ID
 
+# Sentry: DSN вшивается в клиентский бандл на этапе сборки (пусто → no-op).
+ARG NEXT_PUBLIC_SENTRY_DSN
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
+
 RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
 
