@@ -20,4 +20,4 @@ COPY prisma                            ./prisma
 RUN mkdir -p uploads
 
 EXPOSE 3001
-CMD ["sh", "-c", "node_modules/.bin/prisma db push --accept-data-loss && node_modules/.bin/prisma db seed && node dist/src/main"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node_modules/.bin/prisma db seed && node dist/src/main"]
