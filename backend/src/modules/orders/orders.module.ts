@@ -7,9 +7,10 @@ import { DeliveryModule } from '../delivery/delivery.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { AddressesModule } from '../addresses/addresses.module';
 import { SettingsModule } from '../settings/settings.module';
+import { PromoModule } from '../promo/promo.module';
 
 @Module({
-  imports: [AuthModule, CartModule, DeliveryModule, PaymentsModule, AddressesModule, SettingsModule],
+  imports: [AuthModule, CartModule, DeliveryModule, PaymentsModule, AddressesModule, SettingsModule, PromoModule],
   controllers: [OrdersController],
   providers: [OrdersService],
   exports: [OrdersService],

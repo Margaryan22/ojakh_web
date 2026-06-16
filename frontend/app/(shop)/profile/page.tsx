@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/auth.store';
 import { FadeIn } from '@/components/motion/fade-in';
+import { PushNotifications } from '@/components/push-notifications';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AxiosError } from 'axios';
 import { validateName } from '@/lib/validation';
@@ -112,6 +113,8 @@ export default function ProfilePage() {
             Мои адреса доставки
           </Button>
         </Link>
+
+        <PushNotifications />
 
         <Separator />
 

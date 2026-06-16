@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationsService, STATUS_MESSAGES } from './notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../push/push.service';
 
 const mockPrisma = {
   notification: {
@@ -8,6 +9,10 @@ const mockPrisma = {
     findMany: jest.fn(),
     updateMany: jest.fn(),
   },
+};
+
+const mockPushService = {
+  sendToUser: jest.fn().mockResolvedValue(undefined),
 };
 
 describe('NotificationsService', () => {
@@ -18,6 +23,7 @@ describe('NotificationsService', () => {
       providers: [
         NotificationsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: PushService, useValue: mockPushService },
       ],
     }).compile();
 

@@ -22,6 +22,8 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { OrderMessagesModule } from './modules/order-messages/order-messages.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { PromoModule } from './modules/promo/promo.module';
+import { PushModule } from './modules/push/push.module';
 
 @Module({
   imports: [
@@ -50,6 +52,8 @@ import { SettingsModule } from './modules/settings/settings.module';
     OrderMessagesModule,
     FeedbackModule,
     SettingsModule,
+    PromoModule,
+    PushModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

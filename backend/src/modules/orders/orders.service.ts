@@ -11,6 +11,7 @@ import { AddressVerifierService } from '../delivery/address-verifier.service';
 import { AddressesService } from '../addresses/addresses.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { SettingsService } from '../settings/settings.service';
+import { PromoService } from '../promo/promo.service';
 import {
   TORT_CATEGORY,
   MAX_TORTS,
@@ -27,6 +28,7 @@ export class OrdersService {
     private readonly addressesService: AddressesService,
     private readonly addressVerifier: AddressVerifierService,
     private readonly settings: SettingsService,
+    private readonly promo: PromoService,
   ) {}
 
   async createOrder(userId: number, dto: CreateOrderDto) {
@@ -160,9 +162,7 @@ export class OrdersService {
       deliveryCost = costResult.cost;
     }
 
-    const total = subtotal + deliveryCost;
-
-    // 7. Create order
+    // 7. Create order (+ атомарно применяем промокод, если передан)
     const deliveryDateUtc = new Date(
       Date.UTC(
         deliveryDate.getFullYear(),
@@ -173,37 +173,57 @@ export class OrdersService {
 
     const orderNumber = await this.generateOrderNumber();
 
-    const order = await this.prisma.order.create({
-      data: {
-        orderNumber,
-        userId,
-        items: cart.items as any,
-        subtotal,
-        deliveryCost,
-        total,
-        deliveryDate: deliveryDateUtc,
-        deliveryTime: dto.delivery_time ?? null,
-        isPickup: dto.is_pickup,
-        address: dto.address?.trim() ?? null,
-        addressLat: dto.is_pickup ? null : dto.address_lat ?? null,
-        addressLon: dto.is_pickup ? null : dto.address_lon ?? null,
-        addressApartment: dto.is_pickup
-          ? null
-          : dto.address_apartment?.trim() || null,
-        addressEntrance: dto.is_pickup
-          ? null
-          : dto.address_entrance?.trim() || null,
-        addressFloor: dto.is_pickup ? null : dto.address_floor?.trim() || null,
-        addressIntercom: dto.is_pickup
-          ? null
-          : dto.address_intercom?.trim() || null,
-        deliveryNotes: dto.is_pickup
-          ? null
-          : dto.delivery_notes?.trim() || null,
-        recipientName: dto.recipient_name?.trim() || null,
-        contactPhone: dto.contact_phone?.trim() || null,
-        status: 'new',
-      },
+    const order = await this.prisma.$transaction(async (tx) => {
+      let discountKopecks = 0;
+      let promoCode: string | null = null;
+      if (dto.promo_code?.trim()) {
+        const redeemed = await this.promo.redeem(
+          tx,
+          dto.promo_code,
+          userId,
+          subtotal,
+        );
+        discountKopecks = redeemed.discountKopecks;
+        promoCode = redeemed.code;
+      }
+      const total = subtotal - discountKopecks + deliveryCost;
+
+      return tx.order.create({
+        data: {
+          orderNumber,
+          userId,
+          items: cart.items as any,
+          subtotal,
+          deliveryCost,
+          discountKopecks,
+          promoCode,
+          total,
+          deliveryDate: deliveryDateUtc,
+          deliveryTime: dto.delivery_time ?? null,
+          isPickup: dto.is_pickup,
+          address: dto.address?.trim() ?? null,
+          addressLat: dto.is_pickup ? null : dto.address_lat ?? null,
+          addressLon: dto.is_pickup ? null : dto.address_lon ?? null,
+          addressApartment: dto.is_pickup
+            ? null
+            : dto.address_apartment?.trim() || null,
+          addressEntrance: dto.is_pickup
+            ? null
+            : dto.address_entrance?.trim() || null,
+          addressFloor: dto.is_pickup
+            ? null
+            : dto.address_floor?.trim() || null,
+          addressIntercom: dto.is_pickup
+            ? null
+            : dto.address_intercom?.trim() || null,
+          deliveryNotes: dto.is_pickup
+            ? null
+            : dto.delivery_notes?.trim() || null,
+          recipientName: dto.recipient_name?.trim() || null,
+          contactPhone: dto.contact_phone?.trim() || null,
+          status: 'new',
+        },
+      });
     });
 
     // 7b. Auto-save address (best-effort; не блокирует и не падает)

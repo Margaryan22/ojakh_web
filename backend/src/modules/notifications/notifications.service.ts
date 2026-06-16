@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../push/push.service';
 
 export const STATUS_MESSAGES: Record<string, string> = {
   preparing:
@@ -18,15 +19,26 @@ export const STATUS_MESSAGES: Record<string, string> = {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly push: PushService,
+  ) {}
 
   async createForOrder(userId: number, orderId: number, status: string) {
     const template = STATUS_MESSAGES[status];
     if (!template) return null;
     const message = template.replace('{id}', String(orderId));
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: { userId, orderId, status, message },
     });
+    // Дублируем уведомление в web-push (работает, даже когда сайт закрыт).
+    // No-op, если VAPID не настроен или у пользователя нет подписок.
+    await this.push.sendToUser(userId, {
+      title: `Заказ #${orderId}`,
+      body: message,
+      url: `/orders/${orderId}`,
+    });
+    return notification;
   }
 
   async getForUser(userId: number) {

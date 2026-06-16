@@ -93,4 +93,10 @@ export class CreateOrderDto {
   @IsString()
   @MaxLength(500)
   delivery_notes?: string;
+
+  @ApiPropertyOptional({ example: 'WELCOME10', description: 'Промокод (необязательно)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  promo_code?: string;
 }

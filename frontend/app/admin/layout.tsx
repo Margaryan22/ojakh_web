@@ -11,6 +11,7 @@ import {
   BarChart2,
   MessageSquare,
   Settings,
+  Ticket,
   ArrowLeft,
   Volume2,
   VolumeX,
@@ -36,6 +37,7 @@ const adminLinks: {
   { href: '/admin/calendar', label: 'Календарь', icon: CalendarDays, badge: null },
   { href: '/admin/analytics', label: 'Аналитика', icon: BarChart2, badge: null },
   { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare, badge: 'feedback' },
+  { href: '/admin/promo', label: 'Промокоды', icon: Ticket, badge: null },
   { href: '/admin/settings', label: 'Настройки', icon: Settings, badge: null },
 ];
 
