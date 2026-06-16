@@ -54,7 +54,7 @@ const mockSettingsService = {
 
 const mockPromoService = {
   validate: jest.fn(),
-  redeem: jest.fn(),
+  markUsed: jest.fn(),
 };
 
 /**
@@ -114,13 +114,6 @@ describe('OrdersService', () => {
 
     service = module.get<OrdersService>(OrdersService);
     jest.clearAllMocks();
-
-    // createOrder теперь создаёт заказ внутри $transaction: прогоняем callback,
-    // передавая сам mockPrisma как tx-клиент (getOrders переопределяет это через
-    // mockResolvedValue для массивной формы $transaction).
-    mockPrisma.$transaction.mockImplementation((arg: any) =>
-      typeof arg === 'function' ? arg(mockPrisma) : Promise.all(arg),
-    );
 
     // Дефолтные моки для успешного сценария
     mockCartService.getCart.mockResolvedValue({ userId: 1, items: cartItems, subtotal: 120000 });

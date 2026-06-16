@@ -15,10 +15,6 @@ export interface PromoValidationResult {
   reason?: string;
 }
 
-// Поддерживаем и обычный клиент, и клиент транзакции — чтобы проверять
-// промокод как в превью корзины, так и атомарно при оформлении заказа.
-type Client = PrismaService | Prisma.TransactionClient;
-
 @Injectable()
 export class PromoService {
   constructor(private readonly prisma: PrismaService) {}
@@ -35,8 +31,13 @@ export class PromoService {
     return Math.min(Math.max(0, raw), subtotalKopecks);
   }
 
-  private async validateWith(
-    client: Client,
+  /**
+   * Проверяет промокод без побочных эффектов: для превью скидки в корзине и
+   * для расчёта скидки при оформлении. Использование НЕ засчитывается здесь —
+   * оно учитывается только когда заказ реально оплачен (см. markUsed,
+   * вызывается из PaymentsService при успешной оплате).
+   */
+  async validate(
     rawCode: string,
     userId: number | null,
     subtotalKopecks: number,
@@ -49,7 +50,7 @@ export class PromoService {
     });
     if (!code) return fail('Введите промокод');
 
-    const promo = await client.promoCode.findUnique({ where: { code } });
+    const promo = await this.prisma.promoCode.findUnique({ where: { code } });
     if (!promo || !promo.active) return fail('Промокод не найден');
 
     const now = new Date();
@@ -64,8 +65,9 @@ export class PromoService {
     if (promo.maxUses != null && promo.usedCount >= promo.maxUses)
       return fail('Промокод исчерпан');
     if (promo.perUserOnce && userId != null) {
-      const used = await client.order.count({
-        where: { userId, promoCode: code },
+      // «Использован» = был оплачен (paidAt проставляется при успешной оплате).
+      const used = await this.prisma.order.count({
+        where: { userId, promoCode: code, paidAt: { not: null } },
       });
       if (used > 0) return fail('Промокод уже использован');
     }
@@ -75,44 +77,16 @@ export class PromoService {
     return { valid: true, code, discountKopecks };
   }
 
-  /** Проверка без побочных эффектов — для превью скидки в корзине. */
-  validate(
-    rawCode: string,
-    userId: number | null,
-    subtotalKopecks: number,
-  ): Promise<PromoValidationResult> {
-    return this.validateWith(this.prisma, rawCode, userId, subtotalKopecks);
-  }
-
   /**
-   * Внутри транзакции оформления заказа: повторно проверяет промокод и
-   * атомарно «занимает» использование (guard по maxUses от гонок).
-   * Бросает BadRequestException, если код стал недействителен.
+   * Засчитывает использование промокода. Вызывается ровно один раз — когда
+   * заказ перешёл в статус «оплачен» (PaymentsService.markSucceeded).
+   * updateMany — чтобы не упасть, если код успели удалить из админки.
    */
-  async redeem(
-    tx: Prisma.TransactionClient,
-    rawCode: string,
-    userId: number,
-    subtotalKopecks: number,
-  ): Promise<{ code: string; discountKopecks: number }> {
-    const v = await this.validateWith(tx, rawCode, userId, subtotalKopecks);
-    if (!v.valid || !v.code) {
-      throw new BadRequestException(v.reason ?? 'Промокод недействителен');
-    }
-    const promo = await tx.promoCode.findUnique({ where: { code: v.code } });
-    if (promo!.maxUses != null) {
-      const res = await tx.promoCode.updateMany({
-        where: { code: v.code, usedCount: { lt: promo!.maxUses } },
-        data: { usedCount: { increment: 1 } },
-      });
-      if (res.count === 0) throw new BadRequestException('Промокод исчерпан');
-    } else {
-      await tx.promoCode.update({
-        where: { code: v.code },
-        data: { usedCount: { increment: 1 } },
-      });
-    }
-    return { code: v.code, discountKopecks: v.discountKopecks };
+  async markUsed(code: string): Promise<void> {
+    await this.prisma.promoCode.updateMany({
+      where: { code },
+      data: { usedCount: { increment: 1 } },
+    });
   }
 
   // ── Admin CRUD ────────────────────────────────────────────────────────────
@@ -145,19 +119,30 @@ export class PromoService {
   }
 
   // Нормализация полей формы → данные Prisma (только переданные поля).
-  private toData(dto: Partial<CreatePromoDto>): Prisma.PromoCodeUncheckedCreateInput {
-    if (dto.type === 'percent' && dto.value != null && (dto.value < 1 || dto.value > 100)) {
-      throw new BadRequestException('Для процентной скидки value должен быть 1..100');
+  private toData(
+    dto: Partial<CreatePromoDto>,
+  ): Prisma.PromoCodeUncheckedCreateInput {
+    if (
+      dto.type === 'percent' &&
+      dto.value != null &&
+      (dto.value < 1 || dto.value > 100)
+    ) {
+      throw new BadRequestException(
+        'Для процентной скидки value должен быть 1..100',
+      );
     }
     const data: Record<string, unknown> = {};
     if (dto.code !== undefined) data.code = dto.code.trim().toUpperCase();
     if (dto.type !== undefined) data.type = dto.type;
     if (dto.value !== undefined) data.value = dto.value;
-    if (dto.minOrderKopecks !== undefined) data.minOrderKopecks = dto.minOrderKopecks;
+    if (dto.minOrderKopecks !== undefined)
+      data.minOrderKopecks = dto.minOrderKopecks;
     if (dto.maxUses !== undefined) data.maxUses = dto.maxUses;
     if (dto.perUserOnce !== undefined) data.perUserOnce = dto.perUserOnce;
-    if (dto.startsAt !== undefined) data.startsAt = dto.startsAt ? new Date(dto.startsAt) : null;
-    if (dto.expiresAt !== undefined) data.expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
+    if (dto.startsAt !== undefined)
+      data.startsAt = dto.startsAt ? new Date(dto.startsAt) : null;
+    if (dto.expiresAt !== undefined)
+      data.expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
     if (dto.active !== undefined) data.active = dto.active;
     return data as Prisma.PromoCodeUncheckedCreateInput;
   }
