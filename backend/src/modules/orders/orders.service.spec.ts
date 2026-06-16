@@ -7,6 +7,7 @@ import { DeliveryService } from '../delivery/delivery.service';
 import { AddressesService } from '../addresses/addresses.service';
 import { AddressVerifierService } from '../delivery/address-verifier.service';
 import { SettingsService } from '../settings/settings.service';
+import { PromoService } from '../promo/promo.service';
 
 const mockPrisma = {
   product: {
@@ -49,6 +50,11 @@ const mockSettingsService = {
     minOrderKopecks: 100_000,
     freeDeliveryThresholdKopecks: 400_000,
   }),
+};
+
+const mockPromoService = {
+  validate: jest.fn(),
+  redeem: jest.fn(),
 };
 
 /**
@@ -102,11 +108,19 @@ describe('OrdersService', () => {
         { provide: AddressesService, useValue: mockAddressesService },
         { provide: AddressVerifierService, useValue: mockAddressVerifier },
         { provide: SettingsService, useValue: mockSettingsService },
+        { provide: PromoService, useValue: mockPromoService },
       ],
     }).compile();
 
     service = module.get<OrdersService>(OrdersService);
     jest.clearAllMocks();
+
+    // createOrder теперь создаёт заказ внутри $transaction: прогоняем callback,
+    // передавая сам mockPrisma как tx-клиент (getOrders переопределяет это через
+    // mockResolvedValue для массивной формы $transaction).
+    mockPrisma.$transaction.mockImplementation((arg: any) =>
+      typeof arg === 'function' ? arg(mockPrisma) : Promise.all(arg),
+    );
 
     // Дефолтные моки для успешного сценария
     mockCartService.getCart.mockResolvedValue({ userId: 1, items: cartItems, subtotal: 120000 });

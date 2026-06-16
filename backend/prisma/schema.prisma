@@ -27,6 +27,7 @@ model User {
   addresses           UserAddress[]
   feedback            Feedback[]
   favorites           Favorite[]
+  pushSubscriptions   PushSubscription[]
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -108,6 +109,8 @@ model Order {
   items                    Json
   subtotal                 Int
   deliveryCost             Int       @default(0)
+  discountKopecks          Int       @default(0)
+  promoCode                String?
   total                    Int
   status                   String    @default("new")
   address                  String?
@@ -265,5 +268,41 @@ model StoreSettings {
   minOrderKopecks              Int      @default(100000)
   freeDeliveryThresholdKopecks Int      @default(400000)
   updatedAt                    DateTime @updatedAt
+}
+
+// ─── PromoCode ────────────────────────────────────────────────────────────────
+// Промокоды, редактируемые из админки. code хранится в верхнем регистре,
+// сравнение регистронезависимое. type: 'percent' (value 1..100) | 'fixed'
+// (value в копейках). usedCount растёт атомарно при оформлении заказа.
+
+model PromoCode {
+  id              Int       @id @default(autoincrement())
+  code            String    @unique
+  type            String    // 'percent' | 'fixed'
+  value           Int       // percent: 1..100; fixed: копейки
+  minOrderKopecks Int       @default(0)
+  maxUses         Int?      // null = безлимит
+  usedCount       Int       @default(0)
+  perUserOnce     Boolean   @default(false)
+  startsAt        DateTime?
+  expiresAt       DateTime?
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+}
+
+// ─── PushSubscription ─────────────────────────────────────────────────────────
+// Web-push подписка браузера (один пользователь → несколько устройств).
+// При ответе 404/410 от push-сервиса подписка удаляется как протухшая.
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 

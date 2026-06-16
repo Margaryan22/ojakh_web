@@ -128,6 +128,47 @@ export default function CartPage() {
     storeSettings?.freeDeliveryThresholdKopecks ??
     DEFAULT_FREE_DELIVERY_THRESHOLD_KOPECKS;
 
+  // ── Промокод ──────────────────────────────────────────────────────────────
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discountKopecks: number;
+  } | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const discount = appliedPromo?.discountKopecks ?? 0;
+  // К оплате. Сервер при оформлении пересчитает скидку заново (источник истины).
+  const payable = Math.max(0, totalPrice() + deliveryCost - discount);
+
+  const applyPromo = async () => {
+    const code = promoInput.trim();
+    if (!code) return;
+    setPromoLoading(true);
+    setPromoError(null);
+    try {
+      const { data } = await api.post('/promo/validate', {
+        code,
+        subtotalKopecks: totalPrice(),
+      });
+      if (data.valid) {
+        setAppliedPromo({ code: data.code, discountKopecks: data.discountKopecks });
+      } else {
+        setAppliedPromo(null);
+        setPromoError(data.reason ?? 'Промокод недействителен');
+      }
+    } catch {
+      setPromoError('Не удалось проверить промокод');
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoInput('');
+    setPromoError(null);
+  };
+
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -440,6 +481,7 @@ export default function CartPage() {
         delivery_notes: isPickup
           ? undefined
           : deliveryNotes.trim() || undefined,
+        promo_code: appliedPromo?.code,
       });
       toast.success(`Заказ создан`);
       await clearCart();
@@ -1304,9 +1346,53 @@ export default function CartPage() {
                   <span className='text-success'>Бесплатно (самовывоз)</span>
                 </div>
               )}
+              {/* Промокод */}
+              <div className='space-y-1.5'>
+                {appliedPromo ? (
+                  <div className='flex justify-between text-sm items-center'>
+                    <span className='text-success'>
+                      Промокод {appliedPromo.code}
+                    </span>
+                    <button
+                      type='button'
+                      onClick={removePromo}
+                      className='text-xs text-muted-foreground underline'
+                    >
+                      Убрать
+                    </button>
+                  </div>
+                ) : (
+                  <div className='flex gap-2'>
+                    <Input
+                      placeholder='Промокод'
+                      value={promoInput}
+                      onChange={(e) => setPromoInput(e.target.value)}
+                      className='h-9'
+                    />
+                    <Button
+                      type='button'
+                      variant='outline'
+                      size='sm'
+                      onClick={applyPromo}
+                      disabled={promoLoading || !promoInput.trim()}
+                    >
+                      {promoLoading ? '...' : 'Применить'}
+                    </Button>
+                  </div>
+                )}
+                {promoError && (
+                  <p className='text-xs text-destructive'>{promoError}</p>
+                )}
+              </div>
+              {discount > 0 && (
+                <div className='flex justify-between text-sm'>
+                  <span className='text-muted-foreground'>Скидка:</span>
+                  <span className='text-success'>−{formatPrice(discount)}</span>
+                </div>
+              )}
               <div className='flex justify-between font-bold'>
                 <span>Итого:</span>
-                <span>{formatPrice(totalPrice() + deliveryCost)}</span>
+                <span>{formatPrice(payable)}</span>
               </div>
             </CardContent>
           </Card>
@@ -1363,13 +1449,13 @@ export default function CartPage() {
             <Card>
               <CardContent className='py-4 text-sm text-muted-foreground'>
                 После оформления заказа вы сможете оплатить{' '}
-                {formatPrice(totalPrice() + deliveryCost)} картой или через СБП
+                {formatPrice(payable)} картой или через СБП
                 на странице заказа.
               </CardContent>
             </Card>
           ) : (
             <PaymentDetails
-              intro={`После оформления заказа нужно будет перевести ${formatPrice(totalPrice() + deliveryCost)} по одному из вариантов ниже. Реквизиты также появятся на странице заказа.`}
+              intro={`После оформления заказа нужно будет перевести ${formatPrice(payable)} по одному из вариантов ниже. Реквизиты также появятся на странице заказа.`}
             />
           )}
 
