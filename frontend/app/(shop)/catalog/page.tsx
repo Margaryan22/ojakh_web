@@ -14,13 +14,10 @@ import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import { CATEGORY_ORDER, CATEGORY_LABELS } from '@/lib/constants';
 import type { Product, ProductCategory } from '@/types';
 
-type SortKey = 'default' | 'price_asc' | 'price_desc' | 'name';
-
 export default function CatalogPage() {
   const [dialogProduct, setDialogProduct] = useState<Product | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<SortKey>('default');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
 
@@ -38,10 +35,9 @@ export default function CatalogPage() {
   // Цены вводятся в рублях, товары хранятся в копейках.
   const minK = minPrice.trim() ? Number(minPrice) * 100 : null;
   const maxK = maxPrice.trim() ? Number(maxPrice) * 100 : null;
-  const isFiltering =
-    query.length > 0 || sort !== 'default' || minK !== null || maxK !== null;
+  const isFiltering = query.length > 0 || minK !== null || maxK !== null;
 
-  // Плоский отфильтрованный + отсортированный список (режим поиска/сортировки).
+  // Плоский отфильтрованный список (режим поиска / фильтра по цене).
   const filtered = useMemo(() => {
     let list = available;
     if (query) {
@@ -53,13 +49,8 @@ export default function CatalogPage() {
     }
     if (minK !== null) list = list.filter((p) => p.price >= minK);
     if (maxK !== null) list = list.filter((p) => p.price <= maxK);
-
-    const sorted = [...list];
-    if (sort === 'price_asc') sorted.sort((a, b) => a.price - b.price);
-    else if (sort === 'price_desc') sorted.sort((a, b) => b.price - a.price);
-    else if (sort === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-    return sorted;
-  }, [available, query, minK, maxK, sort]);
+    return list;
+  }, [available, query, minK, maxK]);
 
   // Группировка по категориям (вид по умолчанию).
   const groups = useMemo(() => {
@@ -85,27 +76,14 @@ export default function CatalogPage() {
 
       {/* Поиск, сортировка, цена */}
       <div className="space-y-2">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Поиск по названию…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm sm:w-56"
-            aria-label="Сортировка"
-          >
-            <option value="default">Сортировка: по умолчанию</option>
-            <option value="price_asc">Цена: по возрастанию</option>
-            <option value="price_desc">Цена: по убыванию</option>
-            <option value="name">По названию</option>
-          </select>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по названию…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
         </div>
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Цена, ₽:</span>
