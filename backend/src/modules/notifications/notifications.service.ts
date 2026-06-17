@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
+import { MailService } from '../mail/mail.service';
 
 export const STATUS_MESSAGES: Record<string, string> = {
   preparing:
@@ -22,22 +23,31 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly push: PushService,
+    private readonly mail: MailService,
   ) {}
 
   async createForOrder(userId: number, orderId: number, status: string) {
     const template = STATUS_MESSAGES[status];
     if (!template) return null;
     const message = template.replace('{id}', String(orderId));
-    const notification = await this.prisma.notification.create({
-      data: { userId, orderId, status, message },
-    });
-    // Дублируем уведомление в web-push (работает, даже когда сайт закрыт).
-    // No-op, если VAPID не настроен или у пользователя нет подписок.
-    await this.push.sendToUser(userId, {
-      title: `Заказ #${orderId}`,
-      body: message,
-      url: `/orders/${orderId}`,
-    });
+
+    const [notification, user] = await Promise.all([
+      this.prisma.notification.create({ data: { userId, orderId, status, message } }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+    ]);
+
+    // Push (no-op без VAPID) и email (no-op без SENDPULSE_SMTP_USER) параллельно
+    await Promise.all([
+      this.push.sendToUser(userId, {
+        title: `Заказ #${orderId}`,
+        body: message,
+        url: `/orders/${orderId}`,
+      }),
+      user?.email
+        ? this.mail.sendOrderStatus({ toEmail: user.email, orderId, message })
+        : Promise.resolve(),
+    ]);
+
     return notification;
   }
 
