@@ -1,253 +1,104 @@
-'use client';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { fetchProduct } from '@/lib/server-fetch';
+import { CATEGORY_LABELS } from '@/lib/constants';
+import type { ProductCategory } from '@/types';
+import { ProductDetail } from './product-detail';
 
-import { useState } from 'react';
-import { use } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ShoppingCart, Info, ChefHat, Flame } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
-import { formatPrice } from '@/lib/format';
-import { CATEGORY_EMOJI, CATEGORY_LABELS } from '@/lib/constants';
-import { PRODUCT_LABELS } from '@/lib/product-labels';
-import { cn } from '@/lib/utils';
-import { AddToCartDialog } from '@/components/products/add-to-cart-dialog';
-import { NutritionInfo } from '@/components/products/nutrition-info';
-import { StarRating } from '@/components/reviews/star-rating';
-import { ReviewList } from '@/components/reviews/review-list';
-import api from '@/lib/api';
-import { FadeIn } from '@/components/motion/fade-in';
-import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
-import { Y_HERO } from '@/components/motion/motion-presets';
-import type { Product, ProductCategory, ReviewSummary } from '@/types';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://ojakh.whysargis.ru';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
-export default function ProductDetailPage({
+function absoluteImage(imageUrl?: string): string | undefined {
+  if (!imageUrl) return undefined;
+  return imageUrl.startsWith('/') ? `${API_URL}${imageUrl}` : imageUrl;
+}
+
+function categoryOf(category: string): string {
+  return CATEGORY_LABELS[category as ProductCategory] ?? category;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const product = await fetchProduct(id);
+
+  if (!product) {
+    return { title: 'Товар не найден', robots: { index: false, follow: true } };
+  }
+
+  const categoryLabel = categoryOf(product.category);
+  const title = `${product.name} — заказать в Нижнем Новгороде | Ojakh`;
+  const description = product.description
+    ? `${product.description} Заказ с доставкой по Нижнему Новгороду — Ojakh.`
+    : `${product.name} (${categoryLabel}) — заказать с доставкой по Нижнему Новгороду. Домашнее качество от Ojakh.`;
+  const image = absoluteImage(product.imageUrl);
+  const url = `${SITE_URL}/catalog/${product.id}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/catalog/${product.id}` },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: 'Ojakh',
+      locale: 'ru_RU',
+      type: 'website',
+      images: image ? [{ url: image, alt: product.name }] : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
+
+export default async function ProductPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
-  const router = useRouter();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const { id } = await params;
+  const product = await fetchProduct(id);
 
-  const { data: product, isLoading, isError } = useQuery<Product>({
-    queryKey: ['product', id],
-    queryFn: async () => {
-      const { data } = await api.get(`/products/${id}`);
-      return data;
+  if (!product) notFound();
+
+  const categoryLabel = categoryOf(product.category);
+  const image = absoluteImage(product.imageUrl);
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.description || `${product.name} — ${categoryLabel} от Ojakh`,
+    ...(image ? { image: [image] } : {}),
+    category: categoryLabel,
+    brand: { '@type': 'Brand', name: 'Ojakh' },
+    offers: {
+      '@type': 'Offer',
+      price: (product.price / 100).toFixed(2),
+      priceCurrency: 'RUB',
+      availability: product.available
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+      url: `${SITE_URL}/catalog/${product.id}`,
+      seller: { '@type': 'Organization', name: 'Ojakh' },
     },
-  });
-
-  const { data: summary } = useQuery<ReviewSummary>({
-    queryKey: ['reviews-summary', id],
-    queryFn: async () => {
-      const { data } = await api.get(`/products/${id}/reviews/summary`);
-      return data;
-    },
-  });
-
-  if (isLoading) {
-    return (
-      <div className="max-w-2xl mx-auto space-y-6 pb-10">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-72 w-full rounded-2xl" />
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-      </div>
-    );
-  }
-
-  if (isError || !product) {
-    return (
-      <div className="max-w-2xl mx-auto text-center py-20 space-y-4">
-        <p className="text-muted-foreground text-lg">Товар не найден</p>
-        <Button variant="outline" onClick={() => router.push('/catalog')}>
-          Вернуться в каталог
-        </Button>
-      </div>
-    );
-  }
-
-  const emoji = CATEGORY_EMOJI[product.category as ProductCategory] ?? '🍽️';
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
-  const imageUrl = product.imageUrl?.startsWith('/')
-    ? `${apiUrl}${product.imageUrl}`
-    : product.imageUrl;
-
-  const categoryLabel = CATEGORY_LABELS[product.category as ProductCategory] ?? product.category;
+  };
 
   return (
-    <div className="max-w-2xl mx-auto pb-10">
-      {/* Back button */}
-      <div className="mb-5">
-        <Link
-          href="/catalog"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Каталог
-        </Link>
-      </div>
-
-      {/* Hero image */}
-      <FadeIn y={Y_HERO} className="mb-6">
-      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-linear-to-br from-muted to-accent shadow-md">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={product.name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 672px"
-            priority
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-9xl">{emoji}</span>
-          </div>
-        )}
-        {!product.available && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="text-white font-semibold text-lg">Недоступен</span>
-          </div>
-        )}
-      </div>
-      </FadeIn>
-
-      {/* Product header */}
-      <FadeIn delay={0.08}>
-      <div className="space-y-3 mb-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {categoryLabel}
-            </p>
-            <h1 className="text-2xl font-bold leading-tight">{product.name}</h1>
-            {summary && summary.count > 0 ? (
-              <div className="flex items-center gap-1.5 pt-1">
-                <StarRating value={summary.average ?? 0} size="sm" />
-                <span className="text-sm font-medium">
-                  {summary.average?.toFixed(1)}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  · {summary.count} {summary.count === 1 ? 'отзыв' : summary.count < 5 ? 'отзыва' : 'отзывов'}
-                </span>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground pt-1">Нет отзывов</p>
-            )}
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-2xl font-bold text-primary">{formatPrice(product.price)}</p>
-            <p className="text-xs text-muted-foreground">/ {product.unit}</p>
-          </div>
-        </div>
-
-        {/* Badges */}
-        <div className="flex flex-wrap gap-2">
-          {product.label && PRODUCT_LABELS[product.label] && (
-            <Badge
-              className={cn(
-                'text-sm px-3 py-1 font-semibold uppercase tracking-wide',
-                PRODUCT_LABELS[product.label].className,
-              )}
-            >
-              {PRODUCT_LABELS[product.label].ru}
-            </Badge>
-          )}
-          {product.flavor && (
-            <Badge variant="secondary" className="text-sm px-3 py-1">
-              {product.flavor}
-            </Badge>
-          )}
-          {product.size && (
-            <Badge variant="secondary" className="text-sm px-3 py-1">
-              {product.size}
-              {product.weightGrams ? ` · ${product.weightGrams} г` : ''}
-            </Badge>
-          )}
-          {product.weightGrams && !product.size && (
-            <Badge variant="outline" className="text-sm px-3 py-1">
-              {product.weightGrams} г
-            </Badge>
-          )}
-        </div>
-      </div>
-      </FadeIn>
-
-      <StaggerContainer immediate>
-        {/* Description block */}
-        {product.description && (
-          <StaggerItem>
-            <div className="rounded-xl border bg-card p-4 space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Info className="h-4 w-4 text-primary" />
-                Описание
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {product.description}
-              </p>
-            </div>
-          </StaggerItem>
-        )}
-
-        {/* Ingredients block */}
-        {product.ingredients && (
-          <StaggerItem>
-            <div className="rounded-xl border bg-card p-4 space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <ChefHat className="h-4 w-4 text-primary" />
-                Состав
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {product.ingredients}
-              </p>
-            </div>
-          </StaggerItem>
-        )}
-
-        {/* Nutrition block */}
-        <StaggerItem>
-          <div className="rounded-xl border bg-card p-4 mb-6">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-              <Flame className="h-4 w-4 text-primary" />
-              Пищевая ценность
-            </div>
-            <NutritionInfo product={product} />
-          </div>
-        </StaggerItem>
-      </StaggerContainer>
-
-      <Separator className="mb-6" />
-
-      {/* Add to cart */}
-      <Button
-        size="lg"
-        className="w-full h-12 text-base font-semibold gap-2"
-        onClick={() => setDialogOpen(true)}
-        disabled={!product.available}
-      >
-        <ShoppingCart className="h-5 w-5" />
-        {product.available ? 'Добавить в корзину' : 'Недоступен'}
-      </Button>
-
-      <AddToCartDialog
-        product={product}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-
-      <Separator className="my-8" />
-
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold">Отзывы</h2>
-        <ReviewList productId={product.id} />
-      </section>
-    </div>
+      <ProductDetail id={id} initialProduct={product} />
+    </>
   );
 }
