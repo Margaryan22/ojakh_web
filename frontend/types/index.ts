@@ -90,6 +90,7 @@ export interface Order {
   createdAt: string;
   paidAt?: string;
   readyAt?: string;
+  paymentExpiresAt?: string | null;
   paymentId?: string;
   dispatchedAt?: string | null;
   deliveryRecalcKopecks?: number | null;

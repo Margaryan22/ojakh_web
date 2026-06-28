@@ -8,6 +8,7 @@ import { AddressesService } from '../addresses/addresses.service';
 import { AddressVerifierService } from '../delivery/address-verifier.service';
 import { SettingsService } from '../settings/settings.service';
 import { PromoService } from '../promo/promo.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const mockPrisma = {
   product: {
@@ -17,10 +18,15 @@ const mockPrisma = {
     create: jest.fn(),
     findMany: jest.fn(),
     findUnique: jest.fn(),
+    updateMany: jest.fn(),
     count: jest.fn(),
     $transaction: jest.fn(),
   },
   $transaction: jest.fn(),
+};
+
+const mockNotificationsService = {
+  createForOrder: jest.fn().mockResolvedValue(null),
 };
 
 const mockCartService = {
@@ -109,6 +115,7 @@ describe('OrdersService', () => {
         { provide: AddressVerifierService, useValue: mockAddressVerifier },
         { provide: SettingsService, useValue: mockSettingsService },
         { provide: PromoService, useValue: mockPromoService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 

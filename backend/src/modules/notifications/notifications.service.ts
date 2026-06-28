@@ -16,6 +16,8 @@ export const STATUS_MESSAGES: Record<string, string> = {
     'Ваш заказ #{id} доставлен. Спасибо, что выбрали Ojakh — приятного аппетита!',
   cancelled:
     'Ваш заказ #{id} был отменён. Свяжитесь с нами, если у вас есть вопросы.',
+  payment_expired:
+    'Время на оплату заказа #{id} истекло, и он был автоматически отменён. Вы можете оформить заказ заново.',
 };
 
 @Injectable()
@@ -49,6 +51,33 @@ export class NotificationsService {
     ]);
 
     return notification;
+  }
+
+  /**
+   * Массовое объявление всем пользователям: in-app уведомление в колокольчик
+   * (одним createMany) + web-push на все устройства. orderId = null, статус
+   * 'broadcast'. Email намеренно не шлём — массовая транзакционная рассылка
+   * требует отдельной батч-обработки.
+   */
+  async broadcast(message: string) {
+    const users = await this.prisma.user.findMany({ select: { id: true } });
+    if (users.length === 0) return { sent: 0 };
+
+    await this.prisma.notification.createMany({
+      data: users.map((u) => ({
+        userId: u.id,
+        orderId: null,
+        status: 'broadcast',
+        message,
+      })),
+    });
+
+    // No-op без VAPID; не должно ронять запрос, если push-сервис недоступен.
+    await this.push
+      .sendToAll({ title: 'Ojakh', body: message, url: '/' })
+      .catch(() => null);
+
+    return { sent: users.length };
   }
 
   async getForUser(userId: number) {

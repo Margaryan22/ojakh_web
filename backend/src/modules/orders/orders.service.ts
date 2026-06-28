@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
@@ -12,15 +13,19 @@ import { AddressesService } from '../addresses/addresses.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { SettingsService } from '../settings/settings.service';
 import { PromoService } from '../promo/promo.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   TORT_CATEGORY,
   MAX_TORTS,
   MIN_DAYS_AHEAD,
   MAX_DAYS_AHEAD,
+  PAYMENT_EXPIRES_MS,
 } from '../../common/constants';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cartService: CartService,
@@ -29,6 +34,7 @@ export class OrdersService {
     private readonly addressVerifier: AddressVerifierService,
     private readonly settings: SettingsService,
     private readonly promo: PromoService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async createOrder(userId: number, dto: CreateOrderDto) {
@@ -79,7 +85,6 @@ export class OrdersService {
       await this.deliveryService.validateNnAddress(dto.address.trim());
     }
 
-    // 3c. Verify entrance/floor/apartment against 2GIS building info (fail-open)
     if (!dto.is_pickup && dto.address?.trim()) {
       await this.addressVerifier.verify({
         address: dto.address.trim(),
@@ -220,6 +225,7 @@ export class OrdersService {
         recipientName: dto.recipient_name?.trim() || null,
         contactPhone: dto.contact_phone?.trim() || null,
         status: 'new',
+        paymentExpiresAt: new Date(Date.now() + PAYMENT_EXPIRES_MS),
       },
     });
 
@@ -258,7 +264,13 @@ export class OrdersService {
       this.prisma.order.count({ where: { userId } }),
     ]);
 
-    return { orders, total, page, limit };
+    // Лениво отменяем просроченные неоплаченные заказы при чтении, чтобы фронт
+    // сразу получил актуальный статус, не дожидаясь cron (см. expireIfUnpaid).
+    const settled = await Promise.all(
+      orders.map((o) => this.expireIfUnpaid(o)),
+    );
+
+    return { orders: settled, total, page, limit };
   }
 
   async getOrder(userId: number, orderId: number) {
@@ -272,7 +284,40 @@ export class OrdersService {
       throw new ForbiddenException('Access denied');
     }
 
-    return order;
+    return this.expireIfUnpaid(order);
+  }
+
+  /**
+   * Если заказ «new» и срок оплаты истёк — атомарно переводит его в «cancelled»
+   * и шлёт уведомление. Защита от гонки с cron: updateMany c условием
+   * status='new' гарантирует, что уведомление уйдёт ровно один раз.
+   * Возвращает актуальную версию заказа (отменённую или исходную).
+   */
+  async expireIfUnpaid<T extends { id: number; userId: number; status: string; paymentExpiresAt: Date | null }>(
+    order: T,
+  ): Promise<T> {
+    const expired =
+      order.status === 'new' &&
+      order.paymentExpiresAt != null &&
+      new Date(order.paymentExpiresAt).getTime() < Date.now();
+    if (!expired) return order;
+
+    const { count } = await this.prisma.order.updateMany({
+      where: { id: order.id, status: 'new' },
+      data: { status: 'cancelled' },
+    });
+
+    if (count > 0) {
+      this.notifications
+        .createForOrder(order.userId, order.id, 'payment_expired')
+        .catch((e) =>
+          this.logger.error(
+            `Не удалось отправить уведомление об отмене заказа #${order.id}: ${e}`,
+          ),
+        );
+    }
+
+    return { ...order, status: 'cancelled' };
   }
 
   async cancelOrder(userId: number, orderId: number) {

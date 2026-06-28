@@ -46,6 +46,8 @@ const NOTIFICATION_LABELS: Record<string, string> = {
   delivering: 'В доставке',
   completed: 'Доставлен',
   cancelled: 'Отменён',
+  payment_expired: 'Время оплаты истекло',
+  broadcast: 'Объявление',
 };
 
 export function Header() {
@@ -75,11 +77,12 @@ export function Header() {
     router.push('/login');
   };
 
-  const handleNotifClick = (id: number, orderId: number) => {
+  const handleNotifClick = (id: number, orderId: number | null) => {
     markOneRead(id);
     setNotifOpen(false);
     setMobileOpen(false);
-    router.push(`/orders/${orderId}`);
+    // Объявления (broadcast) не привязаны к заказу — никуда не переходим.
+    if (orderId != null) router.push(`/orders/${orderId}`);
   };
 
   const NotificationsPanel = () => (
@@ -118,7 +121,9 @@ export function Header() {
                 )}
                 <div className={cn(!n.isRead ? '' : 'pl-4')}>
                   <p className='font-medium text-xs text-muted-foreground mb-0.5'>
-                    Заказ #{n.orderId} · {NOTIFICATION_LABELS[n.status] ?? n.status}
+                    {n.orderId != null
+                      ? `Заказ #${n.orderId} · ${NOTIFICATION_LABELS[n.status] ?? n.status}`
+                      : (NOTIFICATION_LABELS[n.status] ?? n.status)}
                   </p>
                   <p className='text-foreground leading-snug'>{n.message}</p>
                   <p className='text-[11px] text-muted-foreground mt-1'>

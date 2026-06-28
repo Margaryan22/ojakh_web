@@ -13,9 +13,11 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Send } from 'lucide-react';
 
 interface StoreSettings {
   minOrderKopecks: number;
@@ -67,6 +69,41 @@ export default function AdminSettingsPage() {
       }
     },
   });
+
+  // ── Рассылка объявлений всем клиентам ─────────────────────────────────────
+  const MAX_BROADCAST = 1000;
+  const [broadcastMsg, setBroadcastMsg] = useState('');
+
+  const broadcastMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const { data } = await api.post('/admin/broadcast', { message });
+      return data as { sent: number };
+    },
+    onSuccess: (res) => {
+      toast.success(`Объявление отправлено: ${res.sent} клиент(ов)`);
+      setBroadcastMsg('');
+    },
+    onError: (error) => {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Не удалось отправить');
+      } else {
+        toast.error('Не удалось отправить');
+      }
+    },
+  });
+
+  const broadcastText = broadcastMsg.trim();
+  const broadcastInvalid =
+    broadcastText.length < 3 || broadcastText.length > MAX_BROADCAST;
+
+  const handleBroadcast = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (broadcastInvalid) {
+      toast.error('Сообщение должно быть от 3 до 1000 символов');
+      return;
+    }
+    broadcastMutation.mutate(broadcastText);
+  };
 
   const minOrderKopecks = toKopecks(minOrder);
   const freeThresholdKopecks = toKopecks(freeThreshold);
@@ -152,6 +189,44 @@ export default function AdminSettingsPage() {
               </Button>
             </form>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Рассылка клиентам</CardTitle>
+          <CardDescription>
+            Отправьте объявление всем клиентам сразу. Оно появится у них в
+            колокольчике уведомлений и придёт push-сообщением.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleBroadcast} className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="broadcast">Текст объявления</Label>
+              <Textarea
+                id="broadcast"
+                rows={4}
+                maxLength={MAX_BROADCAST}
+                placeholder="Например: Завтра работаем до 18:00. Успейте оформить заказ!"
+                value={broadcastMsg}
+                onChange={(e) => setBroadcastMsg(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {broadcastText.length} / {MAX_BROADCAST}
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={broadcastMutation.isPending || broadcastInvalid}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {broadcastMutation.isPending
+                ? 'Отправка...'
+                : 'Отправить всем клиентам'}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>

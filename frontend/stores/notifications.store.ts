@@ -3,7 +3,7 @@ import api from '@/lib/api';
 
 export interface AppNotification {
   id: number;
-  orderId: number;
+  orderId: number | null; // null — массовое объявление (broadcast)
   status: string;
   message: string;
   isRead: boolean;

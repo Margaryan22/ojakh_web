@@ -62,8 +62,25 @@ export class PushService {
     const subs = await this.prisma.pushSubscription.findMany({
       where: { userId },
     });
-    if (!subs.length) return;
+    await this.deliver(subs, payload);
+  }
 
+  /**
+   * Массовая рассылка на все устройства всех пользователей (объявления админа).
+   * No-op без VAPID.
+   */
+  async sendToAll(payload: PushPayload): Promise<void> {
+    if (!this.configured) return;
+    const subs = await this.prisma.pushSubscription.findMany();
+    await this.deliver(subs, payload);
+  }
+
+  /** Доставляет payload на набор подписок, чистя протухшие (404/410). */
+  private async deliver(
+    subs: { id: number; endpoint: string; p256dh: string; auth: string }[],
+    payload: PushPayload,
+  ): Promise<void> {
+    if (!subs.length) return;
     const data = JSON.stringify(payload);
     await Promise.all(
       subs.map(async (s) => {

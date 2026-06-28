@@ -32,6 +32,7 @@ import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
 import { AnimatePresence, motion } from 'framer-motion';
 import { OrderChat } from '@/components/order-chat';
 import { PaymentDetails } from '@/components/payment-details';
+import { PaymentTimer } from '@/components/payment-timer';
 import type { Order, OrderStatus, DeliveryQuote, DeliveryClaimResponse } from '@/types';
 import { useState } from 'react';
 import { AxiosError } from 'axios';
@@ -359,6 +360,17 @@ export default function OrderDetailPage() {
         <OrderChat orderId={order.id} role="user" />
       </StaggerItem>
       </StaggerContainer>
+
+      {/* Countdown to payment deadline for new orders */}
+      {order.status === 'new' && order.paymentExpiresAt && (
+        <PaymentTimer
+          expiresAt={order.paymentExpiresAt}
+          onExpired={() => {
+            toast.error('Время на оплату истекло — заказ отменён');
+            refetch();
+          }}
+        />
+      )}
 
       {/* Payment for new orders: YooKassa widget or manual requisites */}
       {order.status === 'new' && provider === 'yookassa' && (
