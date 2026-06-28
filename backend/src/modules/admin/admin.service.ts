@@ -14,6 +14,11 @@ export class AdminService {
     private readonly settings: SettingsService,
   ) {}
 
+  /** Массовая рассылка объявления всем клиентам (in-app + push). */
+  async broadcast(message: string) {
+    return this.notifications.broadcast(message);
+  }
+
   async getOrders(filters: { status?: string; date?: string }) {
     const where: any = {};
 

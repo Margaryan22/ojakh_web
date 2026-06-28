@@ -15,6 +15,7 @@ import { STATUS_LABELS, STATUS_COLORS, POLLING_INTERVAL_MS } from '@/lib/constan
 import { useAuthStore } from '@/stores/auth.store';
 import { FadeIn } from '@/components/motion/fade-in';
 import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
+import { PaymentTimerBadge } from '@/components/payment-timer';
 import type { Order, OrderStatus } from '@/types';
 
 export default function OrdersPage() {
@@ -22,7 +23,7 @@ export default function OrdersPage() {
   const user = useAuthStore((s) => s.user);
   const prevStatusesRef = useRef<Record<number, string>>({});
 
-  const { data: ordersData, isLoading } = useQuery({
+  const { data: ordersData, isLoading, refetch } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
       const { data } = await api.get('/orders');
@@ -102,6 +103,12 @@ export default function OrdersPage() {
                         <Badge className={STATUS_COLORS[order.status as OrderStatus]}>
                           {STATUS_LABELS[order.status as OrderStatus]}
                         </Badge>
+                        {order.status === 'new' && order.paymentExpiresAt && (
+                          <PaymentTimerBadge
+                            expiresAt={order.paymentExpiresAt}
+                            onExpired={() => refetch()}
+                          />
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         {formatDate(order.deliveryDate)} &middot;{' '}

@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Post,
   Put,
   Query,
   UseGuards,
@@ -17,6 +18,7 @@ import { AdminGuard } from '../auth/admin.guard';
 import { AdminService } from './admin.service';
 import { UpsertDailyLimitDto } from './dto/upsert-daily-limit.dto';
 import { UpdateSettingsDto } from '../settings/dto/update-settings.dto';
+import { BroadcastDto } from './dto/broadcast.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -115,5 +117,14 @@ export class AdminController {
   })
   updateSettings(@Body() dto: UpdateSettingsDto) {
     return this.adminService.updateSettings(dto);
+  }
+
+  @Post('broadcast')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Send a broadcast notification to all clients (admin only)',
+  })
+  broadcast(@Body() dto: BroadcastDto) {
+    return this.adminService.broadcast(dto.message);
   }
 }
