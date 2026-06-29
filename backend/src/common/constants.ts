@@ -28,9 +28,10 @@ export const MIN_DAYS_AHEAD = 2;
 export const MAX_DAYS_AHEAD = 15;
 
 // Срок на оплату нового заказа. По истечении заказ автоматически отменяется
-// (cron OrdersSchedulerService + ленивая отмена при чтении заказа).
-// Дублируется на фронте для обратного отсчёта (frontend/lib/constants.ts).
-export const PAYMENT_EXPIRES_MS = 15 * 60 * 1000; // 15 минут
+// (cron OrdersSchedulerService + ленивая отмена при чтении заказа), освобождая
+// слот доставки. Выровнен с окном оплаты ЮKassa (10 мин): дольше держать слот
+// нет смысла — после закрытия окна платёж там всё равно уже не пройдёт.
+export const PAYMENT_EXPIRES_MS = 10 * 60 * 1000; // 10 минут
 
 export const ACTIVE_STATUSES = [
   'new',

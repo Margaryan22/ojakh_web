@@ -6,9 +6,10 @@ import { YookassaWebhookController } from './yookassa/yookassa-webhook.controlle
 import { AuthModule } from '../auth/auth.module';
 import { DeliveryModule } from '../delivery/delivery.module';
 import { PromoModule } from '../promo/promo.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [AuthModule, DeliveryModule, PromoModule],
+  imports: [AuthModule, DeliveryModule, PromoModule, NotificationsModule],
   controllers: [PaymentsController, YookassaWebhookController],
   providers: [PaymentsService, YookassaService],
   exports: [PaymentsService],

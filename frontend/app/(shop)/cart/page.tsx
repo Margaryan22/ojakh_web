@@ -85,6 +85,7 @@ export default function CartPage() {
     lon: null,
   });
   const [recipientName, setRecipientName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [addressApartment, setAddressApartment] = useState('');
   const [addressEntrance, setAddressEntrance] = useState('');
   const [addressFloor, setAddressFloor] = useState('');
@@ -458,6 +459,20 @@ export default function CartPage() {
   };
 
   const handleSubmitOrder = async () => {
+    // Нормализуем телефон к формату бэкенда (^\+7\d{10}$). Поле опционально.
+    const digits = contactPhone.replace(/\D/g, '');
+    let normalizedPhone: string | undefined;
+    if (digits) {
+      let core = digits;
+      if (core.length === 11 && (core[0] === '7' || core[0] === '8')) {
+        core = core.slice(1);
+      }
+      if (core.length !== 10) {
+        toast.error('Проверьте контактный телефон');
+        return;
+      }
+      normalizedPhone = `+7${core}`;
+    }
     setIsSubmitting(true);
     try {
       const { data } = await api.post('/orders', {
@@ -481,6 +496,7 @@ export default function CartPage() {
         delivery_notes: isPickup
           ? undefined
           : deliveryNotes.trim() || undefined,
+        contact_phone: normalizedPhone,
         promo_code: appliedPromo?.code,
       });
       toast.success(`Заказ создан`);
@@ -900,6 +916,23 @@ export default function CartPage() {
                 <Store className='h-4 w-4' />
                 Самовывоз
               </Button>
+            </div>
+
+            {/* Контактный телефон — для связи по заказу (необязательно, вводится вручную) */}
+            <div className='space-y-1'>
+              <Label htmlFor='contact-phone'>Контактный телефон (необязательно)</Label>
+              <Input
+                id='contact-phone'
+                type='tel'
+                inputMode='tel'
+                autoComplete='tel'
+                placeholder='+7 999 123-45-67'
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+              />
+              <p className='text-xs text-muted-foreground'>
+                Укажите, если хотите, чтобы курьер или менеджер могли связаться по заказу.
+              </p>
             </div>
 
             {/* Pickup address */}

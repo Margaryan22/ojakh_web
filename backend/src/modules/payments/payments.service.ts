@@ -15,6 +15,7 @@ import {
 } from './yookassa/yookassa.service';
 import type { CartItem } from '../cart/cart.service';
 import { PromoService } from '../promo/promo.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export type PaymentKind = 'main' | 'doplata';
 export type PaymentProvider = 'yookassa' | 'manual';
@@ -41,6 +42,7 @@ export class PaymentsService {
     private readonly deliveryClaims: DeliveryClaimsService,
     private readonly yookassa: YookassaService,
     private readonly promo: PromoService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   getConfig(): { provider: PaymentProvider } {
@@ -340,10 +342,46 @@ export class PaymentsService {
     if (fetched.status === 'succeeded') {
       await this.markSucceeded(payment.id, payment.kind as PaymentKind, payment.orderId);
     } else if (fetched.status === 'canceled') {
-      await this.prisma.payment.updateMany({
+      const moved = await this.prisma.payment.updateMany({
         where: { id: payment.id, status: 'pending' },
         data: { status: 'canceled', canceledAt: new Date() },
       });
+      // ЮKassa отменила платёж (чаще всего expired_on_confirmation — клиент не
+      // успел оплатить за отведённое ей время). Для основного платежа сразу
+      // отменяем ещё неоплаченный заказ, освобождая слот доставки, не дожидаясь
+      // cron-автоотмены по paymentExpiresAt. Доплату так не трогаем: заказ при
+      // её отмене остаётся оформленным.
+      if (moved.count === 1 && payment.kind === 'main') {
+        await this.cancelUnpaidOrder(payment.orderId);
+      }
+    }
+  }
+
+  /**
+   * Отменяет ещё неоплаченный заказ (new → cancelled) и шлёт уведомление.
+   * Гард по статусу делает вызов идемпотентным и безопасным к гонке с cron
+   * автоотмены: уведомление уйдёт ровно один раз — у того, кто реально перевёл
+   * заказ из new.
+   */
+  private async cancelUnpaidOrder(orderId: number): Promise<void> {
+    const { count } = await this.prisma.order.updateMany({
+      where: { id: orderId, status: 'new' },
+      data: { status: 'cancelled' },
+    });
+    if (count !== 1) return; // уже оплачен или отменён — ничего не делаем
+
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { userId: true },
+    });
+    if (order) {
+      this.notifications
+        .createForOrder(order.userId, orderId, 'payment_expired')
+        .catch((e) =>
+          this.logger.error(
+            `Не удалось отправить уведомление об отмене заказа #${orderId}: ${e}`,
+          ),
+        );
     }
   }
 

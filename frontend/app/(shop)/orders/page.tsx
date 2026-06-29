@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, RotateCcw } from 'lucide-react';
+import { AxiosError } from 'axios';
 import api from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,17 +14,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice, formatDate } from '@/lib/format';
 import { STATUS_LABELS, STATUS_COLORS, POLLING_INTERVAL_MS } from '@/lib/constants';
 import { useAuthStore } from '@/stores/auth.store';
+import { useCartStore } from '@/stores/cart.store';
 import { FadeIn } from '@/components/motion/fade-in';
 import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
-import { PaymentTimerBadge } from '@/components/payment-timer';
 import type { Order, OrderStatus } from '@/types';
 
 export default function OrdersPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const prevStatusesRef = useRef<Record<number, string>>({});
+  const [reorderingId, setReorderingId] = useState<number | null>(null);
+  const fetchCart = useCartStore((s) => s.fetchCart);
 
-  const { data: ordersData, isLoading, refetch } = useQuery({
+  const { data: ordersData, isLoading } = useQuery({
     queryKey: ['orders'],
     queryFn: async () => {
       const { data } = await api.get('/orders');
@@ -50,6 +53,36 @@ export default function OrdersPage() {
       prev[order.id] = order.status;
     });
   }, [orders]);
+
+  const handleReorder = async (orderId: number) => {
+    setReorderingId(orderId);
+    try {
+      const { data } = await api.post(`/orders/${orderId}/reorder`);
+      await fetchCart();
+      const added: number = data.added ?? 0;
+      const skipped: string[] = data.skipped ?? [];
+      if (added === 0) {
+        toast.error('Товары из этого заказа сейчас недоступны');
+        return;
+      }
+      if (skipped.length > 0) {
+        toast.success(
+          `Добавлено в корзину. Недоступно сейчас: ${skipped.join(', ')}`,
+        );
+      } else {
+        toast.success('Товары добавлены в корзину');
+      }
+      router.push('/cart');
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Не удалось повторить заказ');
+      } else {
+        toast.error('Не удалось повторить заказ');
+      }
+    } finally {
+      setReorderingId(null);
+    }
+  };
 
   if (!user) {
     return (
@@ -103,12 +136,6 @@ export default function OrdersPage() {
                         <Badge className={STATUS_COLORS[order.status as OrderStatus]}>
                           {STATUS_LABELS[order.status as OrderStatus]}
                         </Badge>
-                        {order.status === 'new' && order.paymentExpiresAt && (
-                          <PaymentTimerBadge
-                            expiresAt={order.paymentExpiresAt}
-                            onExpired={() => refetch()}
-                          />
-                        )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         {formatDate(order.deliveryDate)} &middot;{' '}
@@ -122,6 +149,21 @@ export default function OrdersPage() {
                       {formatPrice(order.total)}
                     </span>
                   </div>
+                  {order.status !== 'new' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReorder(order.id);
+                      }}
+                      disabled={reorderingId === order.id}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      {reorderingId === order.id ? 'Добавляем...' : 'Заказать снова'}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </StaggerItem>
