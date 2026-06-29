@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Truck } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,13 +26,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAuthStore } from '@/stores/auth.store';
+import { useCartStore } from '@/stores/cart.store';
 import { FadeIn } from '@/components/motion/fade-in';
 import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
 import { AnimatePresence, motion } from 'framer-motion';
 import { OrderChat } from '@/components/order-chat';
 import { PaymentDetails } from '@/components/payment-details';
-import { PaymentTimer } from '@/components/payment-timer';
 import type { Order, OrderStatus, DeliveryQuote, DeliveryClaimResponse } from '@/types';
 import { useState } from 'react';
 import { AxiosError } from 'axios';
@@ -52,6 +52,8 @@ export default function OrderDetailPage() {
   const [isQuoting, setIsQuoting] = useState(false);
   const [isCreatingClaim, setIsCreatingClaim] = useState(false);
   const [isPayingDoplata, setIsPayingDoplata] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
+  const fetchCart = useCartStore((s) => s.fetchCart);
 
   const orderId = params.id as string;
 
@@ -112,6 +114,36 @@ export default function OrderDetailPage() {
       }
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleReorder = async () => {
+    setIsReordering(true);
+    try {
+      const { data } = await api.post(`/orders/${orderId}/reorder`);
+      await fetchCart();
+      const added: number = data.added ?? 0;
+      const skipped: string[] = data.skipped ?? [];
+      if (added === 0) {
+        toast.error('Товары из этого заказа сейчас недоступны');
+        return;
+      }
+      if (skipped.length > 0) {
+        toast.success(
+          `Добавлено в корзину. Недоступно сейчас: ${skipped.join(', ')}`,
+        );
+      } else {
+        toast.success('Товары добавлены в корзину');
+      }
+      router.push('/cart');
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Не удалось повторить заказ');
+      } else {
+        toast.error('Не удалось повторить заказ');
+      }
+    } finally {
+      setIsReordering(false);
     }
   };
 
@@ -361,17 +393,6 @@ export default function OrderDetailPage() {
       </StaggerItem>
       </StaggerContainer>
 
-      {/* Countdown to payment deadline for new orders */}
-      {order.status === 'new' && order.paymentExpiresAt && (
-        <PaymentTimer
-          expiresAt={order.paymentExpiresAt}
-          onExpired={() => {
-            toast.error('Время на оплату истекло — заказ отменён');
-            refetch();
-          }}
-        />
-      )}
-
       {/* Payment for new orders: YooKassa widget or manual requisites */}
       {order.status === 'new' && provider === 'yookassa' && (
         mainPayment.payment?.confirmation_token ? (
@@ -445,6 +466,20 @@ export default function OrderDetailPage() {
           disabled={isCancelling}
         >
           {isCancelling ? 'Отмена...' : 'Отменить заказ'}
+        </Button>
+      )}
+
+      {/* Reorder — повторить прошлый заказ (кроме ещё не оплаченного new) */}
+      {order.status !== 'new' && (
+        <Button
+          variant="outline"
+          className="w-full gap-2"
+          size="lg"
+          onClick={handleReorder}
+          disabled={isReordering}
+        >
+          <RotateCcw className="h-4 w-4" />
+          {isReordering ? 'Добавляем...' : 'Заказать снова'}
         </Button>
       )}
 

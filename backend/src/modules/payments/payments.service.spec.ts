@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DeliveryClaimsService } from '../delivery/claims/delivery-claims.service';
 import { YookassaService } from './yookassa/yookassa.service';
 import { PromoService } from '../promo/promo.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const mockPrisma = {
   order: {
@@ -36,6 +37,10 @@ const mockPromo = {
   markUsed: jest.fn(),
 };
 
+const mockNotifications = {
+  createForOrder: jest.fn(),
+};
+
 describe('PaymentsService', () => {
   let service: PaymentsService;
 
@@ -47,6 +52,7 @@ describe('PaymentsService', () => {
         { provide: DeliveryClaimsService, useValue: mockDeliveryClaims },
         { provide: YookassaService, useValue: mockYookassa },
         { provide: PromoService, useValue: mockPromo },
+        { provide: NotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 
@@ -58,6 +64,7 @@ describe('PaymentsService', () => {
     mockPrisma.order.update.mockResolvedValue({});
     mockPrisma.payment.updateMany.mockResolvedValue({ count: 1 });
     mockPrisma.order.updateMany.mockResolvedValue({ count: 1 });
+    mockNotifications.createForOrder.mockResolvedValue(null);
   });
 
   describe('getConfig', () => {
@@ -474,11 +481,46 @@ describe('PaymentsService', () => {
       expect(mockPrisma.order.updateMany).not.toHaveBeenCalled();
     });
 
-    it('canceled: платёж помечается canceled, заказ не трогаем', async () => {
+    it('canceled (main): платёж canceled, заказ отменяется и освобождает слот', async () => {
       mockPrisma.payment.findUnique.mockResolvedValue({
         id: 'pay-uuid',
         orderId: 1,
         kind: 'main',
+        provider: 'yookassa',
+        status: 'pending',
+      });
+      mockPrisma.order.findUnique.mockResolvedValue({ userId: 7 });
+
+      await service.applyProviderStatus('yk-id', {
+        id: 'yk-id',
+        status: 'canceled',
+        paid: false,
+      });
+
+      expect(mockPrisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'canceled' }),
+        }),
+      );
+      // Заказ new → cancelled (слот освобождается)
+      expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1, status: 'new' },
+          data: { status: 'cancelled' },
+        }),
+      );
+      expect(mockNotifications.createForOrder).toHaveBeenCalledWith(
+        7,
+        1,
+        'payment_expired',
+      );
+    });
+
+    it('canceled (doplata): заказ не трогаем — отменяется только платёж', async () => {
+      mockPrisma.payment.findUnique.mockResolvedValue({
+        id: 'pay-uuid',
+        orderId: 1,
+        kind: 'doplata',
         provider: 'yookassa',
         status: 'pending',
       });
@@ -495,6 +537,26 @@ describe('PaymentsService', () => {
         }),
       );
       expect(mockPrisma.order.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('canceled (main) идемпотентен: заказ уже не new — уведомление не шлём', async () => {
+      mockPrisma.payment.findUnique.mockResolvedValue({
+        id: 'pay-uuid',
+        orderId: 1,
+        kind: 'main',
+        provider: 'yookassa',
+        status: 'pending',
+      });
+      // payment ещё pending (count=1), но заказ уже отменён cron'ом (count=0)
+      mockPrisma.order.updateMany.mockResolvedValue({ count: 0 });
+
+      await service.applyProviderStatus('yk-id', {
+        id: 'yk-id',
+        status: 'canceled',
+        paid: false,
+      });
+
+      expect(mockNotifications.createForOrder).not.toHaveBeenCalled();
     });
 
     it('неизвестный providerPaymentId — ничего не делает', async () => {

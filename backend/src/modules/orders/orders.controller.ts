@@ -58,4 +58,11 @@ export class OrdersController {
   cancelOrder(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return this.ordersService.cancelOrder(req.user.id, id);
   }
+
+  @Post(':id/reorder')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Re-add items of a past order to the cart' })
+  reorder(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return this.ordersService.reorder(req.user.id, id);
+  }
 }

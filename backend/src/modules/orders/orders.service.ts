@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CartService } from '../cart/cart.service';
+import { CartService, CartItem } from '../cart/cart.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { AddressVerifierService } from '../delivery/address-verifier.service';
 import { AddressesService } from '../addresses/addresses.service';
@@ -341,6 +341,61 @@ export class OrdersService {
       where: { id: orderId },
       data: { status: 'cancelled' },
     });
+  }
+
+  /**
+   * «Заказать снова»: перекладывает позиции прошлого заказа в корзину.
+   * Цена, название и доступность берутся из текущего товара (а не из снимка
+   * заказа), чтобы не оформить устаревшую цену. Недоступные/удалённые товары
+   * пропускаются и возвращаются в `skipped`.
+   */
+  async reorder(userId: number, orderId: number) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+    if (!order) {
+      throw new NotFoundException(`Order #${orderId} not found`);
+    }
+    if (order.userId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const items = (order.items as unknown as CartItem[]) ?? [];
+    const productIds = [...new Set(items.map((i) => i.product_id))];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    let added = 0;
+    const skipped: string[] = [];
+    for (const item of items) {
+      const product = productMap.get(item.product_id);
+      if (!product || !product.available) {
+        skipped.push(item.name);
+        continue;
+      }
+      try {
+        await this.cartService.addOrUpdateItem(userId, {
+          product_id: product.id,
+          name: product.name,
+          category: product.category,
+          flavor: item.flavor,
+          size: item.size,
+          quantity: item.quantity,
+          unit: product.unit,
+          price: product.price,
+          maxPerCart: item.maxPerCart,
+        });
+        added += 1;
+      } catch {
+        // Лимит по тортам и т.п. — пропускаем позицию, не валим весь повтор.
+        skipped.push(item.name);
+      }
+    }
+
+    const cart = await this.cartService.getCart(userId);
+    return { added, skipped, cart };
   }
 
   private async generateOrderNumber(): Promise<string> {

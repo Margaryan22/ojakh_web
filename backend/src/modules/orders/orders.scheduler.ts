@@ -7,7 +7,7 @@ import { OrdersService } from './orders.service';
  * Фоновая отмена просроченных неоплаченных заказов.
  *
  * Заказ создаётся со статусом «new» и сроком оплаты paymentExpiresAt
- * (PAYMENT_EXPIRES_MS = 15 мин). Если пользователь не открывает заказ
+ * (PAYMENT_EXPIRES_MS = 10 мин). Если пользователь не открывает заказ
  * (ленивая отмена в OrdersService.expireIfUnpaid не срабатывает),
  * этот cron подчищает зависшие заказы раз в минуту.
  */
