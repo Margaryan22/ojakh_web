@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -53,6 +53,10 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const burgerBtnRef = useRef<HTMLButtonElement>(null);
+  const notifPanelRef = useRef<HTMLDivElement>(null);
+  const notifBtnRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -71,6 +75,50 @@ export function Header() {
       return () => clearInterval(interval);
     }
   }, [user, fetchNotifications]);
+
+  // На мобиле закрываем выпадающие панели шапки (бургер-меню и уведомления)
+  // при клике вне них и при скролле страницы. Слушатели висят, только пока
+  // что-то открыто. Панель уведомлений на десктопе — это Radix DropdownMenu,
+  // он закрывается сам, поэтому ручное закрытие включаем только для мобилы.
+  useEffect(() => {
+    if (!mobileOpen && !notifOpen) return;
+
+    const isMobile = () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 767px)').matches;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      // Бургер-меню (рендерится только на мобиле): клик по меню или по бургеру
+      // не закрывает — бургер тогглит сам.
+      if (
+        mobileOpen &&
+        !mobileMenuRef.current?.contains(t) &&
+        !burgerBtnRef.current?.contains(t)
+      ) {
+        setMobileOpen(false);
+      }
+      if (
+        notifOpen &&
+        isMobile() &&
+        !notifPanelRef.current?.contains(t) &&
+        !notifBtnRef.current?.contains(t)
+      ) {
+        setNotifOpen(false);
+      }
+    };
+    const handleScroll = () => {
+      setMobileOpen(false);
+      if (isMobile()) setNotifOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [mobileOpen, notifOpen]);
 
   const handleLogout = async () => {
     await logout();
@@ -275,6 +323,7 @@ export function Header() {
         <div className='flex md:hidden items-center gap-1'>
           {user && (
             <Button
+              ref={notifBtnRef}
               variant='ghost'
               size='icon'
               className='relative'
@@ -309,6 +358,7 @@ export function Header() {
             </Link>
           </Button>
           <Button
+            ref={burgerBtnRef}
             variant='ghost'
             size='icon'
             onClick={() => {
@@ -323,7 +373,7 @@ export function Header() {
 
       {/* Mobile notifications panel */}
       {notifOpen && user && (
-        <div className='md:hidden border-t bg-background'>
+        <div ref={notifPanelRef} className='md:hidden border-t bg-background'>
           <div className='max-w-7xl mx-auto'>
             <NotificationsPanel />
           </div>
@@ -335,6 +385,7 @@ export function Header() {
       {mobileOpen && (
         <motion.div
           key='mobile-menu'
+          ref={mobileMenuRef}
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
