@@ -45,8 +45,6 @@ import {
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { FadeIn } from '@/components/motion/fade-in';
-import { PaymentDetails } from '@/components/payment-details';
-import { usePaymentConfig } from '@/lib/use-payment';
 import { DUR_BASE, EASE_OUT } from '@/components/motion/motion-presets';
 import { AnimatePresence, motion } from 'framer-motion';
 import type {
@@ -58,13 +56,11 @@ import type {
 } from '@/types';
 import { AxiosError } from 'axios';
 
-type Step = 'cart' | 'delivery' | 'confirm';
+type Step = 'cart' | 'delivery';
 
 export default function CartPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const { data: paymentConfig } = usePaymentConfig();
-  const paymentProvider = paymentConfig?.provider ?? 'manual';
   const {
     items,
     isLoading,
@@ -348,6 +344,19 @@ export default function CartPage() {
     staleTime: 30_000,
   });
 
+  // Держим deliveryCost актуальным на шаге доставки, чтобы итоговая сумма и
+  // сводка считались live (раньше это делал только переход на шаг подтверждения).
+  useEffect(() => {
+    if (step !== 'delivery') return;
+    if (isPickup) {
+      setDeliveryCost(0);
+      setCostBreakdown(null);
+    } else if (liveCostData) {
+      setDeliveryCost(liveCostData.cost);
+      setCostBreakdown(liveCostData.breakdown ?? null);
+    }
+  }, [step, isPickup, liveCostData]);
+
   // Saved delivery addresses (для chip-списка над инпутом адреса).
   const { data: savedAddresses } = useQuery<UserAddress[]>({
     queryKey: ['savedAddresses'],
@@ -455,7 +464,8 @@ export default function CartPage() {
       setCostBreakdown(null);
     }
 
-    setStep('confirm');
+    // Шаг подтверждения убран: сразу создаём заказ, далее — оплата на /orders/:id.
+    await handleSubmitOrder();
   };
 
   const handleSubmitOrder = async () => {
@@ -558,22 +568,6 @@ export default function CartPage() {
         >
           Доставка
           {step === 'delivery' && (
-            <motion.span
-              layoutId='cart-step-active'
-              className='absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-primary'
-              transition={{ type: 'tween', duration: DUR_BASE, ease: EASE_OUT }}
-            />
-          )}
-        </span>
-        <ArrowRight className='h-3 w-3 text-muted-foreground' />
-        <span
-          className={cn(
-            'relative font-medium pb-1 transition-colors duration-200',
-            step === 'confirm' ? 'text-primary' : 'text-muted-foreground',
-          )}
-        >
-          Подтверждение
-          {step === 'confirm' && (
             <motion.span
               layoutId='cart-step-active'
               className='absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-primary'
@@ -1305,206 +1299,112 @@ export default function CartPage() {
                 )}
             </div>
 
-            <Button className='w-full' onClick={handleConfirmStep}>
-              Далее
-            </Button>
-          </div>
-        </>
-      )}
-
-      {/* STEP 3: Confirmation */}
-      {step === 'confirm' && (
-        <>
-          <div className='flex items-center gap-2'>
-            <Button
-              variant='ghost'
-              size='icon'
-              onClick={() => setStep('delivery')}
-            >
-              <ArrowLeft className='h-4 w-4' />
-            </Button>
-            <h1 className='text-2xl font-bold'>Подтверждение</h1>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-lg'>Состав заказа</CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-3'>
-              {items.map((item) => (
-                <div
-                  key={`${item.product_id}-${item.flavor}-${item.size}`}
-                  className='flex justify-between items-center text-sm'
-                >
-                  <span>
-                    {item.name}
-                    {item.flavor ? ` (${item.flavor})` : ''}
-                    {item.size ? ` ${item.size}` : ''} &times; {item.quantity}{' '}
-                    {item.unit}
-                  </span>
-                  <span className='font-medium'>
-                    {formatPrice(item.subtotal)}
-                  </span>
+            {/* Итог + промокод (объединено с бывшим шагом подтверждения) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className='text-lg'>Итого</CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-3'>
+                <div className='flex justify-between text-sm'>
+                  <span className='text-muted-foreground'>Товары:</span>
+                  <span>{formatPrice(totalPrice())}</span>
                 </div>
-              ))}
-              <Separator />
-              <div className='flex justify-between text-sm'>
-                <span className='text-muted-foreground'>Товары:</span>
-                <span>{formatPrice(totalPrice())}</span>
-              </div>
-              {!isPickup && deliveryCost > 0 && (
-                <div className='space-y-0.5'>
+                {!isPickup && deliveryCost > 0 && (
+                  <div className='space-y-0.5'>
+                    <div className='flex justify-between text-sm'>
+                      <span className='text-muted-foreground'>Доставка:</span>
+                      <span>{isLoadingCost ? '...' : formatPrice(deliveryCost)}</span>
+                    </div>
+                    {describeBreakdown(costBreakdown) && (
+                      <p className='text-[11px] text-muted-foreground text-right'>
+                        {describeBreakdown(costBreakdown)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {!isPickup && deliveryCost === 0 && !isLoadingCost && (
                   <div className='flex justify-between text-sm'>
                     <span className='text-muted-foreground'>Доставка:</span>
-                    <span>{isLoadingCost ? '...' : formatPrice(deliveryCost)}</span>
-                  </div>
-                  {describeBreakdown(costBreakdown) && (
-                    <p className='text-[11px] text-muted-foreground text-right'>
-                      {describeBreakdown(costBreakdown)}
-                    </p>
-                  )}
-                </div>
-              )}
-              {!isPickup && deliveryCost === 0 && !isLoadingCost && (
-                <div className='flex justify-between text-sm'>
-                  <span className='text-muted-foreground'>Доставка:</span>
-                  <span className='text-success'>
-                    Бесплатно (от {formatPrice(FREE_DELIVERY_THRESHOLD_KOPECKS)})
-                  </span>
-                </div>
-              )}
-              {isPickup && (
-                <div className='flex justify-between text-sm'>
-                  <span className='text-muted-foreground'>Доставка:</span>
-                  <span className='text-success'>Бесплатно (самовывоз)</span>
-                </div>
-              )}
-              {/* Промокод */}
-              <div className='space-y-1.5'>
-                {appliedPromo ? (
-                  <div className='flex justify-between text-sm items-center'>
                     <span className='text-success'>
-                      Промокод {appliedPromo.code}
+                      Бесплатно (от {formatPrice(FREE_DELIVERY_THRESHOLD_KOPECKS)})
                     </span>
-                    <button
-                      type='button'
-                      onClick={removePromo}
-                      className='text-xs text-muted-foreground underline'
-                    >
-                      Убрать
-                    </button>
-                  </div>
-                ) : (
-                  <div className='flex gap-2'>
-                    <Input
-                      placeholder='Промокод'
-                      value={promoInput}
-                      onChange={(e) => setPromoInput(e.target.value)}
-                      className='h-9'
-                    />
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      onClick={applyPromo}
-                      disabled={promoLoading || !promoInput.trim()}
-                    >
-                      {promoLoading ? '...' : 'Применить'}
-                    </Button>
                   </div>
                 )}
-                {promoError && (
-                  <p className='text-xs text-destructive'>{promoError}</p>
+                {isPickup && (
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-muted-foreground'>Доставка:</span>
+                    <span className='text-success'>Бесплатно (самовывоз)</span>
+                  </div>
                 )}
-              </div>
-              {discount > 0 && (
-                <div className='flex justify-between text-sm'>
-                  <span className='text-muted-foreground'>Скидка:</span>
-                  <span className='text-success'>−{formatPrice(discount)}</span>
+                {/* Промокод */}
+                <div className='space-y-1.5'>
+                  {appliedPromo ? (
+                    <div className='flex justify-between text-sm items-center'>
+                      <span className='text-success'>
+                        Промокод {appliedPromo.code}
+                      </span>
+                      <button
+                        type='button'
+                        onClick={removePromo}
+                        className='text-xs text-muted-foreground underline'
+                      >
+                        Убрать
+                      </button>
+                    </div>
+                  ) : (
+                    <div className='flex gap-2'>
+                      <Input
+                        placeholder='Промокод'
+                        value={promoInput}
+                        onChange={(e) => setPromoInput(e.target.value)}
+                        className='h-9'
+                      />
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        onClick={applyPromo}
+                        disabled={promoLoading || !promoInput.trim()}
+                      >
+                        {promoLoading ? '...' : 'Применить'}
+                      </Button>
+                    </div>
+                  )}
+                  {promoError && (
+                    <p className='text-xs text-destructive'>{promoError}</p>
+                  )}
                 </div>
-              )}
-              <div className='flex justify-between font-bold'>
-                <span>Итого:</span>
-                <span>{formatPrice(payable)}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-lg'>Доставка</CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-2 text-sm'>
-              <p>
-                <span className='text-muted-foreground'>Тип:</span>{' '}
-                {isPickup ? 'Самовывоз' : 'Доставка'}
-              </p>
-              {!isPickup && (
-                <>
-                  <p>
-                    <span className='text-muted-foreground'>Адрес:</span>{' '}
-                    {address}
-                  </p>
-                  {(addressApartment ||
-                    addressEntrance ||
-                    addressFloor ||
-                    addressIntercom) && (
-                    <p className='text-xs text-muted-foreground'>
-                      {[
-                        addressApartment && `кв./офис ${addressApartment}`,
-                        addressEntrance && `подъезд ${addressEntrance}`,
-                        addressFloor && `этаж ${addressFloor}`,
-                        addressIntercom && `домофон ${addressIntercom}`,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </p>
-                  )}
-                  {deliveryNotes.trim() && (
-                    <p className='text-xs text-muted-foreground'>
-                      Комментарий: {deliveryNotes.trim()}
-                    </p>
-                  )}
-                </>
-              )}
-              <p>
-                <span className='text-muted-foreground'>Дата:</span>{' '}
-                {formatDate(selectedDate)}
-              </p>
-              <p>
-                <span className='text-muted-foreground'>Время:</span>{' '}
-                {selectedTime}
-              </p>
-            </CardContent>
-          </Card>
-
-          {paymentProvider === 'yookassa' ? (
-            <Card>
-              <CardContent className='py-4 text-sm text-muted-foreground'>
-                После оформления заказа вы сможете оплатить{' '}
-                {formatPrice(payable)} картой или через СБП
-                на странице заказа.
+                {discount > 0 && (
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-muted-foreground'>Скидка:</span>
+                    <span className='text-success'>−{formatPrice(discount)}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className='flex justify-between font-bold'>
+                  <span>Итого:</span>
+                  <span>{formatPrice(payable)}</span>
+                </div>
               </CardContent>
             </Card>
-          ) : (
-            <PaymentDetails
-              intro={`После оформления заказа нужно будет перевести ${formatPrice(payable)} по одному из вариантов ниже. Реквизиты также появятся на странице заказа.`}
-            />
-          )}
 
-          <Button
-            className='w-full'
-            size='lg'
-            onClick={handleSubmitOrder}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Оформление...' : 'Оформить заказ'}
-          </Button>
-          <p className='text-xs text-muted-foreground text-center'>
-            Нажимая «Оформить заказ», вы создаёте заказ — оплата на следующем шаге.
-          </p>
+            <Button
+              className='w-full'
+              size='lg'
+              onClick={handleConfirmStep}
+              disabled={isSubmitting}
+            >
+              {isSubmitting
+                ? 'Оформление...'
+                : `Оформить и оплатить ${formatPrice(payable)}`}
+            </Button>
+            <p className='text-xs text-muted-foreground text-center'>
+              Оплата картой или через СБП — на следующем экране.
+            </p>
+          </div>
         </>
       )}
+
     </div>
     </FadeIn>
   );
