@@ -340,6 +340,38 @@ export class AdminService {
     }));
   }
 
+  /** Смена роли пользователя (user ↔ admin). */
+  async setUserRole(
+    targetId: number,
+    requesterId: number,
+    role: 'user' | 'admin',
+  ) {
+    if (targetId === requesterId) {
+      throw new BadRequestException('Нельзя менять собственную роль');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new NotFoundException(`Пользователь #${targetId} не найден`);
+    }
+
+    return this.prisma.user.update({
+      where: { id: targetId },
+      data: { role },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+  }
+
   /**
    * Полное удаление пользователя вместе со всеми его данными.
    *

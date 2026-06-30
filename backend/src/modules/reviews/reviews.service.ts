@@ -59,6 +59,32 @@ export class ReviewsService {
     });
   }
 
+  /** Все отзывы для модерации в админке (с автором и товаром), новые сверху. */
+  listAllForAdmin({ limit, offset }: { limit: number; offset: number }) {
+    return this.prisma.review.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        product: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  /** Удаление любого отзыва администратором (модерация). */
+  async removeAsAdmin(reviewId: number) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { id: true },
+    });
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+    await this.prisma.review.delete({ where: { id: reviewId } });
+    return { ok: true };
+  }
+
   async summary(productId: number) {
     const result = await this.prisma.review.aggregate({
       where: { productId },

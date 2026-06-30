@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice, formatDate } from '@/lib/format';
 import { STATUS_LABELS, STATUS_COLORS, YANDEX_CLAIM_STATUS_LABELS } from '@/lib/constants';
@@ -31,6 +32,7 @@ const statusFilters: { value: string; label: string }[] = [
 
 export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [openChatOrderId, setOpenChatOrderId] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
@@ -112,9 +114,20 @@ export default function AdminOrdersPage() {
     },
   });
 
-  const filteredOrders = statusFilter === 'all'
-    ? orders
-    : orders.filter((o) => o.status === statusFilter);
+  const query = search.trim().toLowerCase();
+  const filteredOrders = orders.filter((o) => {
+    if (statusFilter !== 'all' && o.status !== statusFilter) return false;
+    if (!query) return true;
+    const u = (o as any).user;
+    const haystack = [
+      o.orderNumber ?? String(o.id),
+      String(o.id),
+      u?.name ?? '',
+      u?.phone ?? '',
+      u?.email ?? '',
+    ];
+    return haystack.some((f) => String(f).toLowerCase().includes(query));
+  });
 
   if (isLoading) {
     return (
@@ -137,6 +150,13 @@ export default function AdminOrdersPage() {
       <FadeIn>
         <h1 className="text-2xl font-bold">Заказы</h1>
       </FadeIn>
+
+      <Input
+        placeholder="Поиск по № заказа, имени, телефону или email клиента"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="max-w-md"
+      />
 
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
         <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
