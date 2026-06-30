@@ -11,6 +11,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
@@ -126,5 +127,20 @@ export class AdminController {
   })
   broadcast(@Body() dto: BroadcastDto) {
     return this.adminService.broadcast(dto.message);
+  }
+
+  @Get('users')
+  @ApiOperation({ summary: 'List all users with order counts (admin only)' })
+  listUsers() {
+    return this.adminService.listUsers();
+  }
+
+  @Delete('users/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delete a user along with all their orders and data (admin only)',
+  })
+  deleteUser(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.adminService.deleteUser(id, req.user.id);
   }
 }

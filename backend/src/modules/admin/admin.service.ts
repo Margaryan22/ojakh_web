@@ -318,4 +318,56 @@ export class AdminService {
   updateSettings(dto: UpdateSettingsDto) {
     return this.settings.update(dto);
   }
+
+  /** Список всех пользователей с числом заказов (для управления в админке). */
+  async listUsers() {
+    const users = await this.prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+        _count: { select: { orders: true } },
+      },
+    });
+
+    return users.map(({ _count, ...u }) => ({
+      ...u,
+      ordersCount: _count.orders,
+    }));
+  }
+
+  /**
+   * Полное удаление пользователя вместе со всеми его данными.
+   *
+   * Заказы — единственная связь User без `onDelete: Cascade`, поэтому удаляем их
+   * вручную (их Payment и OrderMessage уйдут каскадом). Всё остальное — корзина,
+   * избранное, отзывы, адреса, уведомления, push-подписки — удалится каскадом при
+   * удалении пользователя; обращения (Feedback) сохранятся с обнулённым userId.
+   */
+  async deleteUser(targetId: number, requesterId: number) {
+    if (targetId === requesterId) {
+      throw new BadRequestException(
+        'Нельзя удалить собственную учётную запись',
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new NotFoundException(`Пользователь #${targetId} не найден`);
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.order.deleteMany({ where: { userId: targetId } }),
+      this.prisma.user.delete({ where: { id: targetId } }),
+    ]);
+
+    return { ok: true };
+  }
 }
