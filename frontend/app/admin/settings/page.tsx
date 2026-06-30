@@ -17,11 +17,34 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Send, Trash2 } from 'lucide-react';
+import { useAuthStore } from '@/stores/auth.store';
+import { ADMIN_ROLE } from '@/lib/constants';
+import { formatDateFull } from '@/lib/format';
 
 interface StoreSettings {
   minOrderKopecks: number;
   freeDeliveryThresholdKopecks: number;
+}
+
+interface AdminUser {
+  id: number;
+  email: string;
+  name: string;
+  phone: string | null;
+  role: 'user' | 'admin';
+  createdAt: string;
+  ordersCount: number;
 }
 
 // Поля редактируются в рублях, на бэкенд уходят копейки.
@@ -104,6 +127,35 @@ export default function AdminSettingsPage() {
     }
     broadcastMutation.mutate(broadcastText);
   };
+
+  // ── Управление пользователями ─────────────────────────────────────────────
+  const currentUserId = useAuthStore((s) => s.user?.id);
+
+  const { data: users = [], isLoading: usersLoading } = useQuery<AdminUser[]>({
+    queryKey: ['admin-users'],
+    queryFn: async () => (await api.get('/admin/users')).data,
+  });
+
+  // Пользователь, для которого открыто окно подтверждения удаления.
+  const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/admin/users/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success('Пользователь и все его данные удалены');
+      setUserToDelete(null);
+    },
+    onError: (error) => {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Не удалось удалить');
+      } else {
+        toast.error('Не удалось удалить');
+      }
+    },
+  });
 
   const minOrderKopecks = toKopecks(minOrder);
   const freeThresholdKopecks = toKopecks(freeThreshold);
@@ -229,6 +281,103 @@ export default function AdminSettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Пользователи</CardTitle>
+          <CardDescription>
+            Удаление пользователя необратимо: вместе с аккаунтом удаляются все его
+            заказы, корзина, избранное, отзывы, адреса и уведомления.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {usersLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : users.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Пользователей пока нет.
+            </p>
+          ) : (
+            <div className="divide-y">
+              {users.map((u) => {
+                const isSelf = u.id === currentUserId;
+                const isAdmin = u.role === ADMIN_ROLE;
+                return (
+                  <div key={u.id} className="flex items-center gap-3 py-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{u.name}</span>
+                        {isAdmin && <Badge variant="secondary">админ</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {u.email}
+                        {u.phone && ` · ${u.phone}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {u.ordersCount} заказ(ов) · с{' '}
+                        {formatDateFull(u.createdAt)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={isSelf}
+                      title={
+                        isSelf
+                          ? 'Нельзя удалить себя'
+                          : 'Удалить пользователя'
+                      }
+                      onClick={() => setUserToDelete(u)}
+                      aria-label="Удалить пользователя"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={!!userToDelete}
+        onOpenChange={(open) => !open && setUserToDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Удалить пользователя?</DialogTitle>
+            <DialogDescription>
+              {userToDelete && (
+                <>
+                  Аккаунт <span className="font-medium">{userToDelete.name}</span>{' '}
+                  ({userToDelete.email}) будет удалён безвозвратно вместе со всеми{' '}
+                  {userToDelete.ordersCount} заказами и остальными данными. Это
+                  действие нельзя отменить.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Отмена</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              disabled={deleteUserMutation.isPending}
+              onClick={() =>
+                userToDelete && deleteUserMutation.mutate(userToDelete.id)
+              }
+            >
+              {deleteUserMutation.isPending ? 'Удаление...' : 'Удалить'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
