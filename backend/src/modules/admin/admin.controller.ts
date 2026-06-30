@@ -20,6 +20,7 @@ import { AdminService } from './admin.service';
 import { UpsertDailyLimitDto } from './dto/upsert-daily-limit.dto';
 import { UpdateSettingsDto } from '../settings/dto/update-settings.dto';
 import { BroadcastDto } from './dto/broadcast.dto';
+import { SetUserRoleDto } from './dto/set-user-role.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -133,6 +134,17 @@ export class AdminController {
   @ApiOperation({ summary: 'List all users with order counts (admin only)' })
   listUsers() {
     return this.adminService.listUsers();
+  }
+
+  @Patch('users/:id/role')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change a user role: user ↔ admin (admin only)' })
+  setUserRole(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SetUserRoleDto,
+    @Req() req: any,
+  ) {
+    return this.adminService.setUserRole(id, req.user.id, dto.role);
   }
 
   @Delete('users/:id')

@@ -138,6 +138,37 @@ export default function AdminSettingsPage() {
 
   // Пользователь, для которого открыто окно подтверждения удаления.
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
+  // Поиск по имени / email / телефону.
+  const [userSearch, setUserSearch] = useState('');
+
+  const roleMutation = useMutation({
+    mutationFn: async ({ id, role }: { id: number; role: 'user' | 'admin' }) => {
+      await api.patch(`/admin/users/${id}/role`, { role });
+    },
+    onSuccess: (_data, { role }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success(
+        role === 'admin' ? 'Назначен администратором' : 'Права администратора сняты',
+      );
+    },
+    onError: (error) => {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Не удалось изменить роль');
+      } else {
+        toast.error('Не удалось изменить роль');
+      }
+    },
+  });
+
+  const filteredUsers = (() => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) =>
+      [u.name, u.email, u.phone ?? ''].some((f) =>
+        f.toLowerCase().includes(q),
+      ),
+    );
+  })();
 
   const deleteUserMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -286,11 +317,17 @@ export default function AdminSettingsPage() {
         <CardHeader>
           <CardTitle>Пользователи</CardTitle>
           <CardDescription>
-            Удаление пользователя необратимо: вместе с аккаунтом удаляются все его
-            заказы, корзина, избранное, отзывы, адреса и уведомления.
+            Назначайте администраторов и управляйте аккаунтами. Удаление
+            необратимо: вместе с аккаунтом удаляются все его заказы, корзина,
+            избранное, отзывы, адреса и уведомления.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <Input
+            placeholder="Поиск по имени, email или телефону"
+            value={userSearch}
+            onChange={(e) => setUserSearch(e.target.value)}
+          />
           {usersLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-12 w-full" />
@@ -301,9 +338,13 @@ export default function AdminSettingsPage() {
             <p className="text-sm text-muted-foreground">
               Пользователей пока нет.
             </p>
+          ) : filteredUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Никто не найден по запросу «{userSearch.trim()}».
+            </p>
           ) : (
             <div className="divide-y">
-              {users.map((u) => {
+              {filteredUsers.map((u) => {
                 const isSelf = u.id === currentUserId;
                 const isAdmin = u.role === ADMIN_ROLE;
                 return (
@@ -322,6 +363,26 @@ export default function AdminSettingsPage() {
                         {formatDateFull(u.createdAt)}
                       </p>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isSelf || roleMutation.isPending}
+                      title={
+                        isSelf
+                          ? 'Нельзя менять собственную роль'
+                          : isAdmin
+                            ? 'Снять права администратора'
+                            : 'Назначить администратором'
+                      }
+                      onClick={() =>
+                        roleMutation.mutate({
+                          id: u.id,
+                          role: isAdmin ? 'user' : 'admin',
+                        })
+                      }
+                    >
+                      {isAdmin ? 'Снять админа' : 'Сделать админом'}
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

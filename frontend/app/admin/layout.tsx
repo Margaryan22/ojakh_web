@@ -10,6 +10,7 @@ import {
   CalendarDays,
   BarChart2,
   MessageSquare,
+  Star,
   Settings,
   Ticket,
   ArrowLeft,
@@ -36,7 +37,8 @@ const adminLinks: {
   { href: '/admin/products', label: 'Товары', icon: Package, badge: null },
   { href: '/admin/calendar', label: 'Календарь', icon: CalendarDays, badge: null },
   { href: '/admin/analytics', label: 'Аналитика', icon: BarChart2, badge: null },
-  { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare, badge: 'feedback' },
+  { href: '/admin/reviews', label: 'Отзывы о товарах', icon: Star, badge: null },
+  { href: '/admin/feedback', label: 'Обращения', icon: MessageSquare, badge: 'feedback' },
   { href: '/admin/promo', label: 'Промокоды', icon: Ticket, badge: null },
   { href: '/admin/settings', label: 'Настройки', icon: Settings, badge: null },
 ];
