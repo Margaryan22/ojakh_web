@@ -1,28 +1,13 @@
-import {
-  IsInt,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Min,
-  MinLength,
-} from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+// Клиент передаёт только идентификацию позиции и количество.
+// Название, категория, единица и цена берутся сервером из БД (защита от подмены цены).
 export class AddCartItemDto {
   @ApiProperty({ example: 1 })
   @IsInt()
   @Min(1)
   product_id: number;
-
-  @ApiProperty({ example: 'Хинкали' })
-  @IsString()
-  @MinLength(1)
-  name: string;
-
-  @ApiProperty({ example: 'хинкали' })
-  @IsString()
-  @MinLength(1)
-  category: string;
 
   @ApiPropertyOptional({ example: 'говядина-свинина' })
   @IsOptional()
@@ -38,19 +23,4 @@ export class AddCartItemDto {
   @IsNumber()
   @Min(0)
   quantity: number;
-
-  @ApiProperty({ example: 'шт' })
-  @IsString()
-  unit: string;
-
-  @ApiProperty({ example: 12000, description: 'Price per unit in kopecks' })
-  @IsInt()
-  @Min(1)
-  price: number;
-
-  @ApiPropertyOptional({ example: 10, description: 'Max quantity per cart' })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  maxPerCart?: number;
 }

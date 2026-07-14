@@ -9,6 +9,9 @@ const mockPrisma = {
     upsert: jest.fn(),
     update: jest.fn(),
   },
+  product: {
+    findUnique: jest.fn(),
+  },
 };
 
 const baseItem: CartItem = {
@@ -31,6 +34,31 @@ const cakeItem: CartItem = {
   subtotal: 350000,
 };
 
+// Записи Product в БД, соответствующие позициям выше
+const dbProduct = {
+  id: 1,
+  name: 'Хинкали говядина',
+  category: 'хинкали',
+  flavor: null,
+  size: null,
+  unit: 'шт',
+  price: 8000,
+  available: true,
+  maxPerDay: 999,
+};
+
+const dbCake = {
+  id: 10,
+  name: 'Торт Наполеон',
+  category: 'торты',
+  flavor: null,
+  size: null,
+  unit: 'шт',
+  price: 350000,
+  available: true,
+  maxPerDay: 999,
+};
+
 describe('CartService', () => {
   let service: CartService;
 
@@ -44,6 +72,11 @@ describe('CartService', () => {
 
     service = module.get<CartService>(CartService);
     jest.clearAllMocks();
+    mockPrisma.product.findUnique.mockImplementation(async ({ where }: any) => {
+      if (where.id === 1) return dbProduct;
+      if (where.id >= 10 && where.id <= 12) return { ...dbCake, id: where.id };
+      return null;
+    });
   });
 
   describe('getCart', () => {
@@ -85,16 +118,12 @@ describe('CartService', () => {
   describe('addOrUpdateItem', () => {
     const dto = {
       product_id: 1,
-      name: 'Хинкали говядина',
-      category: 'хинкали',
       quantity: 5,
-      unit: 'шт',
-      price: 8000,
     };
 
     it('должен добавить новый товар в пустую корзину', async () => {
       mockPrisma.cart.findUnique.mockResolvedValue(null);
-      const updatedItems = [{ ...dto, subtotal: 40000 }];
+      const updatedItems = [{ ...baseItem, subtotal: 40000 }];
       mockPrisma.cart.upsert.mockResolvedValue({ userId: 1, items: updatedItems });
 
       const result = await service.addOrUpdateItem(1, dto);
@@ -104,7 +133,46 @@ describe('CartService', () => {
       expect(mockPrisma.cart.upsert).toHaveBeenCalled();
     });
 
-    it('должен суммировать количество с уже добавленным товаром', async () => {
+    it('должен брать цену и название из БД, а не из запроса (защита от подмены цены)', async () => {
+      mockPrisma.cart.findUnique.mockResolvedValue(null);
+      mockPrisma.cart.upsert.mockImplementation(async ({ create }: any) => ({
+        userId: 1,
+        items: create.items,
+      }));
+
+      // Клиент как будто прислал заниженную цену — DTO её больше не принимает,
+      // но проверяем, что позиция собрана из данных БД.
+      await service.addOrUpdateItem(1, { ...dto, quantity: 3 });
+
+      const upsertCall = mockPrisma.cart.upsert.mock.calls[0][0];
+      const item = upsertCall.create.items[0];
+      expect(item.price).toBe(dbProduct.price);
+      expect(item.name).toBe(dbProduct.name);
+      expect(item.unit).toBe(dbProduct.unit);
+      expect(item.subtotal).toBe(dbProduct.price * 3);
+    });
+
+    it('должен отклонить несуществующий товар', async () => {
+      mockPrisma.cart.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.addOrUpdateItem(1, { product_id: 999, quantity: 1 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('должен отклонить недоступный товар', async () => {
+      mockPrisma.cart.findUnique.mockResolvedValue(null);
+      mockPrisma.product.findUnique.mockResolvedValue({
+        ...dbProduct,
+        available: false,
+      });
+
+      await expect(service.addOrUpdateItem(1, dto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('должен суммировать количество с уже добавленным товаром и обновлять цену из БД', async () => {
       // addOrUpdateItem(addOnly): к существующим 5 прибавляет ещё 10 → итого 15.
       // Для полной замены количества используется отдельный setItemQuantity.
       const existingCart = { userId: 1, items: [{ ...baseItem }] };
@@ -119,10 +187,10 @@ describe('CartService', () => {
       const upsertCall = mockPrisma.cart.upsert.mock.calls[0][0];
       const upsertedItems = upsertCall.update.items;
       expect(upsertedItems[0].quantity).toBe(15);
-      expect(upsertedItems[0].subtotal).toBe(120000);
+      expect(upsertedItems[0].subtotal).toBe(dbProduct.price * 15);
     });
 
-    it('должен удалить товар если quantity === 0', async () => {
+    it('должен удалить товар если quantity === 0 (без обращения к Product)', async () => {
       const existingCart = { userId: 1, items: [{ ...baseItem }] };
       mockPrisma.cart.findUnique.mockResolvedValue(existingCart);
       mockPrisma.cart.upsert.mockResolvedValue({ userId: 1, items: [] });
@@ -131,29 +199,44 @@ describe('CartService', () => {
 
       const upsertCall = mockPrisma.cart.upsert.mock.calls[0][0];
       expect(upsertCall.update.items).toHaveLength(0);
+      expect(mockPrisma.product.findUnique).not.toHaveBeenCalled();
     });
 
-    it('должен вычислять subtotal как price * quantity', async () => {
+    it('должен ограничивать количество по maxPerDay товара', async () => {
       mockPrisma.cart.findUnique.mockResolvedValue(null);
-      mockPrisma.cart.upsert.mockResolvedValue({
-        userId: 1,
-        items: [{ ...dto, quantity: 3, subtotal: 24000 }],
+      mockPrisma.product.findUnique.mockResolvedValue({
+        ...dbProduct,
+        maxPerDay: 10,
       });
 
-      await service.addOrUpdateItem(1, { ...dto, quantity: 3 });
+      await expect(
+        service.addOrUpdateItem(1, { ...dto, quantity: 11 }),
+      ).rejects.toThrow(BadRequestException);
+    });
 
-      const upsertCall = mockPrisma.cart.upsert.mock.calls[0][0];
-      const item = upsertCall.create.items[0];
-      expect(item.subtotal).toBe(8000 * 3);
+    it('должен ограничивать суммарное количество при добавлении к существующей позиции', async () => {
+      mockPrisma.cart.findUnique.mockResolvedValue({
+        userId: 1,
+        items: [{ ...baseItem, quantity: 45 }],
+      });
+
+      // 45 + 10 = 55 > MAX_ITEM_QTY_PER_CART (50)
+      await expect(
+        service.addOrUpdateItem(1, { ...dto, quantity: 10 }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('должен различать товары по product_id + flavor + size', async () => {
       const itemMeat: CartItem = { ...baseItem, product_id: 1, flavor: 'говядина', size: undefined };
       const existingCart = { userId: 1, items: [itemMeat] };
       mockPrisma.cart.findUnique.mockResolvedValue(existingCart);
+      mockPrisma.product.findUnique.mockResolvedValue({
+        ...dbProduct,
+        flavor: 'свинина',
+      });
       mockPrisma.cart.upsert.mockResolvedValue({ userId: 1, items: [itemMeat, {}] });
 
-      await service.addOrUpdateItem(1, { ...dto, product_id: 1, flavor: 'свинина' });
+      await service.addOrUpdateItem(1, { ...dto, flavor: 'свинина' });
 
       const upsertCall = mockPrisma.cart.upsert.mock.calls[0][0];
       expect(upsertCall.update.items).toHaveLength(2);
@@ -165,7 +248,7 @@ describe('CartService', () => {
         mockPrisma.cart.upsert.mockResolvedValue({ userId: 1, items: [cakeItem] });
 
         await expect(
-          service.addOrUpdateItem(1, { ...cakeItem, product_id: 10 }),
+          service.addOrUpdateItem(1, { product_id: 10, quantity: 1 }),
         ).resolves.toBeDefined();
       });
 
@@ -177,7 +260,7 @@ describe('CartService', () => {
         mockPrisma.cart.upsert.mockResolvedValue({ userId: 1, items: [] });
 
         await expect(
-          service.addOrUpdateItem(1, { ...cakeItem, product_id: 11 }),
+          service.addOrUpdateItem(1, { product_id: 11, quantity: 1 }),
         ).resolves.toBeDefined();
       });
 
@@ -191,7 +274,7 @@ describe('CartService', () => {
         });
 
         await expect(
-          service.addOrUpdateItem(1, { ...cakeItem, product_id: 12 }),
+          service.addOrUpdateItem(1, { product_id: 12, quantity: 1 }),
         ).rejects.toThrow(BadRequestException);
       });
 
@@ -207,9 +290,39 @@ describe('CartService', () => {
 
         // Обновляем уже существующий торт (product_id: 10) — должно пройти
         await expect(
-          service.addOrUpdateItem(1, { ...cakeItem, product_id: 10, quantity: 2 }),
+          service.addOrUpdateItem(1, { product_id: 10, quantity: 1 }),
         ).resolves.toBeDefined();
       });
+    });
+  });
+
+  describe('setItemQuantity', () => {
+    it('должен пересчитывать subtotal по цене из корзины (записанной сервером)', async () => {
+      mockPrisma.cart.findUnique.mockResolvedValue({
+        userId: 1,
+        items: [{ ...baseItem }],
+      });
+      mockPrisma.cart.upsert.mockImplementation(async ({ update }: any) => ({
+        userId: 1,
+        items: update.items,
+      }));
+
+      await service.setItemQuantity(1, { product_id: 1, quantity: 7 });
+
+      const upsertCall = mockPrisma.cart.upsert.mock.calls[0][0];
+      expect(upsertCall.update.items[0].quantity).toBe(7);
+      expect(upsertCall.update.items[0].subtotal).toBe(baseItem.price * 7);
+    });
+
+    it('должен отклонять количество сверх maxPerCart позиции', async () => {
+      mockPrisma.cart.findUnique.mockResolvedValue({
+        userId: 1,
+        items: [{ ...baseItem, maxPerCart: 10 }],
+      });
+
+      await expect(
+        service.setItemQuantity(1, { product_id: 1, quantity: 11 }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

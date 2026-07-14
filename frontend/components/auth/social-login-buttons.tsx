@@ -2,24 +2,56 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import axios from 'axios';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/auth.store';
 import { finalizeAuthSuccess, readNextFromQuery } from '@/lib/post-auth';
+
+// Минимальные типы сторонних SDK (Google Identity Services / Apple JS).
+interface GoogleCredentialResponse {
+  credential: string;
+}
+
+interface GoogleIdInitConfig {
+  client_id: string;
+  callback: (response: GoogleCredentialResponse) => void;
+}
+
+interface GoogleButtonConfig {
+  theme?: 'outline' | 'filled_blue' | 'filled_black';
+  size?: 'large' | 'medium' | 'small';
+  width?: number;
+  text?: 'signin_with' | 'signup_with' | 'continue_with' | 'signin';
+  shape?: 'rectangular' | 'pill' | 'circle' | 'square';
+  locale?: string;
+}
+
+interface AppleAuthInitConfig {
+  clientId: string;
+  scope: string;
+  redirectURI: string;
+  usePopup: boolean;
+}
+
+interface AppleSignInResponse {
+  authorization?: { id_token?: string };
+  user?: { name?: { firstName?: string; lastName?: string } };
+}
 
 declare global {
   interface Window {
     google?: {
       accounts: {
         id: {
-          initialize: (config: any) => void;
-          renderButton: (el: HTMLElement, config: any) => void;
+          initialize: (config: GoogleIdInitConfig) => void;
+          renderButton: (el: HTMLElement, config: GoogleButtonConfig) => void;
         };
       };
     };
     AppleID?: {
       auth: {
-        init: (config: any) => void;
-        signIn: () => Promise<any>;
+        init: (config: AppleAuthInitConfig) => void;
+        signIn: () => Promise<AppleSignInResponse>;
       };
     };
   }
@@ -58,9 +90,11 @@ export function SocialLoginButtons() {
     router.push(next);
   }, [router, searchParams]);
 
-  const handleError = useCallback((provider: string, err: any) => {
-    const msg = err?.response?.data?.message || `Ошибка входа через ${provider}`;
-    toast.error(msg);
+  const handleError = useCallback((provider: string, err: unknown) => {
+    const msg = axios.isAxiosError(err)
+      ? err.response?.data?.message
+      : undefined;
+    toast.error(msg || `Ошибка входа через ${provider}`);
   }, []);
 
   // ─── Google Sign-In ─────────────────────────────────────────────────────
@@ -72,11 +106,11 @@ export function SocialLoginButtons() {
 
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
-        callback: async (response: any) => {
+        callback: async (response) => {
           try {
             await socialLogin('google', { idToken: response.credential });
             handleSuccess();
-          } catch (err: any) {
+          } catch (err) {
             handleError('Google', err);
           }
         },
@@ -120,8 +154,9 @@ export function SocialLoginButtons() {
 
       await socialLogin('apple', { idToken, name });
       handleSuccess();
-    } catch (err: any) {
-      if (err?.error === 'popup_closed_by_user') return;
+    } catch (err) {
+      const appleError = (err as { error?: string } | null)?.error;
+      if (appleError === 'popup_closed_by_user') return;
       handleError('Apple', err);
     }
   }, [socialLogin, handleSuccess, handleError]);
@@ -138,7 +173,7 @@ export function SocialLoginButtons() {
     const error = params.get('error');
 
     if (error) {
-      handleError('Yandex', { response: { data: { message: params.get('error_description') || error } } });
+      toast.error(params.get('error_description') || 'Ошибка входа через Yandex');
       window.history.replaceState(null, '', window.location.pathname);
       return;
     }
@@ -150,7 +185,7 @@ export function SocialLoginButtons() {
     window.history.replaceState(null, '', window.location.pathname);
 
     if (!savedState || savedState !== returnedState) {
-      handleError('Yandex', { response: { data: { message: 'Неверный state — попробуйте снова' } } });
+      toast.error('Неверный state — попробуйте снова');
       return;
     }
 
@@ -158,7 +193,7 @@ export function SocialLoginButtons() {
       try {
         await socialLogin('yandex', { accessToken });
         handleSuccess();
-      } catch (err: any) {
+      } catch (err) {
         handleError('Yandex', err);
       }
     })();

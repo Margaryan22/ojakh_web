@@ -99,6 +99,67 @@ describe('ProductsService', () => {
         }),
       );
     });
+
+    it('должен искать по названию/начинке/описанию без учёта регистра', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([]);
+
+      await service.findAll({ search: 'Торт' });
+
+      const call = mockPrisma.product.findMany.mock.calls[0][0];
+      expect(call.where.OR).toEqual([
+        { name: { contains: 'Торт', mode: 'insensitive' } },
+        { flavor: { contains: 'Торт', mode: 'insensitive' } },
+        { description: { contains: 'Торт', mode: 'insensitive' } },
+      ]);
+    });
+
+    it('должен сортировать по цене по возрастанию', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([]);
+
+      await service.findAll({ sort: 'price_asc' });
+
+      const call = mockPrisma.product.findMany.mock.calls[0][0];
+      expect(call.orderBy[0]).toEqual({ price: 'asc' });
+    });
+
+    it('«новинки» — по id по убыванию', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([]);
+
+      await service.findAll({ sort: 'new' });
+
+      const call = mockPrisma.product.findMany.mock.calls[0][0];
+      expect(call.orderBy).toEqual([{ id: 'desc' }]);
+    });
+
+    it('должен кэшировать повторный запрос списка (без поиска)', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([sampleProduct]);
+
+      await service.findAll({ available: true });
+      await service.findAll({ available: true });
+
+      expect(mockPrisma.product.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('не должен кэшировать поисковые запросы', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([]);
+
+      await service.findAll({ search: 'торт' });
+      await service.findAll({ search: 'торт' });
+
+      expect(mockPrisma.product.findMany).toHaveBeenCalledTimes(2);
+    });
+
+    it('мутация товара инвалидирует кэш списка', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([sampleProduct]);
+      mockPrisma.product.findUnique.mockResolvedValue({ id: 1 });
+      mockPrisma.product.update.mockResolvedValue(sampleProduct);
+
+      await service.findAll({ available: true });
+      await service.update(1, { price: 9000 });
+      await service.findAll({ available: true });
+
+      expect(mockPrisma.product.findMany).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('findOne', () => {

@@ -292,6 +292,94 @@ export class AuthService {
     return { accessToken };
   }
 
+  // ─── Password reset (без email) ──────────────────────────────────────────
+  // Ссылку выдаёт администратор из админки и передаёт клиенту любым каналом.
+  // В БД хранится только sha256-хэш токена; ссылка одноразовая, живёт 24 часа.
+
+  private static readonly RESET_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
+  private hashResetToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  async issuePasswordReset(
+    userId: number,
+    adminId: number,
+  ): Promise<{ url: string; expiresAt: Date }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Пользователь не найден');
+
+    const token = crypto.randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + AuthService.RESET_TOKEN_TTL_MS);
+
+    await this.prisma.$transaction([
+      // Старые неиспользованные ссылки этого пользователя теряют силу.
+      this.prisma.passwordResetToken.deleteMany({
+        where: { userId, usedAt: null },
+      }),
+      this.prisma.passwordResetToken.create({
+        data: {
+          userId,
+          tokenHash: this.hashResetToken(token),
+          expiresAt,
+          createdById: adminId,
+        },
+      }),
+    ]);
+
+    const frontendUrl = this.config.get<string>(
+      'FRONTEND_URL',
+      'http://localhost:3000',
+    );
+    return {
+      url: `${frontendUrl}/reset-password?token=${token}`,
+      expiresAt,
+    };
+  }
+
+  private async findValidResetToken(token: string) {
+    if (!token) return null;
+    const record = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash: this.hashResetToken(token) },
+      include: { user: { select: { id: true, name: true } } },
+    });
+    if (!record || record.usedAt || record.expiresAt < new Date()) return null;
+    return record;
+  }
+
+  async checkPasswordResetToken(
+    token: string,
+  ): Promise<{ valid: boolean; name?: string }> {
+    const record = await this.findValidResetToken(token);
+    return record ? { valid: true, name: record.user.name } : { valid: false };
+  }
+
+  async resetPasswordWithToken(
+    token: string,
+    password: string,
+  ): Promise<{ ok: true }> {
+    const record = await this.findValidResetToken(token);
+    if (!record) {
+      throw new BadRequestException(
+        'Ссылка недействительна или устарела. Запросите новую.',
+      );
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: record.userId },
+        data: { password: hashed },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    return { ok: true };
+  }
+
   generateTokens(user: { id: number; email: string; role: string }): TokenPair {
     const accessToken = this.jwtService.sign(
       { sub: user.id, email: user.email, role: user.role },

@@ -24,6 +24,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { PromoModule } from './modules/promo/promo.module';
 import { PushModule } from './modules/push/push.module';
+import { EventsModule } from './modules/events/events.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { PushModule } from './modules/push/push.module';
     SettingsModule,
     PromoModule,
     PushModule,
+    EventsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

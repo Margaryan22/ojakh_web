@@ -27,7 +27,7 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { Send, Trash2 } from 'lucide-react';
+import { Copy, KeyRound, Send, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { ADMIN_ROLE } from '@/lib/constants';
 import { formatDateFull } from '@/lib/format';
@@ -68,6 +68,7 @@ export default function AdminSettingsPage() {
   // Заполняем поля, когда настройки загрузились.
   useEffect(() => {
     if (data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- намеренное заполнение формы данными с сервера после загрузки
       setMinOrder(toRubles(data.minOrderKopecks));
       setFreeThreshold(toRubles(data.freeDeliveryThresholdKopecks));
     }
@@ -131,15 +132,72 @@ export default function AdminSettingsPage() {
   // ── Управление пользователями ─────────────────────────────────────────────
   const currentUserId = useAuthStore((s) => s.user?.id);
 
-  const { data: users = [], isLoading: usersLoading } = useQuery<AdminUser[]>({
-    queryKey: ['admin-users'],
-    queryFn: async () => (await api.get('/admin/users')).data,
-  });
-
   // Пользователь, для которого открыто окно подтверждения удаления.
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
-  // Поиск по имени / email / телефону.
+  // Поиск по имени / email / телефону — серверный (по всей базе).
   const [userSearch, setUserSearch] = useState('');
+  const [debouncedUserSearch, setDebouncedUserSearch] = useState('');
+  const [usersPage, setUsersPage] = useState(1);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedUserSearch(userSearch.trim());
+      setUsersPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [userSearch]);
+
+  const { data: usersData, isLoading: usersLoading } = useQuery<{
+    users: AdminUser[];
+    total: number;
+    page: number;
+    limit: number;
+  }>({
+    queryKey: ['admin-users', debouncedUserSearch, usersPage],
+    queryFn: async () => {
+      const params: Record<string, string> = {
+        page: String(usersPage),
+        limit: '50',
+      };
+      if (debouncedUserSearch) params.search = debouncedUserSearch;
+      return (await api.get('/admin/users', { params })).data;
+    },
+    placeholderData: (prev) => prev,
+  });
+  const users = usersData?.users ?? [];
+  const usersTotal = usersData?.total ?? 0;
+  const usersTotalPages = Math.max(1, Math.ceil(usersTotal / 50));
+  // Выданная ссылка сброса пароля (показывается в диалоге один раз).
+  const [resetLink, setResetLink] = useState<{
+    user: AdminUser;
+    url: string;
+    expiresAt: string;
+  } | null>(null);
+
+  const resetLinkMutation = useMutation({
+    mutationFn: async (user: AdminUser) => {
+      const { data } = await api.post(`/admin/users/${user.id}/password-reset`);
+      return { user, url: data.url as string, expiresAt: data.expiresAt as string };
+    },
+    onSuccess: (data) => setResetLink(data),
+    onError: (error) => {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message ?? 'Не удалось создать ссылку');
+      } else {
+        toast.error('Не удалось создать ссылку');
+      }
+    },
+  });
+
+  const copyResetLink = async () => {
+    if (!resetLink) return;
+    try {
+      await navigator.clipboard.writeText(resetLink.url);
+      toast.success('Ссылка скопирована');
+    } catch {
+      toast.error('Не удалось скопировать — выделите ссылку вручную');
+    }
+  };
 
   const roleMutation = useMutation({
     mutationFn: async ({ id, role }: { id: number; role: 'user' | 'admin' }) => {
@@ -160,15 +218,8 @@ export default function AdminSettingsPage() {
     },
   });
 
-  const filteredUsers = (() => {
-    const q = userSearch.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((u) =>
-      [u.name, u.email, u.phone ?? ''].some((f) =>
-        f.toLowerCase().includes(q),
-      ),
-    );
-  })();
+  // Поиск теперь серверный — список уже отфильтрован.
+  const filteredUsers = users;
 
   const deleteUserMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -386,6 +437,16 @@ export default function AdminSettingsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      disabled={resetLinkMutation.isPending}
+                      title="Ссылка для сброса пароля"
+                      onClick={() => resetLinkMutation.mutate(u)}
+                      aria-label="Ссылка для сброса пароля"
+                    >
+                      <KeyRound className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       disabled={isSelf}
                       title={
                         isSelf
@@ -400,6 +461,30 @@ export default function AdminSettingsPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {usersTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={usersPage <= 1}
+                onClick={() => setUsersPage((p) => Math.max(1, p - 1))}
+              >
+                Назад
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Страница {usersPage} из {usersTotalPages} · всего {usersTotal}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={usersPage >= usersTotalPages}
+                onClick={() => setUsersPage((p) => Math.min(usersTotalPages, p + 1))}
+              >
+                Вперёд
+              </Button>
             </div>
           )}
         </CardContent>
@@ -436,6 +521,47 @@ export default function AdminSettingsPage() {
             >
               {deleteUserMutation.isPending ? 'Удаление...' : 'Удалить'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!resetLink}
+        onOpenChange={(open) => !open && setResetLink(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ссылка для сброса пароля</DialogTitle>
+            <DialogDescription>
+              {resetLink && (
+                <>
+                  Отправьте её клиенту{' '}
+                  <span className="font-medium">{resetLink.user.name}</span>
+                  {resetLink.user.phone && ` (${resetLink.user.phone})`} в
+                  WhatsApp, Telegram или SMS. Ссылка одноразовая и действует
+                  24 часа; при повторной выдаче старая перестаёт работать.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {resetLink && (
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={resetLink.url}
+                onFocus={(e) => e.target.select()}
+                className="font-mono text-xs"
+              />
+              <Button variant="outline" size="icon" onClick={copyResetLink}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Закрыть</Button>
+            </DialogClose>
+            <Button onClick={copyResetLink}>Скопировать ссылку</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,7 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+// bcrypt содержит нативные биндинги — мокаем полностью
+jest.mock('bcrypt', () => ({
+  hash: jest.fn().mockResolvedValue('$2b$10$hashedpassword'),
+  compare: jest.fn(),
+}));
+import * as bcrypt from 'bcrypt';
 
 const mockPrisma = {
   user: {
@@ -35,28 +42,31 @@ describe('UsersService', () => {
   });
 
   describe('findById', () => {
-    it('должен вернуть профиль пользователя без пароля', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(userProfile);
+    it('должен вернуть профиль с hasPassword, но без самого пароля', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...userProfile,
+        password: '$2b$10$hash',
+      });
 
       const result = await service.findById(1);
 
-      expect(result).toEqual(userProfile);
+      expect(result).toEqual({ ...userProfile, hasPassword: true });
       expect(result).not.toHaveProperty('password');
       expect(mockPrisma.user.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 1 } }),
       );
     });
 
-    it('должен запрашивать только нужные поля (без password)', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(userProfile);
+    it('должен вернуть hasPassword=false для соцсетевого аккаунта без пароля', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...userProfile,
+        password: null,
+      });
 
-      await service.findById(1);
+      const result = await service.findById(1);
 
-      const call = mockPrisma.user.findUnique.mock.calls[0][0];
-      expect(call.select).toHaveProperty('id');
-      expect(call.select).toHaveProperty('email');
-      expect(call.select).toHaveProperty('name');
-      expect(call.select).not.toHaveProperty('password');
+      expect(result).toEqual({ ...userProfile, hasPassword: false });
+      expect(result).not.toHaveProperty('password');
     });
 
     it('должен выбросить NotFoundException если пользователь не найден', async () => {
@@ -107,6 +117,83 @@ describe('UsersService', () => {
 
       const call = mockPrisma.user.update.mock.calls[0][0];
       expect(call.select).not.toHaveProperty('password');
+    });
+  });
+
+  describe('changePassword', () => {
+    it('должен требовать текущий пароль, если пароль уже установлен', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...userProfile,
+        password: '$2b$10$hash',
+      });
+
+      await expect(
+        service.changePassword(1, { newPassword: 'newpassword1' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('должен отклонить неверный текущий пароль', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...userProfile,
+        password: '$2b$10$hash',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.changePassword(1, {
+          currentPassword: 'wrong',
+          newPassword: 'newpassword1',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('должен сменить пароль при верном текущем', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...userProfile,
+        password: '$2b$10$hash',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      mockPrisma.user.update.mockResolvedValue(userProfile);
+
+      const result = await service.changePassword(1, {
+        currentPassword: 'oldpassword',
+        newPassword: 'newpassword1',
+      });
+
+      expect(result).toEqual({ ok: true });
+      expect(bcrypt.hash).toHaveBeenCalledWith('newpassword1', 10);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1 },
+          data: { password: '$2b$10$hashedpassword' },
+        }),
+      );
+    });
+
+    it('должен задать пароль без текущего для соцсетевого аккаунта', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...userProfile,
+        password: null,
+      });
+      mockPrisma.user.update.mockResolvedValue(userProfile);
+
+      const result = await service.changePassword(1, {
+        newPassword: 'newpassword1',
+      });
+
+      expect(result).toEqual({ ok: true });
+      expect(bcrypt.compare).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).toHaveBeenCalled();
+    });
+
+    it('должен выбросить NotFoundException если пользователь не найден', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.changePassword(999, { newPassword: 'newpassword1' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

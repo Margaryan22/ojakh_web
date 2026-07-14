@@ -10,11 +10,18 @@ const mockPrisma = {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
+    count: jest.fn(),
+  },
+  user: {
+    findMany: jest.fn(),
+    count: jest.fn(),
   },
   dailyLimit: {
     findMany: jest.fn(),
     upsert: jest.fn(),
   },
+  // Пагинированные списки собираются через $transaction([findMany, count])
+  $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
 };
 
 const mockNotifications = {
@@ -54,18 +61,50 @@ describe('AdminService', () => {
     jest.clearAllMocks();
     // Дефолт — без переопределений лимитов на даты.
     mockPrisma.dailyLimit.findMany.mockResolvedValue([]);
+    mockPrisma.$transaction.mockImplementation((ops: Promise<unknown>[]) =>
+      Promise.all(ops),
+    );
+    mockPrisma.order.count.mockResolvedValue(0);
+    mockPrisma.user.count.mockResolvedValue(0);
   });
 
   describe('getOrders', () => {
-    it('должен вернуть все заказы без фильтров', async () => {
+    it('должен вернуть заказы с метаданными пагинации', async () => {
       mockPrisma.order.findMany.mockResolvedValue([sampleOrder]);
+      mockPrisma.order.count.mockResolvedValue(1);
 
       const result = await service.getOrders({});
 
-      expect(result).toHaveLength(1);
+      expect(result.orders).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
       expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: {} }),
       );
+    });
+
+    it('должен искать по номеру заказа и данным покупателя', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await service.getOrders({ search: 'иван' });
+
+      const call = mockPrisma.order.findMany.mock.calls[0][0];
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([
+          { orderNumber: { contains: 'иван' } },
+          { user: { name: { contains: 'иван', mode: 'insensitive' } } },
+        ]),
+      );
+    });
+
+    it('должен применять skip/take из параметров пагинации', async () => {
+      mockPrisma.order.findMany.mockResolvedValue([]);
+
+      await service.getOrders({ page: 3, limit: 10 });
+
+      const call = mockPrisma.order.findMany.mock.calls[0][0];
+      expect(call.skip).toBe(20);
+      expect(call.take).toBe(10);
     });
 
     it('должен фильтровать заказы по статусу', async () => {

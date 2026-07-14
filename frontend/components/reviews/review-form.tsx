@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { StarRating } from './star-rating';
@@ -23,9 +24,21 @@ export function ReviewForm({ productId, existing }: ReviewFormProps) {
   const [text, setText] = useState(existing?.text ?? '');
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- намеренная синхронизация формы с существующим отзывом с сервера
     setRating(existing?.rating ?? 0);
     setText(existing?.text ?? '');
   }, [existing?.id, existing?.rating, existing?.text]);
+
+  // Отзывы могут оставлять только покупатели (завершённый заказ с товаром).
+  const { data: canReview } = useQuery<{ allowed: boolean }>({
+    queryKey: ['can-review', productId],
+    queryFn: async () => {
+      const { data } = await api.get(`/products/${productId}/reviews/can-review`);
+      return data;
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -45,12 +58,25 @@ export function ReviewForm({ productId, existing }: ReviewFormProps) {
         setText('');
       }
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? 'Не удалось сохранить отзыв');
+    onError: (error: Error) => {
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.message
+        : undefined;
+      toast.error(message ?? 'Не удалось сохранить отзыв');
     },
   });
 
   if (!user) return null;
+
+  // Пока не знаем ответ — ничего не показываем; не покупал — подсказка вместо формы.
+  if (!canReview) return null;
+  if (!canReview.allowed && !existing) {
+    return (
+      <p className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">
+        Отзывы могут оставлять только покупатели этого товара.
+      </p>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

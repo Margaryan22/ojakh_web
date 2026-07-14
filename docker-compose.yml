@@ -4,7 +4,11 @@ services:
     environment:
       POSTGRES_DB: ojakh
       POSTGRES_USER: ojakh
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      # Без дефолта нарочно: compose откажется стартовать, если переменная не
+      # задана (в .env рядом с docker-compose.yml или в окружении). Если
+      # существующая БД была инициализирована со старым дефолтом "secret" —
+      # задайте POSTGRES_PASSWORD=secret и затем смените пароль в Postgres.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -17,10 +21,14 @@ services:
     image: ojakh-backend:latest
     platform: linux/amd64
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # Контекст — корень репо: pnpm-lock.yaml общий для workspace.
+      context: .
+      dockerfile: backend/Dockerfile
+    # Порт привязан к loopback: снаружи трафик идёт только через nginx (TLS,
+    # security-заголовки, rate limiting). Локальная привязка оставлена для
+    # отладки с сервера (curl localhost:3001) и SSH-туннелей.
     ports:
-      - '3001:3001'
+      - '127.0.0.1:3001:3001'
     env_file:
       - ./backend/.env
     depends_on:
@@ -37,16 +45,18 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      # Контекст — корень репо: pnpm-lock.yaml общий для workspace.
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=${API_URL:-https://ojakh.api.whysargis.ru}
         - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
         - NEXT_PUBLIC_APPLE_CLIENT_ID=${APPLE_CLIENT_ID:-}
         - NEXT_PUBLIC_YANDEX_CLIENT_ID=${YANDEX_CLIENT_ID:-}
         - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}
+    # См. комментарий у backend: наружу — только через nginx.
     ports:
-      - '3000:3000'
+      - '127.0.0.1:3000:3000'
     depends_on:
       - backend
     restart: unless-stopped
@@ -55,6 +65,30 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Ежедневный бэкап: дамп БД + архив загруженных файлов в ./backups на хосте
+  # (последние 14 суток). Восстановление — scripts/restore-backup.sh.
+  # Оффсайт-копия: задайте RCLONE_REMOTE (например "s3:ojakh-backups") и
+  # положите конфиг rclone в ./rclone/rclone.conf (`rclone config` локально).
+  # Мониторинг: HEALTHCHECK_URL (healthchecks.io) — ping после успешного
+  # прогона; пропавший ежедневный ping = сломанные бэкапы.
+  backup:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      RCLONE_REMOTE: ${RCLONE_REMOTE:-}
+      HEALTHCHECK_URL: ${BACKUP_HEALTHCHECK_URL:-}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+      - ./rclone:/config/rclone:ro
+      - uploads:/uploads:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    entrypoint: >-
+      /bin/sh -c 'while :; do /backup.sh; sleep 24h & wait $${!}; done'
 
   nginx:
     image: nginx:1.25-alpine

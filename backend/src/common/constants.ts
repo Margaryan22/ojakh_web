@@ -3,6 +3,10 @@ export const TORT_CATEGORY = 'торты';
 export const MAX_TORTS = 2;
 export const DEFAULT_MAX_UNITS = 100;
 
+// Потолок количества одной позиции в корзине (не тортов).
+// Дублируется на фронте как MAX_ITEM_QTY_PER_ORDER (frontend/lib/constants.ts).
+export const MAX_ITEM_QTY_PER_CART = 50;
+
 // Сколько заказов помещается в один интервал доставки по умолчанию.
 // Может быть переопределено на конкретную дату через DailyLimit.slotCapacities.
 export const DEFAULT_SLOT_CAPACITY = 6;

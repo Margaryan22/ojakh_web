@@ -30,8 +30,10 @@ import {
 import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
 import { useNotificationsStore } from '@/stores/notifications.store';
+import type { AppNotification } from '@/stores/notifications.store';
 import { cn } from '@/lib/utils';
 import { ADMIN_ROLE, POLLING_INTERVAL_MS } from '@/lib/constants';
+import { useSse } from '@/lib/use-sse';
 
 const navLinks = [
   { href: '/catalog', label: 'Каталог' },
@@ -50,6 +52,78 @@ const NOTIFICATION_LABELS: Record<string, string> = {
   broadcast: 'Объявление',
 };
 
+// Вынесено из Header: компонент, объявленный внутри рендера, пересоздаётся на
+// каждый рендер и теряет состояние DOM (react-hooks/static-components).
+function NotificationsPanel({
+  notifications,
+  unreadCount,
+  markAllRead,
+  onNotifClick,
+}: {
+  notifications: AppNotification[];
+  unreadCount: number;
+  markAllRead: () => void;
+  onNotifClick: (id: number, orderId: number | null) => void;
+}) {
+  return (
+    <div className='flex flex-col'>
+      <div className='flex items-center justify-between px-3 py-2 border-b border-border'>
+        <span className='text-sm font-semibold'>Уведомления</span>
+        {unreadCount > 0 && (
+          <button
+            onClick={markAllRead}
+            className='flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors'
+          >
+            <CheckCheck className='h-3.5 w-3.5' />
+            Прочитать все
+          </button>
+        )}
+      </div>
+
+      {notifications.length === 0 ? (
+        <p className='px-3 py-4 text-sm text-muted-foreground text-center'>
+          Нет уведомлений
+        </p>
+      ) : (
+        <div className='max-h-72 overflow-y-auto divide-y divide-border'>
+          {notifications.map((n) => (
+            <button
+              key={n.id}
+              onClick={() => onNotifClick(n.id, n.orderId)}
+              className={cn(
+                'w-full text-left px-3 py-2.5 text-sm hover:bg-accent transition-colors',
+                !n.isRead && 'bg-accent/50',
+              )}
+            >
+              <div className='flex items-start gap-2'>
+                {!n.isRead && (
+                  <span className='mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary' />
+                )}
+                <div className={cn(!n.isRead ? '' : 'pl-4')}>
+                  <p className='font-medium text-xs text-muted-foreground mb-0.5'>
+                    {n.orderId != null
+                      ? `Заказ #${n.orderId} · ${NOTIFICATION_LABELS[n.status] ?? n.status}`
+                      : (NOTIFICATION_LABELS[n.status] ?? n.status)}
+                  </p>
+                  <p className='text-foreground leading-snug'>{n.message}</p>
+                  <p className='text-[11px] text-muted-foreground mt-1'>
+                    {new Date(n.createdAt).toLocaleString('ru-RU', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -67,14 +141,21 @@ export function Header() {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+  // Realtime: событие с бекенда приходит сразу; поллинг остаётся только
+  // как fallback на время обрывов SSE-соединения.
+  const { connected: sseConnected } = useSse(
+    { notification: () => fetchNotifications() },
+    !!user,
+  );
+
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      // Poll every 30s
+      if (sseConnected) return; // события приходят по SSE
       const interval = setInterval(fetchNotifications, POLLING_INTERVAL_MS);
       return () => clearInterval(interval);
     }
-  }, [user, fetchNotifications]);
+  }, [user, fetchNotifications, sseConnected]);
 
   // На мобиле закрываем выпадающие панели шапки (бургер-меню и уведомления)
   // при клике вне них и при скролле страницы. Слушатели висят, только пока
@@ -132,64 +213,6 @@ export function Header() {
     // Объявления (broadcast) не привязаны к заказу — никуда не переходим.
     if (orderId != null) router.push(`/orders/${orderId}`);
   };
-
-  const NotificationsPanel = () => (
-    <div className='flex flex-col'>
-      <div className='flex items-center justify-between px-3 py-2 border-b border-border'>
-        <span className='text-sm font-semibold'>Уведомления</span>
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllRead}
-            className='flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors'
-          >
-            <CheckCheck className='h-3.5 w-3.5' />
-            Прочитать все
-          </button>
-        )}
-      </div>
-
-      {notifications.length === 0 ? (
-        <p className='px-3 py-4 text-sm text-muted-foreground text-center'>
-          Нет уведомлений
-        </p>
-      ) : (
-        <div className='max-h-72 overflow-y-auto divide-y divide-border'>
-          {notifications.map((n) => (
-            <button
-              key={n.id}
-              onClick={() => handleNotifClick(n.id, n.orderId)}
-              className={cn(
-                'w-full text-left px-3 py-2.5 text-sm hover:bg-accent transition-colors',
-                !n.isRead && 'bg-accent/50',
-              )}
-            >
-              <div className='flex items-start gap-2'>
-                {!n.isRead && (
-                  <span className='mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary' />
-                )}
-                <div className={cn(!n.isRead ? '' : 'pl-4')}>
-                  <p className='font-medium text-xs text-muted-foreground mb-0.5'>
-                    {n.orderId != null
-                      ? `Заказ #${n.orderId} · ${NOTIFICATION_LABELS[n.status] ?? n.status}`
-                      : (NOTIFICATION_LABELS[n.status] ?? n.status)}
-                  </p>
-                  <p className='text-foreground leading-snug'>{n.message}</p>
-                  <p className='text-[11px] text-muted-foreground mt-1'>
-                    {new Date(n.createdAt).toLocaleString('ru-RU', {
-                      day: 'numeric',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <header className='sticky top-0 z-40 w-full bg-background shadow-sm border-b border-border'>
@@ -263,7 +286,12 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align='end' className='w-80 p-0'>
-                <NotificationsPanel />
+                <NotificationsPanel
+                  notifications={notifications}
+                  unreadCount={unreadCount}
+                  markAllRead={markAllRead}
+                  onNotifClick={handleNotifClick}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -375,7 +403,12 @@ export function Header() {
       {notifOpen && user && (
         <div ref={notifPanelRef} className='md:hidden border-t bg-background'>
           <div className='max-w-7xl mx-auto'>
-            <NotificationsPanel />
+            <NotificationsPanel
+              notifications={notifications}
+              unreadCount={unreadCount}
+              markAllRead={markAllRead}
+              onNotifClick={handleNotifClick}
+            />
           </div>
         </div>
       )}

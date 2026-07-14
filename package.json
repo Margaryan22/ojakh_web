@@ -1,0 +1,23 @@
+{
+  "name": "ojakh-web",
+  "private": true,
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "lint": "pnpm --filter backend lint && pnpm --filter frontend lint",
+    "typecheck": "pnpm --filter backend typecheck && pnpm --filter frontend typecheck",
+    "test": "pnpm --filter backend test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "backend/**/*.ts": "pnpm --filter backend exec eslint --fix",
+    "frontend/**/*.{ts,tsx}": "pnpm --filter frontend exec eslint --fix",
+    "**/*.{js,mjs,json,md,yml,yaml,css}": "prettier --write --ignore-unknown"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
+    "prettier": "^3.9.5"
+  }
+}

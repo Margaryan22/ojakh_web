@@ -102,6 +102,23 @@ export interface Order {
 
 export type PaymentProvider = 'yookassa' | 'manual';
 
+// Заказ в списке админки: бекенд отдаёт его вместе с покупателем и платежами.
+export interface AdminOrderPayment {
+  id: string;
+  kind: 'main' | 'doplata';
+  provider: PaymentProvider;
+  status: string;
+}
+
+export interface AdminOrder extends Order {
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  } | null;
+  payments?: AdminOrderPayment[];
+}
+
 export interface PaymentConfig {
   provider: PaymentProvider;
 }
@@ -159,6 +176,8 @@ export interface Review {
   text: string;
   createdAt: string;
   user: { id: number; name: string };
+  /** Автор имеет завершённый заказ с этим товаром. */
+  verifiedPurchase?: boolean;
 }
 
 export interface ReviewSummary {

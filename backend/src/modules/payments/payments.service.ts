@@ -5,7 +5,6 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { DeliveryClaimsService } from '../delivery/claims/delivery-claims.service';
 import {

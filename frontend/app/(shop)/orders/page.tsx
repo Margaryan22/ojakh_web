@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -35,7 +35,7 @@ export default function OrdersPage() {
     enabled: !!user,
     refetchInterval: POLLING_INTERVAL_MS,
   });
-  const orders: Order[] = ordersData?.orders ?? [];
+  const orders: Order[] = useMemo(() => ordersData?.orders ?? [], [ordersData]);
 
   useEffect(() => {
     if (orders.length === 0) return;

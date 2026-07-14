@@ -28,8 +28,10 @@ export const useNotificationsStore = create<NotificationsState & NotificationsAc
   fetch: async () => {
     set({ isLoading: true });
     try {
-      const { data } = await api.get<AppNotification[]>('/notifications');
-      set({ items: data, isLoading: false });
+      const { data } = await api.get<{ notifications: AppNotification[] }>(
+        '/notifications',
+      );
+      set({ items: data.notifications ?? [], isLoading: false });
     } catch {
       set({ isLoading: false });
     }

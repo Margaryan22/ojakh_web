@@ -85,16 +85,12 @@ export const useCartStore = create<CartState & CartActions>()(
         if (isGuest()) return;
 
         try {
+          // Сервер сам берёт название/цену/единицу из БД — передаём только позицию.
           const { data } = await api.post('/cart/items', {
             product_id: newItem.product_id,
-            name: newItem.name,
-            category: newItem.category,
             flavor: newItem.flavor,
             size: newItem.size,
             quantity: newItem.quantity,
-            unit: newItem.unit,
-            price: newItem.price,
-            maxPerCart: newItem.maxPerCart,
           });
           set({ items: data.items ?? [] });
         } catch (error) {
@@ -123,13 +119,9 @@ export const useCartStore = create<CartState & CartActions>()(
         try {
           const { data } = await api.patch('/cart/items', {
             product_id: productId,
-            name: currentItem.name,
-            category: currentItem.category,
             flavor,
             size,
             quantity,
-            unit: currentItem.unit,
-            price: currentItem.price,
           });
           set({ items: data.items ?? [] });
         } catch {
@@ -184,14 +176,9 @@ export const useCartStore = create<CartState & CartActions>()(
           for (const it of local) {
             await api.post('/cart/items', {
               product_id: it.product_id,
-              name: it.name,
-              category: it.category,
               flavor: it.flavor,
               size: it.size,
               quantity: it.quantity,
-              unit: it.unit,
-              price: it.price,
-              maxPerCart: it.maxPerCart,
             });
           }
           const { data } = await api.get('/cart');

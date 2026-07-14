@@ -4,11 +4,31 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { normalizePagination } from '../../common/dto/pagination.dto';
 import { CreateReviewDto } from './dto/create-review.dto';
 
 @Injectable()
 export class ReviewsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Покупал ли пользователь товар: есть ли завершённый заказ, в items
+   * которого (JSON-снапшот корзины) встречается этот product_id.
+   */
+  async hasPurchased(userId: number, productId: number): Promise<boolean> {
+    const count = await this.prisma.order.count({
+      where: {
+        userId,
+        status: 'completed',
+        items: { array_contains: [{ product_id: productId }] },
+      },
+    });
+    return count > 0;
+  }
+
+  async canReview(userId: number, productId: number) {
+    return { allowed: await this.hasPurchased(userId, productId) };
+  }
 
   async upsert(userId: number, dto: CreateReviewDto) {
     const product = await this.prisma.product.findUnique({
@@ -17,6 +37,13 @@ export class ReviewsService {
     });
     if (!product) {
       throw new NotFoundException('Product not found');
+    }
+
+    // Отзыв можно оставить только на купленный товар (защита от накрутки).
+    if (!(await this.hasPurchased(userId, dto.productId))) {
+      throw new ForbiddenException(
+        'Отзывы могут оставлять только покупатели этого товара',
+      );
     }
 
     return this.prisma.review.upsert({
@@ -50,13 +77,45 @@ export class ReviewsService {
     return { ok: true };
   }
 
-  list(productId: number) {
-    return this.prisma.review.findMany({
-      where: { productId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-      include: { user: { select: { id: true, name: true } } },
-    });
+  async list(productId: number, pagination: { page?: number; limit?: number } = {}) {
+    const { page, limit, skip } = normalizePagination(pagination, { limit: 50 });
+
+    const [reviews, total] = await this.prisma.$transaction([
+      this.prisma.review.findMany({
+        where: { productId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: { user: { select: { id: true, name: true } } },
+      }),
+      this.prisma.review.count({ where: { productId } }),
+    ]);
+
+    // Бейдж «Подтверждённая покупка»: одним запросом выясняем, кто из авторов
+    // страницы имеет завершённый заказ с этим товаром. Старые отзывы могли
+    // быть оставлены до введения правила «только покупатели».
+    const authorIds = [...new Set(reviews.map((r) => r.userId))];
+    const purchases = authorIds.length
+      ? await this.prisma.order.findMany({
+          where: {
+            userId: { in: authorIds },
+            status: 'completed',
+            items: { array_contains: [{ product_id: productId }] },
+          },
+          select: { userId: true },
+        })
+      : [];
+    const buyerIds = new Set(purchases.map((o) => o.userId));
+
+    return {
+      reviews: reviews.map((r) => ({
+        ...r,
+        verifiedPurchase: buyerIds.has(r.userId),
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   /** Все отзывы для модерации в админке (с автором и товаром), новые сверху. */

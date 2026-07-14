@@ -225,11 +225,26 @@ export class DeliveryService {
    * (есть house_fias_id, qc_house ∈ {0,2}, fias_level ≥ 8). DaData в suggest-режиме
    * охотно дополняет произвольные номера домов, поэтому без явной фильтрации
    * по ФИАС можно получить «несуществующую» улицу+дом.
-   * fail-open: если ключа нет или DaData недоступна — пропускаем без блокировки.
+   * По умолчанию fail-open: если ключа нет или DaData недоступна — пропускаем
+   * без блокировки, но логируем warning. ADDRESS_VALIDATION_STRICT=true
+   * переключает в строгий режим: без успешной проверки адрес отклоняется.
    */
   async validateNnAddress(address: string): Promise<void> {
+    const strict =
+      this.config.get<string>('ADDRESS_VALIDATION_STRICT', 'false') === 'true';
+
     const apiKey = this.config.get<string>('DADATA_API_KEY');
-    if (!apiKey) return;
+    if (!apiKey) {
+      if (strict) {
+        throw new BadRequestException(
+          'Проверка адреса временно недоступна. Попробуйте позже.',
+        );
+      }
+      this.logger.warn(
+        `DADATA_API_KEY не задан — адрес принят без проверки (fail-open): "${address}"`,
+      );
+      return;
+    }
 
     let suggestions: any[];
     try {
@@ -250,8 +265,16 @@ export class DeliveryService {
         },
       );
       suggestions = response.data?.suggestions ?? [];
-    } catch {
-      return; // network/API error — fail-open
+    } catch (err) {
+      if (strict) {
+        throw new BadRequestException(
+          'Проверка адреса временно недоступна. Попробуйте позже.',
+        );
+      }
+      this.logger.warn(
+        `DaData недоступна (${(err as Error).message}) — адрес принят без проверки (fail-open): "${address}"`,
+      );
+      return;
     }
 
     if (suggestions.length === 0) {

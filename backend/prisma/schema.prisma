@@ -28,6 +28,7 @@ model User {
   feedback            Feedback[]
   favorites           Favorite[]
   pushSubscriptions   PushSubscription[]
+  passwordResets      PasswordResetToken[]
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -290,6 +291,24 @@ model PromoCode {
   expiresAt       DateTime?
   active          Boolean   @default(true)
   createdAt       DateTime  @default(now())
+}
+
+// ─── PasswordResetToken ───────────────────────────────────────────────────────
+// Одноразовая ссылка сброса пароля. Письма не отправляются: ссылку выдаёт
+// администратор из админки и передаёт клиенту любым каналом (WhatsApp,
+// Telegram, SMS). Хранится только sha256-хэш токена; сам токен виден один раз.
+
+model PasswordResetToken {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdById Int? // id администратора, выдавшего ссылку
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
 }
 
 // ─── PushSubscription ─────────────────────────────────────────────────────────

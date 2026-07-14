@@ -6,10 +6,11 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/jwt.guard';
 import { NotificationsService } from './notifications.service';
 
@@ -21,9 +22,18 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get my notifications' })
-  getMyNotifications(@Req() req: any) {
-    return this.notificationsService.getForUser(req.user.id);
+  @ApiOperation({ summary: 'Get my notifications (paginated, newest first)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  getMyNotifications(
+    @Req() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.notificationsService.getForUser(req.user.id, {
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
   }
 
   @Patch('read-all')

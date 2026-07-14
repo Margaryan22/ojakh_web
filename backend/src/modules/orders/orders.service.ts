@@ -14,6 +14,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { SettingsService } from '../settings/settings.service';
 import { PromoService } from '../promo/promo.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EventsService } from '../events/events.service';
 import {
   TORT_CATEGORY,
   MAX_TORTS,
@@ -35,6 +36,7 @@ export class OrdersService {
     private readonly settings: SettingsService,
     private readonly promo: PromoService,
     private readonly notifications: NotificationsService,
+    private readonly events: EventsService,
   ) {}
 
   async createOrder(userId: number, dto: CreateOrderDto) {
@@ -44,7 +46,52 @@ export class OrdersService {
       throw new BadRequestException('Корзина пуста');
     }
 
-    // 1b. Min order amount (subtotal only, без доставки)
+    // 1b. Пересверка цен и доступности с БД. Цены в корзине пишет сам сервер,
+    // но товар мог подорожать или закончиться, пока корзина лежала. Если цена
+    // изменилась — обновляем корзину актуальными значениями и просим
+    // пользователя подтвердить заказ ещё раз.
+    const productIds = [...new Set(cart.items.map((i) => i.product_id))];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: {
+        id: true,
+        name: true,
+        unit: true,
+        price: true,
+        available: true,
+        maxPerDay: true,
+      },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    let pricesChanged = false;
+    const freshItems = cart.items.map((item) => {
+      const product = productMap.get(item.product_id);
+      if (!product || !product.available) {
+        throw new BadRequestException(
+          `Товар "${item.name}" больше недоступен — удалите его из корзины`,
+        );
+      }
+      if (product.price !== item.price) {
+        pricesChanged = true;
+        return {
+          ...item,
+          name: product.name,
+          price: product.price,
+          subtotal: product.price * item.quantity,
+        };
+      }
+      return item;
+    });
+
+    if (pricesChanged) {
+      await this.cartService.replaceItems(userId, freshItems);
+      throw new BadRequestException(
+        'Цены некоторых товаров изменились. Корзина обновлена — проверьте сумму и подтвердите заказ ещё раз.',
+      );
+    }
+
+    // 1c. Min order amount (subtotal only, без доставки)
     const settings = await this.settings.get();
     const subtotal = cart.items.reduce((sum, item) => sum + item.subtotal, 0);
     if (subtotal < settings.minOrderKopecks) {
@@ -105,13 +152,7 @@ export class OrdersService {
     }
 
     // 4b. Validate per-item quantities against product maxPerDay
-    const productIds = [...new Set(cart.items.map((i) => i.product_id))];
-    const products = await this.prisma.product.findMany({
-      where: { id: { in: productIds } },
-      select: { id: true, maxPerDay: true, name: true, unit: true },
-    });
-    const productMap = new Map(products.map((p) => [p.id, p]));
-
+    // (productMap загружен на шаге 1b вместе с пересверкой цен)
     for (const item of cart.items) {
       const product = productMap.get(item.product_id);
       if (!product) continue;
@@ -247,6 +288,9 @@ export class OrdersService {
     // 8. Clear cart
     await this.cartService.clearCart(userId);
 
+    // Realtime: админка узнаёт о новом заказе сразу (звуковой сигнал, бейдж).
+    this.events.emit({ type: 'new-order', admin: true, data: { orderId: order.id } });
+
     // Платёж создаётся лениво (POST /payments/create), когда пользователь
     // жмёт «Оплатить»: confirmation_token ЮKassa живёт ~1 час.
     return { order };
@@ -376,16 +420,12 @@ export class OrdersService {
         continue;
       }
       try {
+        // Название/цена/единица подтянутся сервисом корзины из БД.
         await this.cartService.addOrUpdateItem(userId, {
           product_id: product.id,
-          name: product.name,
-          category: product.category,
           flavor: item.flavor,
           size: item.size,
           quantity: item.quantity,
-          unit: product.unit,
-          price: product.price,
-          maxPerCart: item.maxPerCart,
         });
         added += 1;
       } catch {
@@ -398,13 +438,18 @@ export class OrdersService {
     return { added, skipped, cart };
   }
 
+  /**
+   * Номер заказа — значение PostgreSQL-последовательности order_number_seq
+   * (миграция 20260713120000_order_number_sequence). Уникальность гарантирует
+   * БД даже при конкурентных заказах; номер короткий — его удобно диктовать
+   * по телефону. Старые 4-значные номера (1000..9999) не пересекаются с
+   * новыми (от 10000).
+   */
   private async generateOrderNumber(): Promise<string> {
-    for (let i = 0; i < 20; i++) {
-      const num = Math.floor(1000 + Math.random() * 9000).toString();
-      const exists = await this.prisma.order.findUnique({ where: { orderNumber: num } });
-      if (!exists) return num;
-    }
-    throw new Error('Не удалось сгенерировать уникальный номер заказа');
+    const rows = await this.prisma.$queryRaw<{ nextval: bigint }[]>`
+      SELECT nextval('order_number_seq')
+    `;
+    return rows[0].nextval.toString();
   }
 
 }

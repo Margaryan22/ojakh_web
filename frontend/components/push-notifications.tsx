@@ -26,6 +26,7 @@ export function PushNotifications() {
       typeof window !== 'undefined' &&
       'serviceWorker' in navigator &&
       'PushManager' in window;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- определение возможностей браузера обязано выполняться после гидрации
     setSupported(ok);
     if (!ok) return;
     navigator.serviceWorker.getRegistration().then(async (reg) => {

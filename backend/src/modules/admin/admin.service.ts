@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ACTIVE_STATUSES, TORT_CATEGORY, DEFAULT_MAX_UNITS, MAX_TORTS } from '../../common/constants';
+import { normalizePagination } from '../../common/dto/pagination.dto';
 import { UpsertDailyLimitDto } from './dto/upsert-daily-limit.dto';
 import { SettingsService } from '../settings/settings.service';
 import { UpdateSettingsDto } from '../settings/dto/update-settings.dto';
@@ -19,7 +20,13 @@ export class AdminService {
     return this.notifications.broadcast(message);
   }
 
-  async getOrders(filters: { status?: string; date?: string }) {
+  async getOrders(filters: {
+    status?: string;
+    date?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
     const where: any = {};
 
     if (filters.status) {
@@ -34,26 +41,47 @@ export class AdminService {
       where.deliveryDate = dateOnly;
     }
 
-    return this.prisma.order.findMany({
-      where,
-      include: {
-        user: {
-          select: { id: true, email: true, name: true, phone: true },
-        },
-        payments: {
-          select: {
-            id: true,
-            kind: true,
-            provider: true,
-            status: true,
-            amountKopecks: true,
-            paidAt: true,
+    // Поиск по номеру заказа и данным покупателя (серверный: работает по всей
+    // базе, а не по загруженной странице).
+    const search = filters.search?.trim();
+    if (search) {
+      where.OR = [
+        { orderNumber: { contains: search } },
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+        { user: { phone: { contains: search } } },
+      ];
+    }
+
+    const { page, limit, skip } = normalizePagination(filters, { limit: 50 });
+
+    const [orders, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        include: {
+          user: {
+            select: { id: true, email: true, name: true, phone: true },
           },
-          orderBy: { createdAt: 'desc' },
+          payments: {
+            select: {
+              id: true,
+              kind: true,
+              provider: true,
+              status: true,
+              amountKopecks: true,
+              paidAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return { orders, total, page, limit };
   }
 
   async startCooking(orderId: number) {
@@ -320,24 +348,48 @@ export class AdminService {
   }
 
   /** Список всех пользователей с числом заказов (для управления в админке). */
-  async listUsers() {
-    const users = await this.prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        _count: { select: { orders: true } },
-      },
-    });
+  async listUsers(filters: { search?: string; page?: number; limit?: number } = {}) {
+    const where: any = {};
 
-    return users.map(({ _count, ...u }) => ({
-      ...u,
-      ordersCount: _count.orders,
-    }));
+    const search = filters.search?.trim();
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search } },
+      ];
+    }
+
+    const { page, limit, skip } = normalizePagination(filters, { limit: 50 });
+
+    const [users, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          phone: true,
+          role: true,
+          createdAt: true,
+          _count: { select: { orders: true } },
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      users: users.map(({ _count, ...u }) => ({
+        ...u,
+        ordersCount: _count.orders,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   /** Смена роли пользователя (user ↔ admin). */

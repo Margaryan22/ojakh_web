@@ -1,0 +1,3 @@
+# Прогоняет eslint --fix / prettier только по staged-файлам (см. lint-staged
+# в корневом package.json). Typecheck и тесты — в CI, здесь только быстрое.
+pnpm exec lint-staged

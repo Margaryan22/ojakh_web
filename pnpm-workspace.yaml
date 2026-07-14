@@ -6,7 +6,9 @@ allowBuilds:
   '@prisma/client': false
   '@prisma/engines': false
   '@scarf/scarf': false
-  bcrypt: false
+  # bcrypt — нативный модуль: install-скрипт скачивает готовый биндинг
+  # (node-pre-gyp). Без него require('bcrypt') падает в рантайме.
+  bcrypt: true
   prisma: false
   sharp: false
   unrs-resolver: false

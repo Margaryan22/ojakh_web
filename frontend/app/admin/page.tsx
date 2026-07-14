@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,7 +16,7 @@ import { STATUS_LABELS, STATUS_COLORS, YANDEX_CLAIM_STATUS_LABELS } from '@/lib/
 import { FadeIn } from '@/components/motion/fade-in';
 import { StaggerContainer, StaggerItem } from '@/components/motion/stagger';
 import { OrderChat } from '@/components/order-chat';
-import type { Order, OrderStatus, AdminUnreadSummary } from '@/types';
+import type { AdminOrder, OrderStatus, AdminUnreadSummary } from '@/types';
 import { AxiosError } from 'axios';
 
 const statusFilters: { value: string; label: string }[] = [
@@ -30,27 +30,58 @@ const statusFilters: { value: string; label: string }[] = [
   { value: 'cancelled', label: 'Отменены' },
 ];
 
+const PAGE_SIZE = 50;
+
+interface AdminOrdersResponse {
+  orders: AdminOrder[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [openChatOrderId, setOpenChatOrderId] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: orders = [], isLoading } = useQuery<Order[]>({
-    queryKey: ['admin-orders'],
+  // Поиск и фильтры — серверные (работают по всей базе, а не по странице).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const { data, isLoading } = useQuery<AdminOrdersResponse>({
+    queryKey: ['admin-orders', statusFilter, debouncedSearch, page],
     queryFn: async () => {
-      const { data } = await api.get('/admin/orders');
+      const params: Record<string, string> = {
+        page: String(page),
+        limit: String(PAGE_SIZE),
+      };
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (debouncedSearch) params.search = debouncedSearch;
+      const { data } = await api.get('/admin/orders', { params });
       return data;
     },
+    placeholderData: (prev) => prev,
   });
+  const orders = data?.orders ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  // Политику обновления (SSE + fallback-поллинг) держит admin/layout.tsx,
+  // у которого тот же queryKey — здесь просто читаем общий кэш.
   const { data: unreadSummary } = useQuery<AdminUnreadSummary>({
     queryKey: ['admin-unread-summary'],
     queryFn: async () => {
       const { data } = await api.get('/admin/messages/unread-summary');
       return data;
     },
-    refetchInterval: 3000,
     refetchIntervalInBackground: false,
   });
 
@@ -114,21 +145,6 @@ export default function AdminOrdersPage() {
     },
   });
 
-  const query = search.trim().toLowerCase();
-  const filteredOrders = orders.filter((o) => {
-    if (statusFilter !== 'all' && o.status !== statusFilter) return false;
-    if (!query) return true;
-    const u = (o as any).user;
-    const haystack = [
-      o.orderNumber ?? String(o.id),
-      String(o.id),
-      u?.name ?? '',
-      u?.phone ?? '',
-      u?.email ?? '',
-    ];
-    return haystack.some((f) => String(f).toLowerCase().includes(query));
-  });
-
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -140,7 +156,7 @@ export default function AdminOrdersPage() {
     );
   }
 
-  const useStagger = filteredOrders.length <= 30;
+  const useStagger = orders.length <= 30;
   const ListWrapper: React.ElementType = useStagger ? StaggerContainer : 'div';
   const ItemWrapper: React.ElementType = useStagger ? StaggerItem : 'div';
   const listProps = useStagger ? { immediate: true } : {};
@@ -158,7 +174,13 @@ export default function AdminOrdersPage() {
         className="max-w-md"
       />
 
-      <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+      <Tabs
+        value={statusFilter}
+        onValueChange={(v) => {
+          setStatusFilter(v);
+          setPage(1);
+        }}
+      >
         <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
           {statusFilters.map((f) => (
             <TabsTrigger
@@ -172,11 +194,11 @@ export default function AdminOrdersPage() {
         </TabsList>
       </Tabs>
 
-      {filteredOrders.length === 0 ? (
+      {orders.length === 0 ? (
         <p className="text-center py-8 text-muted-foreground">Нет заказов</p>
       ) : (
         <ListWrapper className="space-y-3" {...listProps}>
-          {filteredOrders.map((order) => (
+          {orders.map((order) => (
             <ItemWrapper key={order.id}>
             <Card>
               <CardContent className="p-4 space-y-3">
@@ -189,8 +211,8 @@ export default function AdminOrdersPage() {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {(order as any).user?.name ?? `#${order.userId}`}
-                      {(order as any).user?.phone ? ` · ${(order as any).user.phone}` : ''}
+                      {order.user?.name ?? `#${order.userId}`}
+                      {order.user?.phone ? ` · ${order.user.phone}` : ''}
                       {' · '}{formatDate(order.deliveryDate)}
                       {order.deliveryTime ? ` ${order.deliveryTime}` : ''}
                       {' · '}{order.isPickup ? 'Самовывоз' : 'Доставка'}
@@ -216,9 +238,9 @@ export default function AdminOrdersPage() {
                   </p>
                 )}
 
-                {((order as any).payments?.length > 0 || order.yandexClaimStatus) && (
+                {((order.payments?.length ?? 0) > 0 || order.yandexClaimStatus) && (
                   <div className="flex gap-2 flex-wrap text-xs">
-                    {((order as any).payments ?? []).map((p: any) => (
+                    {(order.payments ?? []).map((p) => (
                       <Badge key={p.id} variant="outline">
                         {p.kind === 'doplata' ? 'Доплата' : 'Оплата'}
                         {' · '}{p.provider === 'yookassa' ? 'ЮKassa' : 'реквизиты'}
@@ -319,6 +341,30 @@ export default function AdminOrdersPage() {
             </ItemWrapper>
           ))}
         </ListWrapper>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Назад
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Страница {page} из {totalPages} · всего {total}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Вперёд
+          </Button>
+        </div>
       )}
     </div>
   );

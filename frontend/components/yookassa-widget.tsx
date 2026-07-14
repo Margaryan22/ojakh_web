@@ -55,8 +55,11 @@ export function YookassaWidget({ confirmationToken, onSuccess, onFail }: Yookass
   const widgetRef = useRef<YooMoneyCheckoutWidgetInstance | null>(null);
   const onSuccessRef = useRef(onSuccess);
   const onFailRef = useRef(onFail);
-  onSuccessRef.current = onSuccess;
-  onFailRef.current = onFail;
+  // «Latest ref»: обновляется после рендера — писать в ref во время рендера нельзя.
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+    onFailRef.current = onFail;
+  });
 
   useEffect(() => {
     let cancelled = false;

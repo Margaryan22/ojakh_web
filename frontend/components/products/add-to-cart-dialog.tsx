@@ -51,8 +51,10 @@ export function AddToCartDialog({ product, open, onOpenChange }: AddToCartDialog
     if (!open || !product) return;
     const step = isTort ? 0.5 : 1;
     const initial = Math.min(isTort ? 1.0 : 1, maxQty > 0 ? maxQty : step);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- намеренный сброс формы при открытии диалога / смене товара
     setQuantity(initial);
     setInputValue(isTort ? initial.toFixed(1) : String(initial));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- сбрасываем только при открытии/смене товара; isTort/maxQty не должны перезапускать сброс
   }, [open, product?.id]);
 
   if (!product) return null;

@@ -25,6 +25,8 @@ export const metadata: Metadata = {
     'хлеб на закваске нижний новгород',
     'доставка домашней еды нижний новгород',
   ],
+  // Картинки для OG/Twitter не задаём явно: Next подставляет
+  // app/opengraph-image.tsx (1200×630) для обоих автоматически.
   openGraph: {
     title: 'Ojakh — Домашние полуфабрикаты, торты и десерты',
     description:
@@ -33,20 +35,11 @@ export const metadata: Metadata = {
     siteName: 'Ojakh',
     locale: 'ru_RU',
     type: 'website',
-    images: [
-      {
-        url: '/logo-light.jpg',
-        width: 512,
-        height: 512,
-        alt: 'Ojakh — логотип',
-      },
-    ],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Ojakh — Домашние полуфабрикаты и торты',
     description: 'Домашние полуфабрикаты и торты с доставкой по Нижнему Новгороду.',
-    images: ['/logo-light.jpg'],
   },
   robots: { index: true, follow: true },
   alternates: { canonical: SITE_URL },

@@ -17,7 +17,7 @@ export class RegisterDto {
   @IsString()
   @MinLength(2)
   @MaxLength(30)
-  @Matches(/^[А-Яа-яёЁA-Za-z\s'\-]+$/, {
+  @Matches(/^[А-Яа-яёЁA-Za-z\s'-]+$/, {
     message: 'Имя не должно содержать цифры или спецсимволы',
   })
   name: string;

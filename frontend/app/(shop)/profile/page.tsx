@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/auth.store';
 import { FadeIn } from '@/components/motion/fade-in';
+import { ChangePasswordCard } from '@/components/profile/change-password-card';
 import { PushNotifications } from '@/components/push-notifications';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AxiosError } from 'axios';
@@ -106,6 +107,8 @@ export default function ProfilePage() {
             </form>
           </CardContent>
         </Card>
+
+        <ChangePasswordCard />
 
         <Link href='/profile/addresses' className='block'>
           <Button variant='outline' className='w-full gap-2 justify-start'>

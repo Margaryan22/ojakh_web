@@ -5,6 +5,7 @@ import { useCartStore } from '@/stores/cart.store';
 import { useFavoritesStore } from '@/stores/favorites.store';
 import { useNotificationsStore } from '@/stores/notifications.store';
 import { queryClient } from '@/components/layout/query-provider';
+import { setSessionCookie, clearSessionCookie } from '@/lib/session-cookie';
 import type { User } from '@/types';
 
 interface AuthState {
@@ -19,7 +20,10 @@ interface AuthActions {
   setUser: (user: User) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (data: { email: string; name: string; password: string; phone?: string }) => Promise<void>;
-  socialLogin: (provider: 'google' | 'apple' | 'yandex', payload: any) => Promise<void>;
+  socialLogin: (
+    provider: 'google' | 'apple' | 'yandex',
+    payload: Record<string, unknown>,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   updateProfile: (data: { name?: string }) => Promise<void>;
@@ -62,6 +66,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     try {
       const { data } = await api.post('/auth/login', { email, password });
       if (wasAuthenticated) resetLocalUserState();
+      setSessionCookie();
       set({
         user: data.user,
         accessToken: data.accessToken,
@@ -86,6 +91,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
 
       const { data } = await api.post('/auth/register', payload);
       if (wasAuthenticated) resetLocalUserState();
+      setSessionCookie();
       set({
         user: data.user,
         accessToken: data.accessToken,
@@ -103,6 +109,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     try {
       const { data } = await api.post(`/auth/${provider}`, payload);
       if (wasAuthenticated) resetLocalUserState();
+      setSessionCookie();
       set({
         user: data.user,
         accessToken: data.accessToken,
@@ -120,6 +127,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     } catch {
       // ignore errors on logout
     }
+    clearSessionCookie();
     set({ user: null, accessToken: null });
     resetLocalUserState();
   },
@@ -138,11 +146,14 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
         set({ accessToken: refreshData.accessToken });
       }
       const { data } = await api.get('/users/me');
+      // Продлеваем/восстанавливаем cookie-метку сессии для middleware.
+      setSessionCookie();
       set({ user: data, isLoading: false, isInitialized: true });
       // Silent restore: подтянуть серверную корзину и избранное, не сливая локальные.
       useCartStore.getState().fetchCart();
       useFavoritesStore.getState().fetchFavorites();
     } catch {
+      clearSessionCookie();
       set({ user: null, accessToken: null, isLoading: false, isInitialized: true });
     }
   },

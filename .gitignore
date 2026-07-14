@@ -6,3 +6,24 @@ dist
 *.log
 backend/uploads/
 docs/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+
+# Build caches
+*.tsbuildinfo
+
+# Local-only Claude Code settings
+.claude/settings.local.json
+
+# Diploma / office documents
+*.doc
+*.docx
+~$*
+
+# Backups (created by the backup service in docker-compose)
+backups/
+
+# rclone config for offsite backups (contains credentials)
+rclone/

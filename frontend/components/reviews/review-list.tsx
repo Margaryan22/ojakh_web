@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
+import { BadgeCheck, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StarRating } from './star-rating';
@@ -15,6 +15,15 @@ import type { Review } from '@/types';
 
 interface ReviewListProps {
   productId: number;
+}
+
+function VerifiedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+      <BadgeCheck className="h-3 w-3" />
+      Подтверждённая покупка
+    </span>
+  );
 }
 
 function formatDate(iso: string): string {
@@ -34,7 +43,7 @@ export function ReviewList({ productId }: ReviewListProps) {
     queryKey: ['reviews', productId],
     queryFn: async () => {
       const { data } = await api.get(`/products/${productId}/reviews`);
-      return data;
+      return data.reviews ?? [];
     },
   });
 
@@ -83,7 +92,10 @@ export function ReviewList({ productId }: ReviewListProps) {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold">{ownReview.user.name} (вы)</p>
+                  <p className="text-sm font-semibold flex items-center gap-2 flex-wrap">
+                    {ownReview.user.name} (вы)
+                    {ownReview.verifiedPurchase && <VerifiedBadge />}
+                  </p>
                   <div className="flex items-center gap-2">
                     <StarRating value={ownReview.rating} size="sm" />
                     <span className="text-xs text-muted-foreground">
@@ -118,7 +130,10 @@ export function ReviewList({ productId }: ReviewListProps) {
               className="rounded-xl border bg-card p-4 space-y-2 overflow-hidden"
             >
               <div className="space-y-1">
-                <p className="text-sm font-semibold">{review.user.name}</p>
+                <p className="text-sm font-semibold flex items-center gap-2 flex-wrap">
+                  {review.user.name}
+                  {review.verifiedPurchase && <VerifiedBadge />}
+                </p>
                 <div className="flex items-center gap-2">
                   <StarRating value={review.rating} size="sm" />
                   <span className="text-xs text-muted-foreground">

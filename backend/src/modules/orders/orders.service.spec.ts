@@ -9,6 +9,7 @@ import { AddressVerifierService } from '../delivery/address-verifier.service';
 import { SettingsService } from '../settings/settings.service';
 import { PromoService } from '../promo/promo.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EventsService } from '../events/events.service';
 
 const mockPrisma = {
   product: {
@@ -23,15 +24,21 @@ const mockPrisma = {
     $transaction: jest.fn(),
   },
   $transaction: jest.fn(),
+  $queryRaw: jest.fn(),
 };
 
 const mockNotificationsService = {
   createForOrder: jest.fn().mockResolvedValue(null),
 };
 
+const mockEventsService = {
+  emit: jest.fn(),
+};
+
 const mockCartService = {
   getCart: jest.fn(),
   clearCart: jest.fn(),
+  replaceItems: jest.fn(),
 };
 
 const mockDeliveryService = {
@@ -116,6 +123,7 @@ describe('OrdersService', () => {
         { provide: SettingsService, useValue: mockSettingsService },
         { provide: PromoService, useValue: mockPromoService },
         { provide: NotificationsService, useValue: mockNotificationsService },
+        { provide: EventsService, useValue: mockEventsService },
       ],
     }).compile();
 
@@ -124,7 +132,9 @@ describe('OrdersService', () => {
 
     // Дефолтные моки для успешного сценария
     mockCartService.getCart.mockResolvedValue({ userId: 1, items: cartItems, subtotal: 120000 });
-    mockPrisma.product.findMany.mockResolvedValue([{ id: 1, maxPerDay: 50, name: 'Хинкали', unit: 'шт' }]);
+    mockPrisma.product.findMany.mockResolvedValue([
+      { id: 1, maxPerDay: 50, name: 'Хинкали говядина', unit: 'шт', price: 8000, available: true },
+    ]);
     mockDeliveryService.checkDate.mockResolvedValue({
       available: true,
       tortCount: 0,
@@ -142,6 +152,8 @@ describe('OrdersService', () => {
     mockAddressesService.autoSaveFromOrder.mockResolvedValue(undefined);
     mockPrisma.order.create.mockResolvedValue({ id: 1, userId: 1, status: 'new', ...validDto });
     mockPrisma.order.findUnique.mockResolvedValue(null);
+    // Номер заказа — nextval('order_number_seq')
+    mockPrisma.$queryRaw.mockResolvedValue([{ nextval: 10001n }]);
     mockCartService.clearCart.mockResolvedValue({ userId: 1, items: [], subtotal: 0 });
   });
 
@@ -216,9 +228,9 @@ describe('OrdersService', () => {
 
     it('должен выбросить BadRequestException если превышено maxPerDay продукта', async () => {
       mockPrisma.product.findMany.mockResolvedValue([
-        { id: 1, maxPerDay: 3, name: 'Хинкали', unit: 'шт' },
+        { id: 1, maxPerDay: 3, name: 'Хинкали', unit: 'шт', price: 8000, available: true },
       ]);
-      // cartItems содержит quantity: 5, maxPerDay: 3 → ошибка
+      // cartItems содержит quantity: 15, maxPerDay: 3 → ошибка
 
       await expect(service.createOrder(1, validDto)).rejects.toThrow(BadRequestException);
     });
@@ -228,7 +240,9 @@ describe('OrdersService', () => {
         { product_id: 10, name: 'Торт Наполеон', category: 'торты', quantity: 1, unit: 'шт', price: 350000, subtotal: 350000 },
       ];
       mockCartService.getCart.mockResolvedValue({ userId: 1, items: cakeItems, subtotal: 350000 });
-      mockPrisma.product.findMany.mockResolvedValue([{ id: 10, maxPerDay: 2, name: 'Торт Наполеон', unit: 'шт' }]);
+      mockPrisma.product.findMany.mockResolvedValue([
+        { id: 10, maxPerDay: 2, name: 'Торт Наполеон', unit: 'шт', price: 350000, available: true },
+      ]);
       mockDeliveryService.checkDate.mockResolvedValue({
         available: true, tortCount: 1, maxTorts: 2, unitCount: 1, maxUnits: 100,
         unitsAvailable: 99, tortsAvailable: 1,
@@ -253,12 +267,54 @@ describe('OrdersService', () => {
       );
     });
 
+    it('должен обновить корзину и отклонить заказ если цена товара изменилась', async () => {
+      // В БД товар подорожал: 8000 → 9000 коп
+      mockPrisma.product.findMany.mockResolvedValue([
+        { id: 1, maxPerDay: 50, name: 'Хинкали говядина', unit: 'шт', price: 9000, available: true },
+      ]);
+      mockCartService.replaceItems.mockResolvedValue({ userId: 1, items: [], subtotal: 0 });
+
+      await expect(service.createOrder(1, validDto)).rejects.toThrow(BadRequestException);
+
+      // Корзина перезаписана свежими ценами из БД
+      expect(mockCartService.replaceItems).toHaveBeenCalledWith(
+        1,
+        [expect.objectContaining({ price: 9000, subtotal: 9000 * 15 })],
+      );
+      expect(mockPrisma.order.create).not.toHaveBeenCalled();
+    });
+
+    it('должен отклонить заказ если товар из корзины стал недоступен', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([
+        { id: 1, maxPerDay: 50, name: 'Хинкали говядина', unit: 'шт', price: 8000, available: false },
+      ]);
+
+      await expect(service.createOrder(1, validDto)).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.order.create).not.toHaveBeenCalled();
+    });
+
+    it('должен отклонить заказ если товар из корзины удалён из каталога', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([]);
+
+      await expect(service.createOrder(1, validDto)).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.order.create).not.toHaveBeenCalled();
+    });
+
     it('должен рассчитать subtotal как сумму subtotal позиций корзины', async () => {
       await service.createOrder(1, validDto);
 
       const createCall = mockPrisma.order.create.mock.calls[0][0];
       expect(createCall.data.subtotal).toBe(120000);
       expect(createCall.data.total).toBe(120000);
+    });
+
+    it('должен взять номер заказа из последовательности БД', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue([{ nextval: 12345n }]);
+
+      await service.createOrder(1, validDto);
+
+      const createCall = mockPrisma.order.create.mock.calls[0][0];
+      expect(createCall.data.orderNumber).toBe('12345');
     });
   });
 

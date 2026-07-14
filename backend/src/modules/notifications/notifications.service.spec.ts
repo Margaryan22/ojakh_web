@@ -3,16 +3,20 @@ import { NotificationsService, STATUS_MESSAGES } from './notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
 import { MailService } from '../mail/mail.service';
+import { EventsService } from '../events/events.service';
 
 const mockPrisma = {
   notification: {
     create: jest.fn(),
     findMany: jest.fn(),
     updateMany: jest.fn(),
+    count: jest.fn(),
   },
   user: {
     findUnique: jest.fn().mockResolvedValue({ email: 'test@example.com' }),
   },
+  // Пагинированный список собирается через $transaction([findMany, count])
+  $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
 };
 
 const mockPushService = {
@@ -33,6 +37,7 @@ describe('NotificationsService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: PushService, useValue: mockPushService },
         { provide: MailService, useValue: mockMailService },
+        { provide: EventsService, useValue: { emit: jest.fn() } },
       ],
     }).compile();
 
@@ -99,16 +104,19 @@ describe('NotificationsService', () => {
   });
 
   describe('getForUser', () => {
-    it('должен вернуть последние 50 уведомлений пользователя', async () => {
+    it('должен вернуть уведомления пользователя с метаданными пагинации', async () => {
       const notifications = [{ id: 1, userId: 1, message: 'test' }];
       mockPrisma.notification.findMany.mockResolvedValue(notifications);
+      mockPrisma.notification.count.mockResolvedValue(1);
 
       const result = await service.getForUser(1);
 
-      expect(result).toEqual(notifications);
+      expect(result.notifications).toEqual(notifications);
+      expect(result.total).toBe(1);
       expect(mockPrisma.notification.findMany).toHaveBeenCalledWith({
         where: { userId: 1 },
         orderBy: { createdAt: 'desc' },
+        skip: 0,
         take: 50,
       });
     });

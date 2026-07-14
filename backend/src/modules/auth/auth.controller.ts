@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Req,
   Res,
@@ -21,6 +23,7 @@ import {
   AppleLoginDto,
   YandexLoginDto,
 } from './dto/social-login.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
 
@@ -134,6 +137,23 @@ export class AuthController {
   async refresh(@Req() req: FastifyRequest) {
     const refreshToken = (req as any).cookies?.refresh_token;
     return this.authService.refresh(refreshToken ?? '');
+  }
+
+  // ─── Password reset (ссылка выдаётся администратором) ───────────────────
+
+  @Get('reset-password/:token')
+  @Throttle(STRICT_THROTTLE)
+  @ApiOperation({ summary: 'Check if a password reset token is valid' })
+  checkResetToken(@Param('token') token: string) {
+    return this.authService.checkPasswordResetToken(token);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(STRICT_THROTTLE)
+  @ApiOperation({ summary: 'Set a new password using a one-time reset token' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPasswordWithToken(dto.token, dto.password);
   }
 
   @Post('logout')

@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { normalizePagination } from '../../common/dto/pagination.dto';
 import { PushService } from '../push/push.service';
 import { MailService } from '../mail/mail.service';
+import { EventsService } from '../events/events.service';
 
 export const STATUS_MESSAGES: Record<string, string> = {
   preparing:
@@ -26,6 +28,7 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly push: PushService,
     private readonly mail: MailService,
+    private readonly events: EventsService,
   ) {}
 
   async createForOrder(userId: number, orderId: number, status: string) {
@@ -38,7 +41,10 @@ export class NotificationsService {
       this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
     ]);
 
-    // Push (no-op без VAPID) и email (no-op без SENDPULSE_SMTP_USER) параллельно
+    // Realtime: колокольчик и список заказов обновляются без поллинга.
+    this.events.emit({ type: 'notification', userId, data: { orderId, status } });
+
+    // Push (no-op без VAPID) и email (no-op без UNISENDER_API_KEY) параллельно
     await Promise.all([
       this.push.sendToUser(userId, {
         title: `Заказ #${orderId}`,
@@ -77,15 +83,31 @@ export class NotificationsService {
       .sendToAll({ title: 'Ojakh', body: message, url: '/' })
       .catch(() => null);
 
+    // Realtime: подключённые пользователи увидят объявление сразу.
+    for (const u of users) {
+      this.events.emit({ type: 'notification', userId: u.id });
+    }
+
     return { sent: users.length };
   }
 
-  async getForUser(userId: number) {
-    return this.prisma.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
+  async getForUser(
+    userId: number,
+    pagination: { page?: number; limit?: number } = {},
+  ) {
+    const { page, limit, skip } = normalizePagination(pagination, { limit: 50 });
+
+    const [notifications, total] = await this.prisma.$transaction([
+      this.prisma.notification.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.notification.count({ where: { userId } }),
+    ]);
+
+    return { notifications, total, page, limit };
   }
 
   async markAllRead(userId: number) {

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
+import { useSse } from '@/lib/use-sse';
 import type { OrderMessage } from '@/types';
 
 interface OrderChatProps {
@@ -39,13 +40,20 @@ export function OrderChat({ orderId, role }: OrderChatProps) {
   const [text, setText] = useState('');
   const prevCountRef = useRef(0);
 
+  // Realtime: новое сообщение приходит SSE-событием; частый поллинг — fallback.
+  const { connected: sseConnected } = useSse({
+    'order-message': () =>
+      qc.invalidateQueries({ queryKey: ['order-messages', orderId] }),
+  });
+
   const { data: messages = [], isLoading } = useQuery<OrderMessage[]>({
     queryKey: ['order-messages', orderId],
     queryFn: async () => {
       const { data } = await api.get(`/orders/${orderId}/messages`);
       return data;
     },
-    refetchInterval: POLL_MS,
+    // При живом SSE оставляем редкий страховочный опрос.
+    refetchInterval: sseConnected ? 30_000 : POLL_MS,
     refetchIntervalInBackground: false,
   });
 

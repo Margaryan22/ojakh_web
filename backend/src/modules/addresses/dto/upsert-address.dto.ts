@@ -33,7 +33,7 @@ export class UpsertAddressDto {
   @IsOptional()
   @IsString()
   @MaxLength(20)
-  @Matches(/^[0-9A-Za-zА-Яа-я\s\-\/]{1,20}$/, {
+  @Matches(/^[0-9A-Za-zА-Яа-я\s/-]{1,20}$/, {
     message: 'Квартира: только цифры, буквы, пробел, «-», «/»',
   })
   apartment?: string;

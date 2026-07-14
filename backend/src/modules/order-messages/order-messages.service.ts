@@ -4,10 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventsService } from '../events/events.service';
 
 @Injectable()
 export class OrderMessagesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventsService,
+  ) {}
 
   private async assertAccess(
     orderId: number,
@@ -69,7 +73,7 @@ export class OrderMessagesService {
     isAdmin: boolean,
     text: string,
   ) {
-    await this.assertAccess(orderId, userId, isAdmin);
+    const order = await this.assertAccess(orderId, userId, isAdmin);
 
     const trimmed = text.trim();
     if (!trimmed) {
@@ -77,7 +81,7 @@ export class OrderMessagesService {
     }
 
     const senderRole = isAdmin ? 'admin' : 'user';
-    return this.prisma.orderMessage.create({
+    const message = await this.prisma.orderMessage.create({
       data: {
         orderId,
         senderRole,
@@ -88,6 +92,15 @@ export class OrderMessagesService {
         readByAdmin: isAdmin,
       },
     });
+
+    // Realtime: сообщение адресовано противоположной стороне чата.
+    this.events.emit(
+      isAdmin
+        ? { type: 'order-message', userId: order.userId, data: { orderId } }
+        : { type: 'order-message', admin: true, data: { orderId } },
+    );
+
+    return message;
   }
 
   async getAdminUnreadSummary() {

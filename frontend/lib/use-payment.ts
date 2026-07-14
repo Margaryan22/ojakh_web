@@ -47,8 +47,11 @@ export function usePaymentFlow({
   const settledRef = useRef(false);
   const onSucceededRef = useRef(onSucceeded);
   const onCanceledRef = useRef(onCanceled);
-  onSucceededRef.current = onSucceeded;
-  onCanceledRef.current = onCanceled;
+  // «Latest ref»: обновляется после рендера — писать в ref во время рендера нельзя.
+  useEffect(() => {
+    onSucceededRef.current = onSucceeded;
+    onCanceledRef.current = onCanceled;
+  });
 
   const start = useCallback(async (): Promise<CreatePaymentResponse> => {
     setIsCreating(true);

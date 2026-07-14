@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AdminGuard } from '../auth/admin.guard';
+import { AuthService } from '../auth/auth.service';
 import { AdminService } from './admin.service';
 import { UpsertDailyLimitDto } from './dto/upsert-daily-limit.dto';
 import { UpdateSettingsDto } from '../settings/dto/update-settings.dto';
@@ -27,17 +28,32 @@ import { SetUserRoleDto } from './dto/set-user-role.dto';
 @UseGuards(AdminGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly authService: AuthService,
+  ) {}
 
   @Get('orders')
   @ApiOperation({ summary: 'Get all orders with filters (admin only)' })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'date', required: false, example: '2026-03-01' })
+  @ApiQuery({ name: 'search', required: false, description: 'Номер заказа / имя / телефон / email' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   getOrders(
     @Query('status') status?: string,
     @Query('date') date?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.adminService.getOrders({ status, date });
+    return this.adminService.getOrders({
+      status,
+      date,
+      search,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
   }
 
   @Patch('orders/:id/start-cooking')
@@ -132,8 +148,19 @@ export class AdminController {
 
   @Get('users')
   @ApiOperation({ summary: 'List all users with order counts (admin only)' })
-  listUsers() {
-    return this.adminService.listUsers();
+  @ApiQuery({ name: 'search', required: false, description: 'Имя / email / телефон' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  listUsers(
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.listUsers({
+      search,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
   }
 
   @Patch('users/:id/role')
@@ -145,6 +172,17 @@ export class AdminController {
     @Req() req: any,
   ) {
     return this.adminService.setUserRole(id, req.user.id, dto.role);
+  }
+
+  @Post('users/:id/password-reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Issue a one-time password reset link for a user (admin only). ' +
+      'Ссылку админ передаёт клиенту вручную — письма не отправляются.',
+  })
+  issuePasswordReset(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.authService.issuePasswordReset(id, req.user.id);
   }
 
   @Delete('users/:id')

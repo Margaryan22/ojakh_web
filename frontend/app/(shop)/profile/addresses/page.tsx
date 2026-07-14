@@ -114,6 +114,7 @@ export default function AddressesPage() {
     if (!isAdding && editingId == null) return;
     if (addressValidated) return;
     if (form.address.trim().length < 5) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- сброс подсказок при коротком адресе; выпадашка управляется этим же состоянием
       setSuggestions([]);
       return;
     }

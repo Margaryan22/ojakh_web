@@ -20,9 +20,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/stores/auth.store';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { ADMIN_ROLE } from '@/lib/constants';
 import api from '@/lib/api';
+import { useSse } from '@/lib/use-sse';
 import type { AdminUnreadSummary } from '@/types';
 
 type AdminBadge = 'orders' | 'feedback';
@@ -56,21 +58,38 @@ export default function AdminLayout({
   const isInitialized = useAuthStore((s) => s.isInitialized);
   const isAdmin = !!user && user.role === ADMIN_ROLE;
 
-  const [muted, setMuted] = useState(false);
+  // Ленивая инициализация из localStorage: до подтверждения роли layout
+  // рендерит только заглушку, поэтому расхождения с SSR-разметкой нет.
+  const [muted, setMuted] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.localStorage.getItem(MUTE_STORAGE_KEY) === '1',
+  );
   const prevCountRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const queryClient = useQueryClient();
+
+  // Realtime: события заказов/чата инвалидируют запросы мгновенно;
+  // короткий поллинг остаётся только как fallback при обрыве SSE.
+  const { connected: sseConnected } = useSse(
+    {
+      'new-order': () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-unread-summary'] });
+      },
+      'order-message': () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-unread-summary'] });
+        queryClient.invalidateQueries({ queryKey: ['order-messages'] });
+      },
+    },
+    isAdmin,
+  );
 
   useEffect(() => {
     if (isInitialized && (!user || user.role !== ADMIN_ROLE)) {
       router.replace('/catalog');
     }
   }, [user, isInitialized, router]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = window.localStorage.getItem(MUTE_STORAGE_KEY);
-    setMuted(stored === '1');
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -122,7 +141,8 @@ export default function AdminLayout({
       const { data } = await api.get('/admin/messages/unread-summary');
       return data;
     },
-    refetchInterval: 3000,
+    // При живом SSE события приходят сами; поллинг — только fallback.
+    refetchInterval: sseConnected ? false : 3000,
     refetchIntervalInBackground: false,
     enabled: isAdmin,
   });

@@ -1,0 +1,15 @@
+# Сборка и зависимости
+node_modules
+dist
+.next
+tsconfig.tsbuildinfo
+pnpm-lock.yaml
+
+# Генерируемое / статика
+next-env.d.ts
+frontend/public/sw.js
+backend/prisma/migrations
+backend/uploads
+backups
+docs
+nginx

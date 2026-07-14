@@ -1,0 +1,23 @@
+# Контекст сборки — корень репозитория (см. docker-compose.yml), поэтому
+# .dockerignore тоже корневой. Всё лишнее исключаем: node_modules ставит pnpm
+# внутри контейнера, артефакты сборки создаются там же.
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.log
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.github
+.claude
+backups
+docs
+nginx
+scripts
+# Runtime-каталог загрузок (volume) — НЕ трогать backend/src/modules/uploads
+backend/uploads
+*.md
+.DS_Store
+**/.DS_Store

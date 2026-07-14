@@ -1,22 +1,34 @@
 # syntax=docker/dockerfile:1
+# Контекст сборки — КОРЕНЬ репозитория (см. docker-compose.yml): зависимости
+# ставятся pnpm'ом по единому pnpm-lock.yaml из корня workspace.
 FROM node:22-alpine AS builder
-WORKDIR /app
+WORKDIR /repo
 
-COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --legacy-peer-deps
+# Версия pnpm пинится к packageManager из корневого package.json.
+RUN corepack enable && corepack prepare pnpm@10.33.2 --activate
 
-COPY . .
-RUN npm run prisma:generate && npm run build
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY backend/package.json backend/
+RUN --mount=type=cache,target=/pnpm-store \
+    pnpm install --frozen-lockfile --filter backend --store-dir /pnpm-store
+
+COPY backend backend
+WORKDIR /repo/backend
+RUN pnpm prisma:generate && pnpm build
 
 # ── Runtime ─────────────────────────────────────────────────────────────────
+# Структура /repo сохраняется: backend/node_modules — это симлинки в
+# ../node_modules/.pnpm, поэтому копируем оба каталога с тем же взаимным
+# расположением.
 FROM node:22-alpine AS runner
-WORKDIR /app
 ENV NODE_ENV=production
+WORKDIR /app/backend
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist         ./dist
-COPY prisma                            ./prisma
+COPY --from=builder /repo/node_modules         /app/node_modules
+COPY --from=builder /repo/backend/node_modules /app/backend/node_modules
+COPY --from=builder /repo/backend/dist         /app/backend/dist
+COPY backend/prisma                            /app/backend/prisma
+COPY backend/tsconfig.json                     /app/backend/tsconfig.json
 RUN mkdir -p uploads
 
 EXPOSE 3001

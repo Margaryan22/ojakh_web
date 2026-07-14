@@ -1,10 +1,11 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
-import { TORT_CATEGORY, MAX_TORTS } from '../../common/constants';
+import {
+  TORT_CATEGORY,
+  MAX_TORTS,
+  MAX_ITEM_QTY_PER_CART,
+} from '../../common/constants';
 
 export interface CartItem {
   product_id: number;
@@ -50,15 +51,39 @@ export class CartService {
       // Remove item
       items = items.filter((i) => itemKey(i) !== key);
     } else {
+      // Название, категория, единица и цена берутся из БД, а не из запроса —
+      // клиентским значениям доверять нельзя (подмена цены).
+      const product = await this.prisma.product.findUnique({
+        where: { id: dto.product_id },
+      });
+      if (!product || !product.available) {
+        throw new BadRequestException('Товар недоступен для заказа');
+      }
+
+      const maxPerCart = this.maxPerCart(product);
       const existingIndex = items.findIndex((i) => itemKey(i) === key);
 
       if (existingIndex >= 0) {
         // Sum quantity
-        items[existingIndex].quantity += dto.quantity;
-        items[existingIndex].subtotal = items[existingIndex].price * items[existingIndex].quantity;
+        const newQuantity = items[existingIndex].quantity + dto.quantity;
+        if (newQuantity > maxPerCart) {
+          throw new BadRequestException(
+            `Максимум ${maxPerCart} ${product.unit} для "${product.name}" в одной корзине`,
+          );
+        }
+        items[existingIndex] = {
+          ...items[existingIndex],
+          name: product.name,
+          category: product.category,
+          unit: product.unit,
+          price: product.price,
+          quantity: newQuantity,
+          subtotal: product.price * newQuantity,
+          maxPerCart,
+        };
       } else {
         // Add new item — check tort limit
-        if (dto.category === TORT_CATEGORY) {
+        if (product.category === TORT_CATEGORY) {
           const currentTortCount = items.filter(
             (i) => i.category === TORT_CATEGORY,
           ).length;
@@ -68,18 +93,23 @@ export class CartService {
             );
           }
         }
+        if (dto.quantity > maxPerCart) {
+          throw new BadRequestException(
+            `Максимум ${maxPerCart} ${product.unit} для "${product.name}" в одной корзине`,
+          );
+        }
 
         items.push({
-          product_id: dto.product_id,
-          name: dto.name,
-          category: dto.category,
-          flavor: dto.flavor,
-          size: dto.size,
+          product_id: product.id,
+          name: product.name,
+          category: product.category,
+          flavor: product.flavor ?? dto.flavor,
+          size: product.size ?? dto.size,
           quantity: dto.quantity,
-          unit: dto.unit,
-          price: dto.price,
-          subtotal: dto.price * dto.quantity,
-          maxPerCart: dto.maxPerCart,
+          unit: product.unit,
+          price: product.price,
+          subtotal: product.price * dto.quantity,
+          maxPerCart,
         });
       }
     }
@@ -108,8 +138,16 @@ export class CartService {
     } else {
       const existingIndex = items.findIndex((i) => itemKey(i) === key);
       if (existingIndex >= 0) {
+        const item = items[existingIndex];
+        const limit = item.maxPerCart ?? MAX_ITEM_QTY_PER_CART;
+        if (dto.quantity > limit) {
+          throw new BadRequestException(
+            `Максимум ${limit} ${item.unit} для "${item.name}" в одной корзине`,
+          );
+        }
+        // Цена уже записана сервером из БД — пересчитываем только subtotal.
         items[existingIndex].quantity = dto.quantity;
-        items[existingIndex].subtotal = items[existingIndex].price * dto.quantity;
+        items[existingIndex].subtotal = item.price * dto.quantity;
       }
     }
 
@@ -161,6 +199,31 @@ export class CartService {
       update: { items: [] },
     });
     return { userId, items: [], subtotal: 0 };
+  }
+
+  /**
+   * Полностью заменяет содержимое корзины. Используется сервисом заказов
+   * при пересверке цен: если цена товара изменилась, корзина обновляется
+   * актуальными значениями из БД.
+   */
+  async replaceItems(userId: number, items: CartItem[]) {
+    await this.prisma.cart.upsert({
+      where: { userId },
+      create: { userId, items: items as any },
+      update: { items: items as any },
+    });
+    return { userId, items, subtotal: this.calcSubtotal(items) };
+  }
+
+  /**
+   * Лимит количества одной позиции в корзине. Для тортов — не более MAX_TORTS
+   * единиц (можно заказывать половинками), для остального — жёсткий потолок
+   * MAX_ITEM_QTY_PER_CART; в обоих случаях не выше product.maxPerDay.
+   * Зеркалит клиентскую логику (frontend/components/products/add-to-cart-dialog.tsx).
+   */
+  private maxPerCart(product: { category: string; maxPerDay: number }): number {
+    const cap = product.category === TORT_CATEGORY ? MAX_TORTS : MAX_ITEM_QTY_PER_CART;
+    return Math.min(product.maxPerDay, cap);
   }
 
   private calcSubtotal(items: CartItem[]): number {

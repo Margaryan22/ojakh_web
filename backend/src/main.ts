@@ -68,6 +68,24 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
+  // ── Security headers ─────────────────────────────────────────────────────
+  // CSP включаем только в production: в dev она ломает Swagger UI (inline-скрипты).
+  // API отдаёт JSON и картинки из /static/ — политика по умолчанию с
+  // crossOriginResourcePolicy: cross-origin, чтобы фронтенд-домен мог
+  // встраивать продуктовые фото.
+  await app.register(require('@fastify/helmet'), {
+    contentSecurityPolicy: isProd
+      ? {
+          directives: {
+            defaultSrc: [`'none'`],
+            imgSrc: [`'self'`],
+            frameAncestors: [`'none'`],
+          },
+        }
+      : false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  });
+
   // ── Cookies ───────────────────────────────────────────────────────────────
   await app.register(require('@fastify/cookie'));
 

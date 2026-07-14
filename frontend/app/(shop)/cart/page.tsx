@@ -92,7 +92,6 @@ export default function CartPage() {
   );
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [addressValidated, setAddressValidated] = useState(false);
-  const [addressFocused, setAddressFocused] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] =
     useState<DeliveryTimeSlot>('10:00-11:00');
@@ -204,6 +203,7 @@ export default function CartPage() {
   // DaData address suggestions via backend proxy (DaData key stays server-side)
   useEffect(() => {
     if (isPickup || address.length < 5) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- сброс подсказок при коротком адресе; выпадашка управляется этим же состоянием
       setAddressSuggestions([]);
       return;
     }
@@ -307,6 +307,7 @@ export default function CartPage() {
     if (current && current.available) return;
     const firstFree = DELIVERY_TIME_SLOTS.find((s) => slots[s]?.available);
     if (firstFree && firstFree !== selectedTime) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- намеренная синхронизация выбора с занятостью слотов с сервера
       setSelectedTime(firstFree);
     }
   }, [dateAvailability, isPickup, selectedTime]);
@@ -349,9 +350,11 @@ export default function CartPage() {
   useEffect(() => {
     if (step !== 'delivery') return;
     if (isPickup) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- намеренная синхронизация стоимости доставки с ответом сервера
       setDeliveryCost(0);
       setCostBreakdown(null);
     } else if (liveCostData) {
+       
       setDeliveryCost(liveCostData.cost);
       setCostBreakdown(liveCostData.breakdown ?? null);
     }
@@ -515,6 +518,10 @@ export default function CartPage() {
     } catch (error) {
       if (error instanceof AxiosError) {
         toast.error(error.response?.data?.message ?? 'Ошибка создания заказа');
+        // Сервер мог обновить корзину (например, изменились цены) — перечитываем.
+        if (error.response?.status === 400) {
+          fetchCart();
+        }
       } else {
         toast.error('Ошибка создания заказа');
       }
@@ -988,8 +995,6 @@ export default function CartPage() {
                       setAddressValidated(false);
                       setAddressCoords({ lat: null, lon: null });
                     }}
-                    onFocus={() => setAddressFocused(true)}
-                    onBlur={() => setAddressFocused(false)}
                     className='pl-10'
                     autoComplete='off'
                   />

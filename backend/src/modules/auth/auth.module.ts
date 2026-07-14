@@ -15,7 +15,9 @@ import { OptionalJwtGuard } from './optional-jwt.guard';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_ACCESS_SECRET'),
         signOptions: {
-          expiresIn: config.get<string>('JWT_ACCESS_EXPIRES', '15m') as any,
+          // Дефолт обязан совпадать с auth.service.ts (sign() передаёт опции
+          // явно, но этот fallback сработает для любых других вызовов sign()).
+          expiresIn: config.get<string>('JWT_ACCESS_EXPIRES', '3h') as any,
         },
       }),
     }),

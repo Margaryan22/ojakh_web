@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FastifyRequest } from 'fastify';
+// Подгружает type augmentation для req.isMultipart()/req.file()
+import '@fastify/multipart';
 import { AdminGuard } from '../auth/admin.guard';
 import { UploadsService } from './uploads.service';
 
