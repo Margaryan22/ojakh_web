@@ -41,7 +41,9 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - uploads:/app/uploads
+      # ВАЖНО: рабочая директория приложения — /app/backend (см. Dockerfile),
+      # UPLOADS_DIR=./uploads резолвится в /app/backend/uploads.
+      - uploads:/app/backend/uploads
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3001/health']
