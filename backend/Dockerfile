@@ -21,6 +21,12 @@ RUN --mount=type=cache,target=/pnpm-store \
 
 COPY backend backend
 WORKDIR /repo/backend
+
+# Зеркало движков Prisma на случай недоступности binaries.prisma.sh
+# с сервера: PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
+ARG PRISMA_ENGINES_MIRROR=https://binaries.prisma.sh
+ENV PRISMA_ENGINES_MIRROR=$PRISMA_ENGINES_MIRROR
+
 RUN pnpm prisma:generate && pnpm build
 
 # ── Runtime ─────────────────────────────────────────────────────────────────

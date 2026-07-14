@@ -25,9 +25,11 @@ services:
       context: .
       dockerfile: backend/Dockerfile
       args:
-        # Зеркало npm на случай недоступности registry.npmjs.org с сервера,
-        # например NPM_REGISTRY=https://registry.npmmirror.com
+        # Зеркала на случай недоступности официальных источников с сервера:
+        # NPM_REGISTRY=https://registry.npmmirror.com
+        # PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
         - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org}
+        - PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR:-https://binaries.prisma.sh}
     # Порт привязан к loopback: снаружи трафик идёт только через nginx (TLS,
     # security-заголовки, rate limiting). Локальная привязка оставлена для
     # отладки с сервера (curl localhost:3001) и SSH-туннелей.
