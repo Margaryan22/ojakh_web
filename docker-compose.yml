@@ -24,6 +24,10 @@ services:
       # Контекст — корень репо: pnpm-lock.yaml общий для workspace.
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        # Зеркало npm на случай недоступности registry.npmjs.org с сервера,
+        # например NPM_REGISTRY=https://registry.npmmirror.com
+        - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org}
     # Порт привязан к loopback: снаружи трафик идёт только через nginx (TLS,
     # security-заголовки, rate limiting). Локальная привязка оставлена для
     # отладки с сервера (curl localhost:3001) и SSH-туннелей.
@@ -49,6 +53,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
+        - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org}
         - NEXT_PUBLIC_API_URL=${API_URL:-https://ojakh.api.whysargis.ru}
         - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
         - NEXT_PUBLIC_APPLE_CLIENT_ID=${APPLE_CLIENT_ID:-}

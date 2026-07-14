@@ -4,6 +4,13 @@
 FROM node:22-alpine AS builder
 WORKDIR /repo
 
+# Реестр npm можно подменить зеркалом (NPM_REGISTRY в .env рядом с compose),
+# если registry.npmjs.org недоступен с сервера:
+# NPM_REGISTRY=https://registry.npmmirror.com
+ARG NPM_REGISTRY=https://registry.npmjs.org
+ENV COREPACK_NPM_REGISTRY=$NPM_REGISTRY \
+    npm_config_registry=$NPM_REGISTRY
+
 # Версия pnpm пинится к packageManager из корневого package.json.
 RUN corepack enable && corepack prepare pnpm@10.33.2 --activate
 
