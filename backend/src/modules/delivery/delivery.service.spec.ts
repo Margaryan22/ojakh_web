@@ -106,41 +106,41 @@ describe('DeliveryService', () => {
   });
 
   describe('priceForDistanceKm', () => {
-    it('в пределах бесплатной зоны (5 км) — базовая цена 500₽', () => {
-      expect(service.priceForDistanceKm(0)).toBe(50_000);
-      expect(service.priceForDistanceKm(3.5)).toBe(50_000);
-      expect(service.priceForDistanceKm(5)).toBe(50_000);
+    it('в пределах бесплатной зоны (5 км) — базовая цена 300₽', () => {
+      expect(service.priceForDistanceKm(0)).toBe(30_000);
+      expect(service.priceForDistanceKm(3.5)).toBe(30_000);
+      expect(service.priceForDistanceKm(5)).toBe(30_000);
     });
 
-    it('сверх 5 км — +40₽ за каждый километр (округление вверх)', () => {
-      expect(service.priceForDistanceKm(5.1)).toBe(50_000 + 4_000); // 6 - 5 = 1 км
-      expect(service.priceForDistanceKm(7)).toBe(50_000 + 2 * 4_000);
-      expect(service.priceForDistanceKm(10.2)).toBe(50_000 + 6 * 4_000); // ceil(10.2) - 5
+    it('сверх 5 км — +50₽ за каждый километр (округление вверх)', () => {
+      expect(service.priceForDistanceKm(5.1)).toBe(30_000 + 5_000); // 6 - 5 = 1 км
+      expect(service.priceForDistanceKm(7)).toBe(30_000 + 2 * 5_000);
+      expect(service.priceForDistanceKm(10.2)).toBe(30_000 + 6 * 5_000); // ceil(10.2) - 5
     });
 
     it('некорректное расстояние → fallback', () => {
-      expect(service.priceForDistanceKm(NaN)).toBe(50_000);
-      expect(service.priceForDistanceKm(-1)).toBe(50_000);
+      expect(service.priceForDistanceKm(NaN)).toBe(30_000);
+      expect(service.priceForDistanceKm(-1)).toBe(30_000);
     });
   });
 
   describe('getDeliveryCost', () => {
     it('без координат → базовая цена', () => {
       const result = service.getDeliveryCost({});
-      expect(result.cost).toBe(50_000);
+      expect(result.cost).toBe(30_000);
       expect(result.distanceKm).toBeNull();
       expect(result.freeDelivery).toBe(false);
     });
 
     it('координаты совпадают со складом → базовая цена', () => {
       const result = service.getDeliveryCost({ lat: 56.3269, lon: 43.9548 });
-      expect(result.cost).toBe(50_000);
+      expect(result.cost).toBe(30_000);
       expect(result.distanceKm).toBeCloseTo(0, 5);
     });
 
     it('точка в Нижнем Новгороде → считает расстояние', () => {
       const result = service.getDeliveryCost({ lat: 56.296, lon: 43.99 });
-      expect(result.cost).toBeGreaterThanOrEqual(50_000);
+      expect(result.cost).toBeGreaterThanOrEqual(30_000);
       expect(result.distanceKm).toBeGreaterThan(0);
     });
 
@@ -161,7 +161,7 @@ describe('DeliveryService', () => {
         lon: 43.99,
         subtotalKopecks: 399_999,
       });
-      expect(result.cost).toBeGreaterThanOrEqual(50_000);
+      expect(result.cost).toBeGreaterThanOrEqual(30_000);
       expect(result.freeDelivery).toBe(false);
     });
 

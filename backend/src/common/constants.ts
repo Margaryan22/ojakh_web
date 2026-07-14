@@ -52,9 +52,9 @@ export const WAREHOUSE_LAT = 56.3269;
 export const WAREHOUSE_LON = 43.9548;
 
 // Базовая цена доставки до 5 км — фикс. Сверх — DELIVERY_PER_KM_KOPECKS за км.
-export const DELIVERY_BASE_KOPECKS = 50_000; // 500₽
+export const DELIVERY_BASE_KOPECKS = 30_000; // 300₽
 export const DELIVERY_FREE_KM = 5;
-export const DELIVERY_PER_KM_KOPECKS = 4_000; // 40₽
+export const DELIVERY_PER_KM_KOPECKS = 5_000; // 50₽
 export const FALLBACK_DELIVERY_COST = DELIVERY_BASE_KOPECKS;
 
 // Бесплатная доставка при заказе от 4000₽.

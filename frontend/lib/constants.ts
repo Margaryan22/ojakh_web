@@ -102,7 +102,8 @@ export const MIN_DAYS_AHEAD = 2;
 export const MAX_DAYS_AHEAD = 15;
 
 export const POLLING_INTERVAL_MS = 30_000;
-export const FALLBACK_DELIVERY_COST = 50_000;
+// Дублирует DELIVERY_BASE_KOPECKS бекенда (backend/src/common/constants.ts).
+export const FALLBACK_DELIVERY_COST = 30_000;
 export const FREE_DELIVERY_THRESHOLD_KOPECKS = 400_000;
 export const MIN_ORDER_KOPECKS = 100_000;
 
