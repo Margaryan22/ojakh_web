@@ -5,6 +5,7 @@ export const PRODUCT_LABEL_VALUES = [
   'recommended',
   'seasonal',
   'limited',
+  'spicy',
 ] as const;
 
 export type ProductLabel = (typeof PRODUCT_LABEL_VALUES)[number];
@@ -19,4 +20,6 @@ export const PRODUCT_LABELS: Record<
   recommended: { ru: 'Рекомендуем',          className: 'bg-violet-100 text-violet-700 hover:bg-violet-100' },
   seasonal:    { ru: 'Сезонное',             className: 'bg-amber-100 text-amber-700 hover:bg-amber-100' },
   limited:     { ru: 'Лимит. серия',         className: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' },
+  // Насыщенный красный (в отличие от светлой «Акции»), чтобы читался как предупреждение.
+  spicy:       { ru: '🌶️ Острое',            className: 'bg-red-600 text-white hover:bg-red-600' },
 };
