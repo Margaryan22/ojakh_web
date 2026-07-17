@@ -30,10 +30,11 @@ export async function generateMetadata({
   }
 
   const categoryLabel = categoryOf(product.category);
-  const title = `${product.name} — заказать в Нижнем Новгороде | Ojakh`;
+  // Без «| Оджах» — суффикс добавит шаблон из корневого layout.
+  const title = `${product.name} — заказать в Нижнем Новгороде`;
   const description = product.description
-    ? `${product.description} Заказ с доставкой по Нижнему Новгороду — Ojakh.`
-    : `${product.name} (${categoryLabel}) — заказать с доставкой по Нижнему Новгороду. Домашнее качество от Ojakh.`;
+    ? `${product.description} Заказ с доставкой по Нижнему Новгороду — «Оджах».`
+    : `${product.name} (${categoryLabel}) — заказать с доставкой по Нижнему Новгороду. Домашнее качество от «Оджах».`;
   const image = absoluteImage(product.imageUrl);
   const url = `${SITE_URL}/catalog/${product.id}`;
 
@@ -45,7 +46,7 @@ export async function generateMetadata({
       title,
       description,
       url,
-      siteName: 'Ojakh',
+      siteName: 'Оджах',
       locale: 'ru_RU',
       type: 'website',
       images: image ? [{ url: image, alt: product.name }] : undefined,
@@ -76,10 +77,10 @@ export default async function ProductPage({
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
-    description: product.description || `${product.name} — ${categoryLabel} от Ojakh`,
+    description: product.description || `${product.name} — ${categoryLabel} от «Оджах»`,
     ...(image ? { image: [image] } : {}),
     category: categoryLabel,
-    brand: { '@type': 'Brand', name: 'Ojakh' },
+    brand: { '@type': 'Brand', name: 'Оджах', alternateName: 'Ojakh' },
     offers: {
       '@type': 'Offer',
       price: (product.price / 100).toFixed(2),
@@ -88,8 +89,19 @@ export default async function ProductPage({
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
       url: `${SITE_URL}/catalog/${product.id}`,
-      seller: { '@type': 'Organization', name: 'Ojakh' },
+      seller: { '@id': `${SITE_URL}/#organization` },
     },
+  };
+
+  // Хлебные крошки в выдаче: Главная → Каталог → товар.
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Главная', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Каталог', item: `${SITE_URL}/catalog` },
+      { '@type': 'ListItem', position: 3, name: product.name },
+    ],
   };
 
   return (
@@ -97,6 +109,10 @@ export default async function ProductPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <ProductDetail id={id} initialProduct={product} />
     </>

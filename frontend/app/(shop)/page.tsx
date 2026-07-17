@@ -10,10 +10,44 @@ import { AraratRidge, Ornament } from '@/components/brand/ornament';
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: 'Оджах — армянская домашняя кухня и торты на заказ в Нижнем Новгороде',
+  // absolute — иначе корневой шаблон допишет второй «| Оджах»
+  title: {
+    absolute: 'Оджах — заказать армянскую домашнюю еду и торты с доставкой в Нижнем Новгороде',
+  },
   description:
-    'Домашние хинкали, пельмени, блинчики, хлеб на закваске и торты на заказ. Готовим как для своих — доставка по Нижнему Новгороду.',
+    'Оджах — армянская домашняя кухня в Нижнем Новгороде. Заказать хинкали, пельмени, блинчики, хлеб на закваске и торты с доставкой на дом. Готовим как для своих.',
   alternates: { canonical: '/' },
+};
+
+// FAQ: видимый текст и FAQPage-схема совпадают дословно — это условие
+// показа расширенного сниппета в выдаче.
+const faq = [
+  {
+    q: 'Как заказать еду в «Оджах»?',
+    a: 'Выберите блюда в каталоге, добавьте их в корзину и оформите заказ, указав удобные дату и интервал доставки. Заказ готовится под вас, поэтому оформляйте минимум за 2 дня. Оплата — картой онлайн.',
+  },
+  {
+    q: 'Сколько стоит доставка по Нижнему Новгороду?',
+    a: 'Доставка стоит 300 ₽ в пределах 5 км от нашей кухни, дальше — плюс 50 ₽ за каждый километр. При заказе от 4000 ₽ доставка бесплатная. Также можно забрать заказ самовывозом (ул. Мельникова, 29А).',
+  },
+  {
+    q: 'Можно ли заказать торт на день рождения или праздник?',
+    a: 'Да, мы печём торты и десерты на заказ: медовик, наполеон и другие домашние торты. Выберите торт в каталоге и укажите дату — приготовим к нужному дню и привезём по Нижнему Новгороду.',
+  },
+  {
+    q: 'Что означает «Оджах»?',
+    a: '«Оджах» (ojakh) по-армянски значит «очаг». Мы готовим домашнюю армянскую еду — хинкали и пельмени ручной лепки, блинчики, хлеб на закваске — так, как готовят дома, для своих.',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faq.map(({ q, a }) => ({
+    '@type': 'Question',
+    name: q,
+    acceptedAnswer: { '@type': 'Answer', text: a },
+  })),
 };
 
 const steps = [
@@ -126,6 +160,33 @@ export default async function HomePage() {
                 </p>
               </div>
             </FadeIn>
+          ))}
+        </div>
+      </section>
+
+      {/* Частые вопросы */}
+      <section className="space-y-5">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+        <h2 className="text-2xl font-bold text-center">Частые вопросы</h2>
+        <div className="mx-auto max-w-3xl space-y-3">
+          {faq.map(({ q, a }) => (
+            <details
+              key={q}
+              className="group rounded-2xl border bg-card px-5 py-4 open:pb-5"
+            >
+              <summary className="cursor-pointer list-none font-semibold [&::-webkit-details-marker]:hidden flex items-center justify-between gap-3">
+                {q}
+                <span className="text-primary transition-transform group-open:rotate-45 text-xl leading-none shrink-0">
+                  +
+                </span>
+              </summary>
+              <p className="pt-3 text-sm text-muted-foreground leading-relaxed">
+                {a}
+              </p>
+            </details>
           ))}
         </div>
       </section>
