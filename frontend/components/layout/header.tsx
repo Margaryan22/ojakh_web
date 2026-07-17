@@ -18,6 +18,7 @@ import {
   CheckCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Ornament } from '@/components/brand/ornament';
 import { DUR_BASE, DUR_FAST, EASE_OUT } from '@/components/motion/motion-presets';
 import {
   DropdownMenu,
@@ -220,14 +221,15 @@ export function Header() {
         {/* Logo */}
         <Link
           href='/catalog'
-          className='flex items-center gap-2 font-bold text-2xl text-primary transition-opacity duration-200 hover:opacity-80'
+          className='flex items-center font-bold text-xl text-foreground transition-opacity duration-200 hover:opacity-80'
         >
           <motion.span
             whileHover={{ scale: 1.03 }}
             transition={{ duration: DUR_FAST, ease: EASE_OUT }}
-            style={{ fontFamily: "'Comic Relief', system-ui, sans-serif", fontWeight: '700' }}
+            className='flex items-center gap-2.5'
           >
-            Ojakh
+            <Ornament className='h-8 w-8 text-primary' />
+            <span className='tracking-[0.08em]'>ОДЖАХ</span>
           </motion.span>
         </Link>
 

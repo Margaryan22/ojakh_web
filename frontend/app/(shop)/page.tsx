@@ -5,6 +5,7 @@ import { fetchAllProducts } from '@/lib/server-fetch';
 import { Button } from '@/components/ui/button';
 import { FadeIn } from '@/components/motion/fade-in';
 import { FeaturedProducts } from '@/components/home/featured-products';
+import { AraratRidge, Ornament } from '@/components/brand/ornament';
 
 export const revalidate = 300;
 
@@ -44,27 +45,51 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-14 pb-6">
-      {/* Hero */}
+      {/* Hero «Арарат»: кремовый верх, винный хребет со строкой преимуществ */}
       <FadeIn>
-        <section className="rounded-3xl bg-gradient-to-br from-primary/15 via-background to-primary/5 border px-6 py-12 sm:px-12 sm:py-16 text-center space-y-5">
-          <p className="text-4xl">🫓</p>
-          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight">
-            Оджах — армянская домашняя кухня
-          </h1>
-          <p className="max-w-2xl mx-auto text-muted-foreground sm:text-lg">
-            Хинкали и пельмени ручной лепки, блинчики, хлеб на закваске и торты
-            на заказ. Готовим как для своих и привозим по Нижнему Новгороду.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Button asChild size="lg">
-              <Link href="/catalog" className="gap-2">
-                Открыть каталог
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/catalog#торты">Торты на заказ</Link>
-            </Button>
+        <section className="overflow-hidden rounded-3xl border border-gold/40 bg-background">
+          <div className="px-6 pt-12 sm:px-12 sm:pt-16 text-center space-y-5">
+            <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.22em] text-primary">
+              Армянская домашняя кухня · Нижний Новгород
+            </p>
+            <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-balance">
+              «Оджах» — по-армянски{' '}
+              <span className="text-primary">очаг</span>
+            </h1>
+            <p className="max-w-2xl mx-auto text-muted-foreground sm:text-lg">
+              Хинкали и пельмени ручной лепки, блинчики, хлеб на закваске и
+              торты на заказ. Готовим как для своих и привозим по Нижнему
+              Новгороду.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2 pb-8">
+              <Button asChild size="lg">
+                <Link href="/catalog" className="gap-2">
+                  Открыть каталог
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-foreground/50 text-foreground hover:border-foreground"
+              >
+                <Link href="/catalog#торты">Торты на заказ</Link>
+              </Button>
+            </div>
+          </div>
+          {/* Хребет + сплошная винная полоса, чтобы текст читался на любой ширине */}
+          <div>
+            <AraratRidge className="block h-28 w-full text-primary sm:h-40" />
+            <div className="-mt-px bg-primary px-4 pb-4 pt-1 sm:pb-6 sm:pt-2">
+              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[11px] sm:text-sm font-semibold text-primary-foreground/90">
+                <span>Ручная лепка</span>
+                <Ornament className="h-3 w-3 shrink-0 text-gold sm:h-3.5 sm:w-3.5" />
+                <span>Заказ под вашу дату — от 2 дней</span>
+                <Ornament className="h-3 w-3 shrink-0 text-gold sm:h-3.5 sm:w-3.5" />
+                <span>Доставка по Нижнему Новгороду</span>
+              </div>
+            </div>
           </div>
         </section>
       </FadeIn>

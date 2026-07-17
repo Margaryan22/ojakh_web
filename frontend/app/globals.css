@@ -1,21 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Comic+Relief:wght@400;700&family=Comfortaa:wght@400;700&display=swap');
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap');
+@import 'tailwindcss';
 
+/* Палитра бренда — из логотипов «Оджах»:
+   крем #f1e3cd · золото #dca65a · винный #99363d · шоколад #330e0e */
 @theme {
-  --color-background: #faf8f3;
-  --color-foreground: #3d3d3d;
-  --color-muted: #f2ede4;
-  --color-muted-foreground: #8b7f75;
-  --color-border: #e8dfd5;
-  --color-input: #f2ede4;
-  --color-ring: #d4a574;
-  --color-primary: #d4a574;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f2ede4;
-  --color-secondary-foreground: #3d3d3d;
-  --color-accent: #fde8cc;
-  --color-accent-foreground: #d4a574;
-  --color-destructive: #d4574a;
+  --color-background: #f1e3cd;
+  --color-foreground: #330e0e;
+  --color-muted: #e8d5b4;
+  --color-muted-foreground: #8a6a45;
+  --color-border: #e0c9a0;
+  --color-input: #f8efdf;
+  --color-ring: #dca65a;
+  --color-primary: #99363d;
+  --color-primary-foreground: #f1e3cd;
+  --color-secondary: #ecd9ba;
+  --color-secondary-foreground: #4a2c1a;
+  --color-accent: #f0ddbd;
+  --color-accent-foreground: #7a5322;
+  --color-gold: #dca65a;
+  --color-wine: #99363d;
+  --color-cream: #f1e3cd;
+  --color-choco: #330e0e;
+  --color-destructive: #c2453a;
   --color-destructive-foreground: #ffffff;
   --color-success: #5e7c62;
   --color-success-bg: #edf2ee;
@@ -28,10 +34,10 @@
   --color-error: #9e4a42;
   --color-error-bg: #f7eeee;
   --color-error-border: #e8b8b8;
-  --color-card: #ffffff;
-  --color-card-foreground: #3d3d3d;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #3d3d3d;
+  --color-card: #fdf8ec;
+  --color-card-foreground: #330e0e;
+  --color-popover: #fdf8ec;
+  --color-popover-foreground: #330e0e;
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
@@ -42,15 +48,20 @@
 }
 
 body {
-  font-family: 'Comfortaa', 'Comic Relief', system-ui, sans-serif;
+  font-family: 'Comfortaa', system-ui, sans-serif;
   color: var(--color-foreground);
   background: var(--color-background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Comfortaa', 'Comic Relief', system-ui, sans-serif;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Comfortaa', system-ui, sans-serif;
   font-weight: 700;
 }
 
@@ -63,8 +74,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
 }
 
 @utility animate-shimmer {

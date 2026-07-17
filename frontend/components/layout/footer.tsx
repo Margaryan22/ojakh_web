@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { MessageSquarePlus } from 'lucide-react';
 import { FeedbackDialog } from '@/components/feedback-dialog';
+import { Ornament } from '@/components/brand/ornament';
 
 const CONTACT_PHONE_DISPLAY = '+7 (904) 059-23-03';
 const CONTACT_PHONE_HREF = '+79040592303';
@@ -14,8 +15,9 @@ export function Footer() {
   return (
     <footer className='border-t bg-background'>
       <div className='max-w-7xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground'>
-        <p className='text-center sm:text-left'>
-          Ojakh {new Date().getFullYear()} &mdash; Домашние полуфабрикаты, торты и десерты. Нижний Новгород.
+        <p className='flex items-center justify-center gap-2 text-center sm:justify-start sm:text-left'>
+          <Ornament className='h-3.5 w-3.5 shrink-0 text-gold' />
+          Оджах {new Date().getFullYear()} &mdash; Домашние полуфабрикаты, торты и десерты. Нижний Новгород.
         </p>
         <button
           type='button'
